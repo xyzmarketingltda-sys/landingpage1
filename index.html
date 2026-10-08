@@ -85,6 +85,17 @@ input,textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--bord
 input::placeholder,textarea::placeholder{color:#6f6b88}
 input:focus,textarea:focus{outline:none;border-color:var(--roxo);box-shadow:0 0 18px rgba(138,46,255,.4)}
 textarea{min-height:120px;resize:vertical}
+
+/* Caixa de consentimento */
+.consent{display:flex;gap:12px;align-items:flex-start;margin:4px 0 22px;cursor:pointer;font-size:13px;color:var(--suave);line-height:1.55}
+.consent input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.consent .box{flex:0 0 22px;width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);display:grid;place-items:center;transition:.25s;margin-top:1px}
+.consent .box svg{width:14px;height:14px;stroke:#fff;stroke-width:3;fill:none;opacity:0;transform:scale(.5);transition:.25s}
+.consent input:checked + .box{background:linear-gradient(135deg,var(--roxo),var(--laranja));border-color:transparent;box-shadow:0 0 16px rgba(138,46,255,.55)}
+.consent input:checked + .box svg{opacity:1;transform:scale(1)}
+.consent input:focus-visible + .box{box-shadow:0 0 0 2px var(--ciano)}
+.consent a{color:var(--ciano)}
+
 button{width:100%;border:none;cursor:pointer;font-family:'Orbitron',sans-serif;font-size:15px;letter-spacing:1px;padding:16px;border-radius:12px;color:#fff;
   background:linear-gradient(90deg,var(--roxo),var(--laranja));box-shadow:0 0 25px rgba(138,46,255,.45);transition:.3s}
 button:hover{box-shadow:0 0 45px rgba(255,122,0,.65)}
@@ -180,20 +191,27 @@ footer p{margin:4px 0}
   <h2 class="titulo" style="text-align:center">Entre em <span>contato</span></h2>
   <div class="form">
     <form>
-      <input type="text" placeholder="Nome completo" required>
-      <input type="text" placeholder="Empresa (opcional)">
-      <input type="email" placeholder="E-mail" required>
-      <input type="tel" placeholder="Telefone / WhatsApp" required>
-      <textarea placeholder="Como podemos ajudar?"></textarea>
+      <input type="text" name="nome" placeholder="Nome completo" required>
+      <input type="text" name="empresa" placeholder="Empresa (opcional)">
+      <input type="email" name="email" placeholder="E-mail" required>
+      <input type="tel" name="telefone" placeholder="Telefone / WhatsApp" required>
+      <textarea name="mensagem" placeholder="Como podemos ajudar?"></textarea>
+
+      <label class="consent">
+        <input type="checkbox" name="consentimento" value="sim" required>
+        <span class="box"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>
+        <span>Autorizo a XYZ Marketing LTDA a entrar em contato comigo por telefone, WhatsApp ou e-mail para responder à minha solicitação, conforme a <a href="#privacidade">Política de Privacidade</a>. Posso retirar essa autorização a qualquer momento.</span>
+      </label>
+
       <button type="submit">Enviar mensagem</button>
-      <p class="mini">Ao enviar, você concorda com o uso dos seus dados apenas para retorno do contato, conforme nossa <a href="#privacidade">Política de Privacidade</a> e a LGPD.</p>
+      <p class="mini">Seus dados são usados apenas para retorno do contato, de acordo com a LGPD (Lei 13.709/2018).</p>
     </form>
   </div>
 </section>
 
 <section id="privacidade" class="section revela">
   <h2 class="titulo">Política de <span>privacidade</span></h2>
-  <p class="sub">Coletamos apenas os dados informados no formulário (nome, e-mail, telefone e mensagem) para responder ao seu contato. Não vendemos dados a terceiros. Você pode pedir a correção ou exclusão dos seus dados a qualquer momento pelo formulário de contato, nos termos da Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
+  <p class="sub">Coletamos apenas os dados informados no formulário (nome, e-mail, telefone e mensagem) e o registro da sua autorização de contato, com a única finalidade de responder à sua solicitação. Não vendemos dados a terceiros. Você pode retirar a autorização ou pedir a correção ou exclusão dos seus dados a qualquer momento pelo formulário de contato, nos termos da Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
 </section>
 
 </main>
