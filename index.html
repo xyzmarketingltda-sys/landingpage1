@@ -14,6 +14,19 @@
 <meta property="og:title" content="XYZ Marketing LTDA | Marketing Direto e Intermediação de Negócios">
 <meta property="og:description" content="Conectando pessoas e empresas às oportunidades certas. Marketing direto, geração de oportunidades e intermediação de negócios em Taubaté - SP.">
 <meta property="og:locale" content="pt_BR">
+<!-- Meta Pixel: troque SOMENTE o número abaixo pelo ID do seu Pixel -->
+<script>
+var PIXEL_ID = '1646366663945205';
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', PIXEL_ID);
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1646366663945205&ev=PageView&noscript=1"/></noscript>
+<!-- Fim do Meta Pixel -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
@@ -357,8 +370,24 @@ footer p{margin:4px 0}
 // Seções aparecendo ao rolar
 const obs=new IntersectionObserver(e=>e.forEach(i=>{if(i.isIntersecting)i.target.classList.add('on')}),{threshold:.15});
 document.querySelectorAll('.revela').forEach(el=>obs.observe(el));
-// Mensagem de cadastro recebido
-if(new URLSearchParams(location.search).get('cadastro')==='ok'){const m=document.getElementById('cadastro-ok');if(m)m.hidden=false;}
+// Mensagem de cadastro recebido + evento de Lead no Meta
+if(new URLSearchParams(location.search).get('cadastro')==='ok'){
+  const m=document.getElementById('cadastro-ok');if(m)m.hidden=false;
+  if(window.fbq)fbq('track','Lead',{content_name:'Parceria advogados'});
+}
+// Eventos do Meta Pixel
+(function(){
+  if(!window.fbq)return;
+  // Viu a seção do ebook
+  const eb=document.getElementById('ebook');let viu=false;
+  if(eb)new IntersectionObserver(e=>{if(!viu&&e[0].isIntersecting){viu=true;fbq('track','ViewContent',{content_name:'Ebook seguro prestamista',value:69.90,currency:'BRL'});}},{threshold:.4}).observe(eb);
+  // Clicou em comprar o ebook
+  const bt=document.getElementById('comprar-ebook');
+  if(bt)bt.addEventListener('click',()=>fbq('track','InitiateCheckout',{content_name:'Ebook seguro prestamista',value:69.90,currency:'BRL'}));
+  // Enviou a ficha de parceria
+  const fa=document.querySelector('#advogados form');
+  if(fa)fa.addEventListener('submit',()=>fbq('trackCustom','EnviouFichaAdvogado'));
+})();
 </script>
 </body>
 </html>
