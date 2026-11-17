@@ -223,9 +223,26 @@
       if (mesmoDia.length) add('alto', `Cartão ${k.t} contratado junto com empréstimo`, 'Cartão consignado averbado no mesmo dia (ou em até 3 dias) de um empréstimo: forte indício de venda casada — o cliente pediu empréstimo e recebeu também um cartão (CDC art. 39, I). Pedido de cancelamento, devolução em dobro dos descontos do cartão e dano moral.', mesmoDia.map(id), `${k.t} incluído em ${dBR(k.inclusao)}.`);
     });
     // TCU Acórdão 1094/2026 (cautelar, fim de abr/2026): novas operações de RMC/RCC suspensas
+    // refinanciamento/portabilidade que mantém a parcela e estica o prazo (TJMT/TJPR: nulidade por vício de consentimento)
+    C.filter(c => /refinanc|portab/i.test(c.origem) && c.inclusao && c.parcela && c.parcelas).forEach(c => {
+      const ant = C.find(e => e !== c && e.exclusao && /refinanc|portab/i.test(e.motivoExcl || '') && e.parcela && e.parcelas
+        && Math.abs(new Date(e.exclusao) - new Date(c.inclusao)) <= 5 * 864e5 && Math.abs(e.parcela - c.parcela) / e.parcela <= 0.08);
+      if (!ant) return;
+      const restantes = ant.inicio && ant.parcelas ? ant.parcelas - Math.max(0, meses(ant.inicio + '-01', c.inclusao) || 0) : ant.parcelas;
+      if (c.parcelas >= restantes + 12) add('alto', 'Prazo esticado mantendo a mesma parcela', 'A operação manteve praticamente a mesma parcela, mas reiniciou/aumentou o prazo, com pouco ou nenhum dinheiro novo ao cliente. Os tribunais anulam quando a portabilidade/refinanciamento serve só para alongar a dívida sem vantagem e sem informação clara (vício de consentimento — CC art. 145; CDC arts. 6º, III, e 39). Pedir retorno ao contrato anterior, devolução em dobro e dano moral.', [id(ant), id(c)], `Parcela ${fmt(ant.parcela)} → ${fmt(c.parcela)}; faltavam ~${Math.max(0, restantes)} parcelas e o novo contrato tem ${c.parcelas}.`);
+    });
+    // IOF acima do máximo legal (PF: 0,38% + 0,0082%/dia limitado a 365 dias ≈ 3,38%)
+    U.forEach(c => { if (c.iof && c.emprestado && c.emprestado > c.iof) { const p = c.iof / (c.emprestado - c.iof) * 100; if (p > 3.5) add('medio', 'IOF acima do máximo legal', 'Para pessoa física o IOF de empréstimo é 0,38% + 0,0082% ao dia, limitado a 365 dias (≈ 3,38% do valor). IOF maior indica cobrança indevida ou algo embutido na base (seguro/tarifa). Pedir restituição do excedente.', [id(c)], `IOF ${fmt(c.iof)} = ${p.toFixed(2)}% do valor.`); } });
     cart.filter(k => k.inclusao && k.inclusao >= '2026-04-29').forEach(k => add('alto', `Cartão ${k.t} contratado com a modalidade suspensa`, 'Novas operações de cartão de crédito consignado (RMC) e cartão consignado de benefício (RCC) estão suspensas por medida cautelar do TCU (Acórdão 1094/2026), e a MP 1.355/2026 previu a extinção gradual desses cartões. Cartão averbado depois disso: contratação irregular — pedir nulidade, devolução integral dos descontos (Lei 15.327/2026) e dano moral.', [], `${k.t} incluído em ${dBR(k.inclusao)}.`));
     if (h.bpc && h.cartoes.RMC.length && h.cartoes.RCC.length) add('alto', 'BPC com RMC e RCC ao mesmo tempo', 'Para BPC (espécies 87/88) a margem de cartão é de 5% e o beneficiário pode optar por somente UMA modalidade (RMC ou RCC).', []);
     const desc = h.descontosCartao;
+    // RMC/RCC "dívida que nunca acaba": descontos mensais e saldo que não cai
+    const porBanco = {}; desc.forEach(d => { if (d.saldo != null) (porBanco[d.banco] = porBanco[d.banco] || []).push(d); });
+    Object.entries(porBanco).forEach(([b, l]) => {
+      if (l.length < 4) return; l.sort((a, z) => (a.competencia || '').localeCompare(z.competencia || ''));
+      const ini = l[0].saldo, fim = l[l.length - 1].saldo, pago = l.reduce((x, d) => x + (d.desconto || 0), 0);
+      if (ini > 0 && fim >= ini * 0.95 && pago > 0 && fim > (l[l.length - 1].desconto || 0) * 1.5) add('alto', 'Cartão consignado: saldo não diminui (dívida que nunca acaba)', 'Os descontos mensais só pagam o mínimo da fatura e o saldo devedor não cai. Os tribunais anulam ou convertem o cartão em empréstimo consignado comum, com devolução em dobro (CDC art. 42, parágrafo único) e dano moral — "empréstimo travestido de cartão".', [], `${b || 'Cartão'}: saldo ${fmt(ini)} → ${fmt(fim)} em ${l.length} meses, apesar de ${fmt(pago)} descontados.`);
+    });
     if (desc.length >= 4) {
       const totDesc = desc.reduce((s, d) => s + (d.desconto || 0), 0);
       add('info', 'Descontos de cartão no período', 'Soma dos descontos de cartão listados no HISCON (base para cálculo de devolução).', [], `${desc.length} descontos, total ${fmt(totDesc)}.`);
