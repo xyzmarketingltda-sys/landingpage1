@@ -47,6 +47,39 @@ td{padding:5px 4px}
 td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);border-radius:8px;padding:6px;color:var(--texto);font:inherit;font-size:13px;color-scheme:dark}
 #dica{position:fixed;right:14px;bottom:14px;z-index:4;font-size:12px;color:var(--suave);background:rgba(3,10,26,.8);border:1px solid var(--borda);border-radius:10px;padding:8px 12px}
 @media (max-width:760px){#lado{width:auto;right:14px;bottom:10px;max-height:28vh;overflow:auto}#dica{display:none}header h1{font-size:10px}#relogio{display:none}}
+
+/* ---------- missão diária: estilo quest (WoW futurista) ---------- */
+#quest-btn{position:fixed;left:14px;bottom:14px;z-index:6;width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0}
+#quest-btn .hex{position:absolute;inset:0;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);background:linear-gradient(160deg,#fde68a,#f59e0b 45%,#b45309);box-shadow:0 0 18px rgba(251,191,36,.7)}
+#quest-btn .hex::after{content:"";position:absolute;inset:3px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#0b2a5c,#050d22 70%)}
+#quest-btn b{position:relative;z-index:1;display:block;text-align:center;font:900 24px/44px Inter,sans-serif;color:#fde047;text-shadow:0 0 10px #fbbf24}
+#quest-btn.feita b{color:#4ade80;text-shadow:0 0 10px #22c55e}
+#quest{position:fixed;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at center,rgba(0,40,90,.35),rgba(0,0,0,.75))}
+#quest .q{position:relative;width:100%;max-width:440px;padding:26px 26px 20px;background:linear-gradient(180deg,rgba(6,18,46,.97),rgba(2,8,22,.98));border:1px solid rgba(251,191,36,.55);border-radius:6px;box-shadow:0 0 0 4px rgba(2,8,22,.9),0 0 0 5px rgba(251,191,36,.35),0 0 40px rgba(30,144,255,.35),inset 0 0 40px rgba(30,144,255,.08);animation:questEntra .45s cubic-bezier(.2,.9,.2,1.2)}
+#quest .q::before,#quest .q::after{content:"";position:absolute;width:26px;height:26px;border:2px solid #fbbf24;filter:drop-shadow(0 0 6px #fbbf24)}
+#quest .q::before{top:-6px;left:-6px;border-right:0;border-bottom:0}
+#quest .q::after{bottom:-6px;right:-6px;border-left:0;border-top:0}
+#quest .selo{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:56px;height:56px;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);background:linear-gradient(160deg,#fde68a,#f59e0b 45%,#b45309);display:flex;align-items:center;justify-content:center}
+#quest .selo span{width:48px;height:48px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#0b2a5c,#050d22 70%);display:flex;align-items:center;justify-content:center;font:900 28px Inter,sans-serif;color:#fde047;text-shadow:0 0 12px #fbbf24}
+#quest .tipo{text-align:center;font-size:10px;letter-spacing:3px;color:#7dd3fc;margin-top:14px;text-transform:uppercase}
+#quest h2{text-align:center;font:800 22px Inter,sans-serif;letter-spacing:1px;text-transform:uppercase;margin:4px 0 12px;background:linear-gradient(90deg,#f59e0b,#fde68a,#fbbf24);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px rgba(251,191,36,.45))}
+#quest .desc{font-size:14px;line-height:1.5;color:#cfe3ff;text-align:center;margin-bottom:16px}
+#quest h4{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#fbbf24;margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+#quest h4::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(251,191,36,.5),transparent)}
+#quest .obj{display:flex;justify-content:space-between;font-size:13px;margin:8px 0 4px;color:#e6f0ff}
+#quest .obj.ok{color:#4ade80}
+#quest .barra{height:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;border:1px solid rgba(125,211,252,.2)}
+#quest .barra i{display:block;height:100%;background:linear-gradient(90deg,#0066ff,#00c2ff);box-shadow:0 0 12px rgba(0,194,255,.7);transition:width 1s}
+#quest .obj.ok + .barra i{background:linear-gradient(90deg,#16a34a,#4ade80)}
+#quest .recomp{display:flex;align-items:center;gap:14px;padding:12px;border-radius:6px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.3)}
+#quest .recomp .ic{width:46px;height:46px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:24px;background:radial-gradient(circle,#3a2a05,#0b0b12);border:1px solid #fbbf24;box-shadow:0 0 14px rgba(251,191,36,.45)}
+#quest .recomp b{font-size:20px;color:#fde68a}
+#quest .recomp small{display:block;color:var(--suave);font-size:11px}
+#quest .acoes{display:flex;gap:10px;justify-content:center;margin-top:18px}
+#quest .acoes button{font:700 13px Inter,sans-serif;letter-spacing:1px;text-transform:uppercase;padding:10px 22px;border-radius:4px;cursor:pointer;border:1px solid #fbbf24;background:linear-gradient(180deg,#b45309,#78350f);color:#fff7d6;box-shadow:0 0 14px rgba(251,191,36,.35)}
+#quest .acoes button.sec{background:transparent;border-color:rgba(125,211,252,.4);color:#cfe3ff;box-shadow:none}
+#quest .completa{text-align:center;font:800 14px Inter,sans-serif;letter-spacing:2px;color:#4ade80;text-shadow:0 0 12px #22c55e;margin-top:12px}
+@keyframes questEntra{from{transform:scale(.85) translateY(20px);opacity:0}to{transform:none;opacity:1}}
 </style>
 </head>
 <body>
@@ -703,6 +736,62 @@ async function carregarMetas() {
 }
 setInterval(carregarMetas, 60000);
 
+
+/* ---------- missões diárias ---------- */
+const diaSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+const brlM = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+let missoes = [], marcaMissao = [], animMissao = [], abriuMissao = false;
+const animar = f => { animados.push(f); animMissao.push(f); };
+function abrirMissao() {
+  const meus = missoes.filter(r => r.atendente_id === eu.id), ref = meus[0] || missoes[0]; if (!ref) return;
+  const sg = meus[0]?.seguros || 0, rv = meus[0]?.revisionais || 0, feita = meus.length && meus[0].cumpriu;
+  const obj = (nome, n, meta) => meta ? `<div class="obj ${n >= meta ? 'ok' : ''}"><span>${n >= meta ? '✔' : '◇'} ${nome}</span><b>${Math.min(n, meta)}/${meta}</b></div><div class="barra"><i style="width:${Math.min(100, n / meta * 100)}%"></i></div>` : '';
+  const q = $('#quest'); q.hidden = false;
+  q.innerHTML = `<div class="q"><div class="selo"><span>${feita ? '✓' : '!'}</span></div>
+    <div class="tipo">Missão diária · ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}</div>
+    <h2>${esc(ref.titulo)}</h2><div class="desc">${esc(ref.descricao || '')}</div>
+    ${eu.papel === 'atendente' ? `<h4>Objetivos</h4>${obj('Seguros prestamistas fechados', sg, ref.meta_seguro)}${obj('Revisionais fechados', rv, ref.meta_revisional)}`
+      : `<h4>Equipe</h4>${missoes.map(r => `<div class="obj ${r.cumpriu ? 'ok' : ''}"><span>${r.cumpriu ? '✔' : '◇'} ${esc(r.atendente)}</span><b>${r.seguros}/${r.meta_seguro} · ${r.revisionais}/${r.meta_revisional}</b></div>`).join('')}`}
+    <h4>Recompensa</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(ref.recompensa)}</b><small>paga junto com a premiação da meta · aparece na sua mesa ao concluir</small></div></div>
+    ${feita ? '<div class="completa">✦ MISSÃO CUMPRIDA ✦</div>' : ''}
+    <div class="acoes">${feita || eu.papel !== 'atendente' ? '<button data-q="fechar">Fechar</button>' : '<button data-q="aceitar">Aceitar missão</button><button class="sec" data-q="fechar">Depois</button>'}</div></div>`;
+  q.onclick = e => { const b = e.target.closest('[data-q]'); if (b || e.target === q) { q.hidden = true; if (b?.dataset.q === 'aceitar') { try { localStorage.setItem('crm-missao-aceita-' + eu.id + '-' + diaSP(), '1'); } catch (_) {} balao(eu.id, '📜 Missão aceita!', 3000); particulas(eu.id, '✨', 8); } } };
+}
+function marcadoresMissao() {
+  marcaMissao.forEach(m => scene.remove(m)); marcaMissao.length = 0;
+  animMissao.forEach(f => { const k = animados.indexOf(f); if (k >= 0) animados.splice(k, 1); }); animMissao.length = 0;
+  if (!missoes.length) return;
+  // "!" de quest sobre o MEU computador (ou ✓ se cumpri)
+  const meu = missoes.find(r => r.atendente_id === eu.id), idx = mesaDe[eu.id];
+  if (meu && idx != null) {
+    const [x, z] = DESKS[idx];
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto(meu.cumpriu ? '✓' : '!', 64, 64, '900 56px Inter, sans-serif', meu.cumpriu ? '#4ade80' : '#fde047', meu.cumpriu ? '#14532d' : '#b45309'), transparent: true, depthTest: false }));
+    sp.scale.set(2.4, 2.4, 1); sp.position.set(x * U, 10.5, z * U); scene.add(sp); marcaMissao.push(sp);
+    animar(t => { sp.position.y = 10.5 + Math.sin(t / 260) * .45; });
+  }
+  // recompensa na mesa de quem cumpriu: maleta dourada + "+R$" flutuando
+  missoes.filter(r => r.cumpriu).forEach(r => {
+    const i = mesaDe[r.atendente_id]; if (i == null) return; const [x, z] = DESKS[i];
+    const mala = new THREE.Mesh(new THREE.BoxGeometry(1.5, .9, .5), new THREE.MeshStandardMaterial({ color: '#fbbf24', metalness: .85, roughness: .25, emissive: '#7c4a03', emissiveIntensity: .35 }));
+    mala.position.set(x * U - 2.3, 3.85 + .45, z * U + .3); scene.add(mala); marcaMissao.push(mala);
+    const alca = new THREE.Mesh(new THREE.TorusGeometry(.28, .06, 8, 16, Math.PI), new THREE.MeshStandardMaterial({ color: '#78350f' }));
+    alca.position.set(x * U - 2.3, 3.85 + .9, z * U + .3); scene.add(alca); marcaMissao.push(alca);
+    const txt = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto('+' + brlM(r.recompensa).replace(/,00$/, ''), 160, 56, '800 34px Inter, sans-serif', '#fde68a', '#b45309'), transparent: true }));
+    txt.scale.set(3.6, 1.26, 1); txt.position.set(x * U - 2.3, 6.4, z * U + .3); scene.add(txt); marcaMissao.push(txt);
+    animar(t => { txt.position.y = 6.4 + Math.sin(t / 340 + i) * .25; mala.rotation.y = Math.sin(t / 900) * .25; });
+  });
+}
+async function carregarMissoes() {
+  const { data } = await sb.rpc('missoes_painel', { d: diaSP() });
+  missoes = data || [];
+  const b = $('#quest-btn'); b.hidden = !missoes.length;
+  const meu = missoes.find(r => r.atendente_id === eu.id); b.classList.toggle('feita', !!meu?.cumpriu); b.querySelector('b').textContent = meu?.cumpriu ? '✓' : '!';
+  b.onclick = abrirMissao;
+  marcadoresMissao();
+  if (!abriuMissao && missoes.length && /missao=1/.test(location.search)) { abriuMissao = true; setTimeout(() => { if (meu) { balao(eu.id, '💻 Nova missão no seu PC!', 2500); } abrirMissao(); }, 1400); }
+}
+setInterval(carregarMissoes, 60000);
+
 /* ---------- início ---------- */
 async function carregarEquipe() {
   const { data, error } = await sb.rpc('equipe_escritorio');
@@ -720,12 +809,15 @@ async function carregarEquipe() {
   XYZPresenca.entrar(sb, eu, {
     sync: st => { online = new Set(Object.keys(st)); syncOk = true; atualizarAtores(); },
     acao: executar,
-    venda: m => { setTimeout(carregarMetas, 800); balao(m.id, '🎉 Fechei mais um!', 4000); particulas(m.id, '🎉', 6); particulas(m.id, '💰', 4); const a = atores.get(m.id); if (a) a.danca = T + 3000; },
+    venda: m => { setTimeout(carregarMetas, 800); setTimeout(carregarMissoes, 1200); balao(m.id, '🎉 Fechei mais um!', 4000); particulas(m.id, '🎉', 6); particulas(m.id, '💰', 4); const a = atores.get(m.id); if (a) a.danca = T + 3000; },
   });
   await montarAmbiente(); await montarMoveis();
   await carregarEquipe(); await carregarMetas();
   requestAnimationFrame(quadro);
+  setTimeout(() => carregarMissoes(), 800);
 })();
 </script>
+<button id="quest-btn" hidden title="Missão diária"><span class="hex"></span><b>!</b></button>
+<div id="quest" hidden></div>
 </body>
 </html>

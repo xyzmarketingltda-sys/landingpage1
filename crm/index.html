@@ -280,6 +280,20 @@ tbody tr:last-child td{border-bottom:0}
   .rank-item{grid-template-columns:30px 42px 1fr auto}
 }
 @media (prefers-reduced-motion:reduce){#flut-card,#flut-bola,.coroa,#flut-card::before{animation:none}}
+
+/* ---------- missões diárias (quest) ---------- */
+#quest{position:fixed;right:18px;bottom:18px;z-index:60;width:46px;height:46px;border:0;cursor:pointer;background:none;padding:0}
+#quest .hex{position:absolute;inset:0;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);background:linear-gradient(160deg,#fde68a,#f59e0b 45%,#b45309);box-shadow:0 0 18px rgba(251,191,36,.7)}
+#quest .hex::after{content:"";position:absolute;inset:3px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#0b2a5c,#050d22 70%)}
+#quest b{position:relative;z-index:1;font:900 26px/46px Inter,sans-serif;color:#fde047;text-shadow:0 0 10px #fbbf24,0 0 2px #fff;display:block;text-align:center}
+#quest.nova{animation:questPulo 1.4s ease-in-out infinite}
+#quest.feita b{color:#4ade80;text-shadow:0 0 10px #22c55e}
+#quest .bolha{position:absolute;right:54px;bottom:6px;white-space:nowrap;font-size:12px;padding:6px 10px;border-radius:10px;background:rgba(5,13,34,.92);border:1px solid rgba(251,191,36,.6);color:#fde68a;box-shadow:0 0 14px rgba(251,191,36,.3);pointer-events:none}
+@keyframes questPulo{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.missao-linha{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:8px 12px;border-radius:12px;border:1px solid rgba(251,191,36,.35);background:linear-gradient(90deg,rgba(251,191,36,.08),rgba(0,0,0,0));font-size:13px}
+.missao-linha small{color:var(--suave)}
+.missao-linha .v{font-weight:800;font-size:17px}
+.cm .missao-mini{display:block;margin-top:6px;font-size:11px;color:#fde68a}
 </style>
 </head>
 <body>
@@ -699,6 +713,7 @@ async function iniciar() {
   if (admin) { await carregarEquipe(); iniciarGestao(); }
   iniciarFlutuante();
   try { iniciarCardEsc(); } catch (e) {}
+  try { iniciarMissoes(); } catch (e) {}
   carregarAdvogados();
   abrirAba('clientes');
 }
@@ -1049,6 +1064,31 @@ async function iniciarCardEsc() {
   } });
 }
 
+
+/* ---------- missões diárias ---------- */
+const diaSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+let premiosMissao = {};
+async function iniciarMissoes() {
+  const { data } = await sb.rpc('missoes_painel', { d: diaSP() });
+  const q = $('#quest'); if (!data || !data.length) { q.hidden = true; return; }
+  const meus = eu.papel === 'atendente' ? data.filter(r => r.atendente_id === eu.id) : [];
+  q.hidden = false; q.querySelector('.bolha')?.remove();
+  const feita = meus.length && meus.every(r => r.cumpriu);
+  q.classList.toggle('feita', !!feita); q.querySelector('b').textContent = feita ? '✓' : '!';
+  const chave = 'crm-missao-vista-' + eu.id + '-' + diaSP();
+  if (!ler(chave) && eu.papel === 'atendente') {
+    q.classList.add('nova');
+    q.insertAdjacentHTML('beforeend', '<span class="bolha">📜 Nova missão diária!</span>');
+    toast('📜 Você tem uma nova missão diária! Clique no ❗ no canto da tela.');
+  }
+  q.onclick = () => { guardar(chave, '1'); location.href = 'escritorio.html?missao=1'; };
+  if (eu.papel === 'admin') q.title = 'Missão de hoje: ' + data[0].titulo + ' — ' + data.filter(r => r.cumpriu).length + ' de ' + data.length + ' cumpriram';
+}
+async function carregarPremiosMissao(ini, fim) {
+  const { data } = await sb.rpc('missoes_premios', { inicio: ini, fim });
+  premiosMissao = {}; (data || []).forEach(r => premiosMissao[r.atendente_id] = { n: r.missoes, v: Number(r.total) });
+}
+
 /* ---------- metas ---------- */
 const FAIXAS = { clt: [90, 110, 140, 200], estagiario: [60, 74, 94, 134] };
 const PREMIOS = [300, 500, 750, 1500];
@@ -1073,19 +1113,20 @@ async function carregarMetas() {
   const [ini, fim] = intervalo('mes');
   const { data, error } = await sb.rpc('metas_mes', { inicio: ini, fim });
   if (error || !data) return;
+  try { await carregarPremiosMissao(ini, fim); } catch (e) {}
   const mes = new Date().toLocaleDateString('pt-BR', { month: 'long' });
   if (eu.papel === 'admin') {
     const tot = data.reduce((s, r) => s + Number(r.vendas), 0);
     const premios = data.reduce((s, r) => { const nv = FAIXAS[r.tipo].filter(x => r.vendas >= x).length; return s + (nv ? PREMIOS[nv - 1] : 0); }, 0);
     $('#metas').innerHTML = `<div class="metas vidro">
       <div class="metas-top"><div><small>Fechados pela equipe em ${mes}</small><div class="contador"><b>${tot}</b> vendas</div></div>
-        <div class="ganho"><small>Prêmios destravados</small><div class="${premios ? 'ouro' : ''}">${brl0(premios)}</div></div></div>
+        <div class="ganho"><small>Prêmios destravados</small><div class="${premios ? 'ouro' : ''}">${brl0(premios)}</div>${(() => { const m = Object.values(premiosMissao).reduce((x, y) => x + y.v, 0); return m ? `<small style="color:#fde68a">+ ${brl0(m)} em missões diárias</small>` : ''; })()}</div></div>
       <div class="equipe-metas">${data.length ? data.map(r => {
         const f = FAIXAS[r.tipo], n = Number(r.vendas), nv = f.filter(x => n >= x).length, prox = f[nv];
         return `<div class="cm ${nv ? 'bateu' : ''} ${$('#f-at').value === r.id ? 'filtro' : ''}" data-filtra="${r.id}" title="Clique para ver só os clientes de ${esc(r.atendente)}"><div class="cm-top">${avatar(r.atendente, r.foto_url)}
           <div><b>${esc(r.atendente)}</b><small><span class="tag-tipo">${TIPO_NOME[r.tipo]}</span></small></div><div class="n">${n}</div></div>
           ${trilha(n, f)}
-          <div class="cm-pe"><span>${prox ? `faltam ${prox - n} p/ ${brl0(PREMIOS[nv])}` : 'todas batidas 🏆'}</span><span class="${nv ? 'ouro' : ''}">${nv ? brl0(PREMIOS[nv - 1]) : '—'}</span></div></div>`;
+          <div class="cm-pe"><span>${prox ? `faltam ${prox - n} p/ ${brl0(PREMIOS[nv])}` : 'todas batidas 🏆'}</span><span class="${nv ? 'ouro' : ''}">${nv ? brl0(PREMIOS[nv - 1]) : '—'}</span></div>${premiosMissao[r.id] ? `<span class="missao-mini">📜 ${premiosMissao[r.id].n} missão(ões) diária(s): + ${brl0(premiosMissao[r.id].v)}</span>` : ''}</div>`;
       }).join('') : '<small>Nenhum atendente ativo.</small>'}</div></div>`;
     return animarTrilhas();
   }
@@ -1104,7 +1145,9 @@ async function carregarMetas() {
         <div class="valor ${n >= x ? 'ouro' : ''}">${brl0(PREMIOS[k])}</div>
         <small>${x} vendas</small>
         ${n < x ? `<div class="mini"><i style="width:${Math.min(100, n / x * 100).toFixed(1)}%"></i></div>` : ''}
-      </div>`).join('')}</div></div>`;
+      </div>`).join('')}</div>
+    ${(() => { const pm = premiosMissao[eu.id] || { n: 0, v: 0 }, base = nv ? PREMIOS[nv - 1] : 0; return `<div class="missao-linha"><div>📜 <b>Premiações de missões diárias</b><br><small>${pm.n ? pm.n + ' missão(ões) cumprida(s) este mês · pagas junto com a meta' : 'Cumpra as missões diárias para ganhar extras'}</small></div><div style="text-align:right"><div class="v ${pm.v ? 'ouro' : ''}">${brl0(pm.v)}</div><small>Total a receber: <b>${brl0(base + pm.v)}</b></small></div></div>`; })()}
+    </div>`;
   animarTrilhas();
   const chave = 'crm-nivel-' + eu.id + '-' + ini, antes = Number(ler(chave) || 0);
   if (nv > antes) { if (ler(chave) !== null || nv > 0) { confete(); toast(`🎉 Parabéns! Você destravou ${brl0(PREMIOS[nv - 1])}!`); } }
@@ -1305,5 +1348,6 @@ $('#form-senha').onsubmit = async e => {
 if (sb) sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') mostrarLogin(); });
 iniciar();
 </script>
+<button id="quest" hidden title="Missão diária"><span class="hex"></span><b>!</b></button>
 </body>
 </html>
