@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>CRM | XYZ Marketing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07060d; --painel:#110f1c; --painel2:#181528; --borda:#2a2540;
+  --texto:#ecebf5; --suave:#9a96b3; --roxo:#8b5cf6; --roxo2:#a78bfa;
+  --verde:#22c55e; --vermelho:#ef4444; --amarelo:#eab308; --azul:#38bdf8;
+  --raio:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px}
+body{min-height:100vh;background:radial-gradient(ellipse at top,#1a1233 0%,var(--bg) 60%) fixed}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{width:100%;background:var(--painel2);border:1px solid var(--borda);border-radius:10px;padding:11px 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--roxo)}
+textarea{min-height:80px;resize:vertical}
+label{display:block;font-size:12px;color:var(--suave);margin:0 0 5px;font-weight:500}
+.btn{background:var(--roxo);border:0;border-radius:10px;padding:11px 16px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{filter:brightness(1.1)}
+.btn:disabled{opacity:.5;cursor:wait}
+.btn.sec{background:var(--painel2);border:1px solid var(--borda)}
+.btn.perigo{background:transparent;border:1px solid var(--vermelho);color:var(--vermelho)}
+.btn.peq{padding:7px 11px;font-size:13px}
+
+/* LOGIN */
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.cartao{background:var(--painel);border:1px solid var(--borda);border-radius:18px;padding:32px 26px;width:100%;max-width:380px}
+.marca{font-weight:800;font-size:22px;letter-spacing:-.5px}
+.marca span{color:var(--roxo2)}
+.cartao p.sub{color:var(--suave);margin:4px 0 24px;font-size:14px}
+.campo{margin-bottom:14px}
+.erro{color:var(--vermelho);font-size:13px;margin-top:10px;min-height:18px}
+.aviso{background:#2a1f06;border:1px solid #5c4410;color:#fcd34d;padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:12px}
+
+/* APP */
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--borda);background:rgba(7,6,13,.8);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+header .quem{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--suave)}
+header .quem b{color:var(--texto)}
+nav{display:flex;gap:6px;padding:14px 20px 0;overflow-x:auto}
+nav button{background:none;border:0;padding:10px 14px;border-radius:10px;color:var(--suave);cursor:pointer;font-weight:600}
+nav button.ativa{background:var(--painel2);color:var(--texto)}
+main{padding:18px 20px 60px;max-width:1200px;margin:0 auto}
+.barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px}
+.resumo{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px 16px;min-width:150px}
+.kpi small{color:var(--suave);font-size:12px}
+.kpi div{font-size:20px;font-weight:700;margin-top:2px}
+.tabela{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:var(--suave);font-weight:600;padding:12px;border-bottom:1px solid var(--borda);background:var(--painel2)}
+td{padding:12px;border-bottom:1px solid var(--borda);font-size:14px}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--painel2)}
+tbody tr:last-child td{border-bottom:0}
+.vazio{padding:30px;text-align:center;color:var(--suave)}
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600;background:#222;white-space:nowrap}
+.st-Novo{background:#0c2a3a;color:var(--azul)}
+.st-Em{background:#2d2508;color:var(--amarelo)}
+.st-Digitado{background:#251a45;color:var(--roxo2)}
+.st-Pago{background:#0b2e18;color:var(--verde)}
+.st-Perdido{background:#2e0f0f;color:#f87171}
+
+/* RANKING */
+.periodos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:end}
+.periodos .btn.sel{background:var(--roxo)}
+.rank{display:flex;flex-direction:column;gap:10px}
+.rank-item{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center}
+.rank-item.eu{border-color:var(--roxo)}
+.pos{font-size:22px;font-weight:800;text-align:center;color:var(--suave)}
+.rank-item .nome{font-weight:600}
+.rank-item .det{font-size:13px;color:var(--suave);margin-top:2px}
+.barra-prog{height:6px;background:var(--painel2);border-radius:99px;margin-top:8px;overflow:hidden}
+.barra-prog i{display:block;height:100%;background:linear-gradient(90deg,var(--roxo),var(--roxo2));border-radius:99px}
+.rank-item .total{font-weight:700;font-size:17px;text-align:right}
+
+/* ATENDENTES */
+.grade2{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
+.bloco{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:18px}
+.bloco h3{font-size:15px;margin-bottom:14px}
+.linha-at{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--borda);flex-wrap:wrap}
+.linha-at:last-child{border-bottom:0}
+.linha-at small{color:var(--suave);display:block}
+.linha-at .acoes{display:flex;gap:6px;align-items:center}
+.linha-at select{width:auto;padding:6px 8px;font-size:13px}
+.inativo{opacity:.5}
+
+/* MODAL */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow-y:auto;z-index:20}
+#modal .cartao{max-width:620px}
+.form-grade{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grade .inteiro{grid-column:1/-1}
+.rodape-modal{display:flex;justify-content:space-between;gap:10px;margin-top:18px;flex-wrap:wrap}
+.rodape-modal div{display:flex;gap:8px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--painel2);border:1px solid var(--borda);padding:12px 18px;border-radius:10px;z-index:30;font-size:14px;max-width:90vw}
+#toast.ruim{border-color:var(--vermelho)}
+
+@media (max-width:860px){
+  .barra{grid-template-columns:1fr 1fr}
+  .barra .busca{grid-column:1/-1}
+  .grade2{grid-template-columns:1fr}
+  header{padding:12px 14px} nav{padding:12px 14px 0} main{padding:14px}
+  header .quem .nomeu{display:none}
+  thead{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tbody tr{padding:12px 14px;border-bottom:1px solid var(--borda)}
+  td{border:0;padding:2px 0}
+  td[data-r]::before{content:attr(data-r) ": ";color:var(--suave);font-size:12px}
+  td.nm{font-weight:700;font-size:15px;margin-bottom:4px}
+  .form-grade{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="login" hidden>
+  <form class="cartao" id="form-login">
+    <div class="marca">XYZ <span>CRM</span></div>
+    <p class="sub">Acesso restrito à equipe</p>
+    <div id="aviso-config" class="aviso" hidden>Falta configurar o Supabase no arquivo <b>config.js</b>.</div>
+    <div class="campo"><label>E-mail</label><input type="email" id="l-email" required autocomplete="username"></div>
+    <div class="campo"><label>Senha</label><input type="password" id="l-senha" required autocomplete="current-password"></div>
+    <button class="btn" style="width:100%" id="l-btn">Entrar</button>
+    <button type="button" class="btn sec" style="width:100%;margin-top:8px" id="l-primeiro">Primeiro acesso? Criar minha senha</button>
+    <div class="erro" id="l-erro"></div>
+  </form>
+</section>
+
+<!-- ============ APP ============ -->
+<section id="app" hidden>
+  <header>
+    <div class="marca">XYZ <span>CRM</span></div>
+    <div class="quem"><span class="nomeu">Olá, <b id="eu-nome"></b></span><button class="btn sec peq" id="sair">Sair</button></div>
+  </header>
+  <nav>
+    <button data-aba="clientes" class="ativa">Clientes</button>
+    <button data-aba="ranking">Ranking</button>
+    <button data-aba="atendentes" id="nav-atendentes" hidden>Atendentes</button>
+    <button data-aba="conta">Minha conta</button>
+  </nav>
+  <main>
+    <!-- CLIENTES -->
+    <div id="aba-clientes">
+      <div class="barra">
+        <div class="busca"><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite e aguarde…"></div>
+        <div><label>Status</label><select id="f-status"><option value="">Todos</option></select></div>
+        <div><label>Contato de</label><input type="date" id="f-de"></div>
+        <div><label>até</label><input type="date" id="f-ate"></div>
+        <div id="f-at-box" hidden><label>Atendente</label><select id="f-at"><option value="">Todos</option></select></div>
+        <button class="btn sec" id="exportar" title="Baixar lista em planilha">Exportar</button>
+        <button class="btn" id="novo">+ Novo cliente</button>
+      </div>
+      <div class="resumo" id="resumo"></div>
+      <div class="tabela">
+        <table>
+          <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Contato</th><th>Valor</th><th>Status</th><th class="col-at">Atendente</th></tr></thead>
+          <tbody id="lista"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RANKING -->
+    <div id="aba-ranking" hidden>
+      <div class="periodos" id="periodos">
+        <button class="btn sec" data-p="hoje">Hoje</button>
+        <button class="btn sec" data-p="semana">Esta semana</button>
+        <button class="btn sec sel" data-p="mes">Este mês</button>
+        <button class="btn sec" data-p="mespassado">Mês passado</button>
+        <button class="btn sec" data-p="ano">Este ano</button>
+        <div style="display:flex;gap:6px;align-items:end">
+          <div><label>De</label><input type="date" id="r-de"></div>
+          <div><label>Até</label><input type="date" id="r-ate"></div>
+          <button class="btn sec" id="r-ok">Ver</button>
+        </div>
+      </div>
+      <div class="resumo" id="r-resumo"></div>
+      <div class="rank" id="rank"></div>
+      <p style="color:var(--suave);font-size:12px;margin-top:12px">Conta como venda o cliente com status <b>Pago</b>, pela data da venda.</p>
+    </div>
+
+    <!-- ATENDENTES (admin) -->
+    <div id="aba-atendentes" hidden>
+      <div class="grade2">
+        <form class="bloco" id="form-at">
+          <h3>Cadastrar atendente</h3>
+          <div class="campo"><label>Nome</label><input id="a-nome" required></div>
+          <div class="campo"><label>E-mail (login)</label><input type="email" id="a-email" required></div>
+          <div class="campo"><label>Senha inicial (mín. 6 caracteres)</label><input id="a-senha" required minlength="6"></div>
+          <div class="campo"><label>Tipo de acesso</label>
+            <select id="a-papel"><option value="atendente">Atendente (vê só os próprios clientes)</option><option value="admin">Administrador (vê tudo)</option></select>
+          </div>
+          <button class="btn" style="width:100%" id="a-btn">Cadastrar</button>
+        </form>
+        <div class="bloco">
+          <h3>Equipe</h3>
+          <div id="lista-at"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MINHA CONTA -->
+    <div id="aba-conta" hidden>
+      <form class="bloco" id="form-senha" style="max-width:380px">
+        <h3>Trocar minha senha</h3>
+        <div class="campo"><label>Nova senha</label><input type="password" id="s-nova" required minlength="6" autocomplete="new-password"></div>
+        <div class="campo"><label>Repita a nova senha</label><input type="password" id="s-nova2" required minlength="6" autocomplete="new-password"></div>
+        <button class="btn" style="width:100%">Salvar senha</button>
+      </form>
+    </div>
+  </main>
+</section>
+
+<!-- ============ MODAL CLIENTE ============ -->
+<div id="modal" hidden>
+  <form class="cartao" id="form-cli">
+    <h3 id="m-titulo" style="margin-bottom:16px">Novo cliente</h3>
+    <div id="m-aviso" class="aviso" hidden></div>
+    <div class="form-grade">
+      <div class="inteiro"><label>Nome completo *</label><input id="c-nome" required></div>
+      <div><label>CPF</label><input id="c-cpf" inputmode="numeric" placeholder="000.000.000-00"></div>
+      <div><label>Telefone / WhatsApp</label><input id="c-tel" inputmode="tel" placeholder="(12) 99999-9999"></div>
+      <div><label>Data do contato</label><input type="date" id="c-data"></div>
+      <div><label>Valor (R$)</label><input id="c-valor" inputmode="decimal" placeholder="0,00"></div>
+      <div><label>Status</label><select id="c-status"></select></div>
+      <div id="c-venda-box"><label>Data da venda</label><input type="date" id="c-venda"></div>
+      <div><label>Banco</label><input id="c-banco" placeholder="Ex.: Quali"></div>
+      <div id="c-at-box" hidden><label>Atendente</label><select id="c-at"></select></div>
+      <div class="inteiro"><label>Observações</label><textarea id="c-obs"></textarea></div>
+    </div>
+    <div class="rodape-modal">
+      <button type="button" class="btn perigo" id="c-apagar" hidden>Apagar</button>
+      <div style="margin-left:auto"><button type="button" class="btn sec" id="c-cancelar">Cancelar</button><button class="btn" id="c-salvar">Salvar</button></div>
+    </div>
+  </form>
+</div>
+
+<div id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const CFG = window.CRM_CONFIG || {};
+const CONFIGURADO = !!(CFG.SUPABASE_URL && !CFG.SUPABASE_URL.includes('COLE_AQUI'));
+const sb = CONFIGURADO ? supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
+const STATUS = ['Novo','Em negociação','Digitado','Pago','Perdido'];
+let eu = null, equipe = [], clientesAtuais = [], editando = null, cpfConfirmado = null;
+
+/* ---------- utilidades ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const so = s => String(s || '').replace(/\D/g, '');
+const brl = v => Number(v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+const fmtCPF = c => { c = so(c); return c.length === 11 ? c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : c; };
+const fmtTel = t => { t = so(t); if (t.length === 11) return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3'); if (t.length === 10) return t.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3'); return t; };
+const fmtData = d => d ? d.split('-').reverse().join('/') : '';
+const iso = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
+const hoje = () => iso(new Date());
+const lerValor = v => { v = String(v || '').trim(); if (!v) return 0; if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.'); const n = parseFloat(v.replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
+const stClasse = s => 'st-' + String(s).split(' ')[0];
+let tt;
+function toast(msg, ruim) { const t = $('#toast'); t.textContent = msg; t.className = ruim ? 'ruim' : ''; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 4000); }
+function traduz(e) {
+  const m = (e && e.message) || String(e);
+  if (/Invalid login/i.test(m)) return 'E-mail ou senha incorretos.';
+  if (/already registered/i.test(m)) return 'Este e-mail já tem cadastro.';
+  if (/at least 6/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (/Signups not allowed/i.test(m)) return 'Cadastro desativado no Supabase (Authentication > Sign In / Providers > Allow new users to sign up).';
+  if (/Email not confirmed/i.test(m)) return 'E-mail ainda não confirmado. Desative "Confirm email" no Supabase.';
+  if (/row-level security|permission denied/i.test(m)) return 'Sem permissão para essa ação.';
+  if (/rate limit/i.test(m)) return 'Muitas tentativas seguidas. Aguarde um minuto.';
+  return m;
+}
+function ocupado(btn, sim) { btn.disabled = sim; }
+
+/* ---------- login ---------- */
+function mostrarLogin(msg) {
+  $('#app').hidden = true; $('#login').hidden = false;
+  $('#aviso-config').hidden = CONFIGURADO;
+  $('#l-erro').textContent = msg || '';
+}
+$('#form-login').onsubmit = async e => {
+  e.preventDefault();
+  if (!CONFIGURADO) return;
+  const b = $('#l-btn'); ocupado(b, true); $('#l-erro').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('#l-email').value.trim(), password: $('#l-senha').value });
+  ocupado(b, false);
+  if (error) return $('#l-erro').textContent = traduz(error);
+  iniciar();
+};
+$('#l-primeiro').onclick = async () => {
+  if (!CONFIGURADO) return;
+  const email = $('#l-email').value.trim(), senha = $('#l-senha').value;
+  if (!email || senha.length < 6) return $('#l-erro').textContent = 'Preencha o e-mail liberado pelo administrador e uma senha de pelo menos 6 caracteres.';
+  const b = $('#l-primeiro'); ocupado(b, true); $('#l-erro').textContent = '';
+  const { data, error } = await sb.auth.signUp({ email, password: senha });
+  ocupado(b, false);
+  if (error) return $('#l-erro').textContent = traduz(error);
+  if (!data.session) return $('#l-erro').textContent = 'Senha criada. Confirme pelo link enviado ao seu e-mail e depois clique em Entrar.';
+  iniciar();
+};
+$('#sair').onclick =async () => { await sb.auth.signOut(); eu = null; mostrarLogin(); };
+
+async function iniciar() {
+  if (!CONFIGURADO) return mostrarLogin();
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return mostrarLogin();
+  const { data: perfil, error } = await sb.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
+  if (error || !perfil || !perfil.ativo) {
+    await sb.auth.signOut();
+    return mostrarLogin('Seu acesso não está liberado. Fale com o administrador.');
+  }
+  eu = perfil;
+  $('#login').hidden = true; $('#app').hidden = false;
+  $('#eu-nome').textContent = eu.nome;
+  const admin = eu.papel === 'admin';
+  $('#nav-atendentes').hidden = !admin;
+  $('#f-at-box').hidden = !admin;
+  $('#c-at-box').hidden = !admin;
+  $$('.col-at').forEach(x => x.hidden = !admin);
+  if (admin) await carregarEquipe();
+  abrirAba('clientes');
+}
+
+/* ---------- abas ---------- */
+$$('nav button').forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
+function abrirAba(aba) {
+  $$('nav button').forEach(b => b.classList.toggle('ativa', b.dataset.aba === aba));
+  ['clientes', 'ranking', 'atendentes', 'conta'].forEach(a => $('#aba-' + a).hidden = a !== aba);
+  if (aba === 'clientes') carregarClientes();
+  if (aba === 'ranking') carregarRanking();
+  if (aba === 'atendentes') carregarEquipe();
+}
+
+/* ---------- clientes ---------- */
+STATUS.forEach(s => { $('#f-status').add(new Option(s, s)); $('#c-status').add(new Option(s, s)); });
+let tb;
+$('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(carregarClientes, 350); };
+['#f-status', '#f-de', '#f-ate', '#f-at'].forEach(s => $(s).onchange = carregarClientes);
+
+async function carregarClientes() {
+  const admin = eu.papel === 'admin';
+  let q = sb.from('clientes').select('*, perfis(nome)')
+    .order('data_contato', { ascending: false }).order('id', { ascending: false }).limit(1000);
+  const termo = $('#f-busca').value.replace(/[,()*%\\]/g, ' ').trim();
+  if (termo) {
+    const dig = so(termo), conds = [];
+    if (/[a-zA-ZÀ-ú]/.test(termo) || dig.length < 3) conds.push(`nome.ilike.*${termo}*`);
+    if (dig.length >= 3) conds.push(`cpf.ilike.*${dig}*`, `telefone.ilike.*${dig}*`);
+    q = q.or(conds.join(','));
+  }
+  if ($('#f-status').value) q = q.eq('status', $('#f-status').value);
+  if ($('#f-de').value) q = q.gte('data_contato', $('#f-de').value);
+  if ($('#f-ate').value) q = q.lte('data_contato', $('#f-ate').value);
+  if (admin && $('#f-at').value) q = q.eq('atendente_id', $('#f-at').value);
+  const { data, error } = await q;
+  if (error) return toast(traduz(error), true);
+  clientesAtuais = data;
+  const pagos = data.filter(c => c.status === 'Pago');
+  $('#resumo').innerHTML = `
+    <div class="kpi"><small>Clientes na lista</small><div>${data.length}</div></div>
+    <div class="kpi"><small>Pagos</small><div>${pagos.length}</div></div>
+    <div class="kpi"><small>Valor pago</small><div>${brl(pagos.reduce((s, c) => s + Number(c.valor), 0))}</div></div>
+    <div class="kpi"><small>Em andamento</small><div>${data.filter(c => ['Novo', 'Em negociação', 'Digitado'].includes(c.status)).length}</div></div>`;
+  $('#lista').innerHTML = data.length ? data.map(c => `
+    <tr data-id="${c.id}">
+      <td class="nm">${esc(c.nome)}</td>
+      <td data-r="CPF">${esc(fmtCPF(c.cpf))}</td>
+      <td data-r="Telefone">${esc(fmtTel(c.telefone))}</td>
+      <td data-r="Contato">${fmtData(c.data_contato)}</td>
+      <td data-r="Valor">${brl(c.valor)}</td>
+      <td><span class="tag ${stClasse(c.status)}">${esc(c.status)}</span></td>
+      ${admin ? `<td data-r="Atendente">${esc(c.perfis?.nome)}</td>` : ''}
+    </tr>`).join('') : `<tr><td colspan="7" class="vazio">Nenhum cliente encontrado.</td></tr>`;
+  $$('#lista tr[data-id]').forEach(tr => tr.onclick = () => abrirCliente(clientesAtuais.find(c => c.id == tr.dataset.id)));
+}
+
+$('#novo').onclick = () => abrirCliente(null);
+$('#c-cancelar').onclick = () => $('#modal').hidden = true;
+$('#c-status').onchange = () => { $('#c-venda-box').hidden = $('#c-status').value !== 'Pago'; if ($('#c-status').value === 'Pago' && !$('#c-venda').value) $('#c-venda').value = hoje(); };
+$('#c-cpf').oninput = e => { e.target.value = fmtCPF(e.target.value.slice(0, 14)); cpfConfirmado = null; $('#m-aviso').hidden = true; };
+$('#c-tel').onblur = e => e.target.value = fmtTel(e.target.value);
+
+function abrirCliente(c) {
+  editando = c; cpfConfirmado = null;
+  $('#m-titulo').textContent = c ? 'Editar cliente' : 'Novo cliente';
+  $('#m-aviso').hidden = true;
+  $('#c-nome').value = c?.nome || '';
+  $('#c-cpf').value = fmtCPF(c?.cpf);
+  $('#c-tel').value = fmtTel(c?.telefone);
+  $('#c-data').value = c?.data_contato || hoje();
+  $('#c-valor').value = c ? Number(c.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
+  $('#c-status').value = c?.status || 'Novo';
+  $('#c-venda').value = c?.data_venda || '';
+  $('#c-venda-box').hidden = $('#c-status').value !== 'Pago';
+  $('#c-banco').value = c?.banco || '';
+  $('#c-obs').value = c?.observacoes || '';
+  if (eu.papel === 'admin') {
+    $('#c-at').innerHTML = equipe.filter(p => p.ativo || p.id === c?.atendente_id).map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    $('#c-at').value = c?.atendente_id || eu.id;
+  }
+  $('#c-apagar').hidden = !(c && eu.papel === 'admin');
+  $('#modal').hidden = false;
+  $('#c-nome').focus();
+}
+
+$('#form-cli').onsubmit = async e => {
+  e.preventDefault();
+  const cpf = so($('#c-cpf').value);
+  if (cpf && cpf.length !== 11) return toast('CPF precisa ter 11 números.', true);
+  // aviso de CPF já atendido por outro atendente
+  if (cpf && cpf !== so(editando?.cpf) && cpfConfirmado !== cpf) {
+    const { data: dono } = await sb.rpc('cpf_dono', { p_cpf: cpf });
+    if (dono) {
+      cpfConfirmado = cpf;
+      $('#m-aviso').innerHTML = `Este CPF já foi cadastrado por <b>${esc(dono)}</b>. Clique em <b>Salvar</b> de novo se quiser cadastrar mesmo assim.`;
+      $('#m-aviso').hidden = false;
+      return;
+    }
+  }
+  const reg = {
+    nome: $('#c-nome').value.trim(), cpf, telefone: so($('#c-tel').value),
+    data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
+    status: $('#c-status').value, data_venda: $('#c-status').value === 'Pago' ? ($('#c-venda').value || null) : null,
+    banco: $('#c-banco').value.trim() || null, observacoes: $('#c-obs').value.trim() || null
+  };
+  if (eu.papel === 'admin') reg.atendente_id = $('#c-at').value;
+  const b = $('#c-salvar'); ocupado(b, true);
+  const { error } = editando
+    ? await sb.from('clientes').update(reg).eq('id', editando.id)
+    : await sb.from('clientes').insert(reg);
+  ocupado(b, false);
+  if (error) return toast(traduz(error), true);
+  $('#modal').hidden = true;
+  toast(editando ? 'Cliente atualizado.' : 'Cliente cadastrado.');
+  carregarClientes();
+};
+
+$('#c-apagar').onclick = async () => {
+  if (!editando || !confirm(`Apagar o cliente ${editando.nome}? Não tem como desfazer.`)) return;
+  const { error } = await sb.from('clientes').delete().eq('id', editando.id);
+  if (error) return toast(traduz(error), true);
+  $('#modal').hidden = true; toast('Cliente apagado.'); carregarClientes();
+};
+
+$('#exportar').onclick = () => {
+  if (!clientesAtuais.length) return toast('Nada para exportar.', true);
+  const cab = ['Nome', 'CPF', 'Telefone', 'Data contato', 'Valor', 'Status', 'Data venda', 'Banco', 'Atendente', 'Observações'];
+  const linhas = clientesAtuais.map(c => [c.nome, fmtCPF(c.cpf), fmtTel(c.telefone), fmtData(c.data_contato),
+    Number(c.valor).toFixed(2).replace('.', ','), c.status, fmtData(c.data_venda), c.banco, c.perfis?.nome || eu.nome, c.observacoes]);
+  const csv = [cab, ...linhas].map(l => l.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `clientes_${hoje()}.csv`; a.click();
+};
+
+/* ---------- ranking ---------- */
+let periodo = 'mes';
+function intervalo(p) {
+  const d = new Date(), y = d.getFullYear(), m = d.getMonth();
+  if (p === 'hoje') return [hoje(), hoje()];
+  if (p === 'semana') { const s = new Date(d); s.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return [iso(s), hoje()]; }
+  if (p === 'mes') return [iso(new Date(y, m, 1)), iso(new Date(y, m + 1, 0))];
+  if (p === 'mespassado') return [iso(new Date(y, m - 1, 1)), iso(new Date(y, m, 0))];
+  if (p === 'ano') return [iso(new Date(y, 0, 1)), iso(new Date(y, 11, 31))];
+  return [$('#r-de').value, $('#r-ate').value];
+}
+$$('#periodos [data-p]').forEach(b => b.onclick = () => { periodo = b.dataset.p; carregarRanking(); });
+$('#r-ok').onclick = () => { if (!$('#r-de').value || !$('#r-ate').value) return toast('Escolha as duas datas.', true); periodo = 'custom'; carregarRanking(); };
+
+async function carregarRanking() {
+  $$('#periodos [data-p]').forEach(b => b.classList.toggle('sel', b.dataset.p === periodo));
+  const [ini, fim] = intervalo(periodo);
+  if (periodo !== 'custom') { $('#r-de').value = ini; $('#r-ate').value = fim; }
+  const { data, error } = await sb.rpc('ranking', { inicio: ini, fim });
+  if (error) return toast(traduz(error), true);
+  const max = Math.max(1, ...data.map(r => Number(r.total)));
+  const tot = data.reduce((s, r) => s + Number(r.total), 0), qtd = data.reduce((s, r) => s + Number(r.vendas), 0);
+  $('#r-resumo').innerHTML = `
+    <div class="kpi"><small>Período</small><div style="font-size:15px">${fmtData(ini)} a ${fmtData(fim)}</div></div>
+    <div class="kpi"><small>Vendas da equipe</small><div>${qtd}</div></div>
+    <div class="kpi"><small>Total da equipe</small><div>${brl(tot)}</div></div>`;
+  const med = ['🥇', '🥈', '🥉'];
+  $('#rank').innerHTML = data.length ? data.map((r, i) => `
+    <div class="rank-item ${r.atendente === eu.nome ? 'eu' : ''}">
+      <div class="pos">${Number(r.total) > 0 && i < 3 ? med[i] : i + 1 + 'º'}</div>
+      <div><div class="nome">${esc(r.atendente)}</div>
+        <div class="det">${r.vendas} venda${r.vendas == 1 ? '' : 's'}</div>
+        <div class="barra-prog"><i style="width:${(Number(r.total) / max * 100).toFixed(1)}%"></i></div></div>
+      <div class="total">${brl(r.total)}</div>
+    </div>`).join('') : '<div class="vazio">Nenhum atendente ativo.</div>';
+}
+
+/* ---------- atendentes (admin) ---------- */
+async function carregarEquipe() {
+  const [{ data: perfis, error }, { data: conv }] = await Promise.all([
+    sb.from('perfis').select('*').order('nome'),
+    sb.from('convites').select('*').order('nome')
+  ]);
+  if (error) return toast(traduz(error), true);
+  equipe = perfis;
+  const sel = $('#f-at'), atual = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + equipe.map(p => `<option value="${p.id}">${esc(p.nome)}${p.ativo ? '' : ' (inativo)'}</option>`).join('');
+  sel.value = atual;
+  $('#lista-at').innerHTML = equipe.map(p => `
+    <div class="linha-at ${p.ativo ? '' : 'inativo'}">
+      <div><b>${esc(p.nome)}</b>${p.id === eu.id ? ' (você)' : ''}<small>${esc(p.email)}</small></div>
+      <div class="acoes">
+        <select data-papel="${p.id}" ${p.id === eu.id ? 'disabled' : ''}>
+          <option value="atendente" ${p.papel === 'atendente' ? 'selected' : ''}>Atendente</option>
+          <option value="admin" ${p.papel === 'admin' ? 'selected' : ''}>Admin</option>
+        </select>
+        ${p.id === eu.id ? '' : `<button class="btn ${p.ativo ? 'perigo' : 'sec'} peq" data-ativo="${p.id}">${p.ativo ? 'Bloquear' : 'Liberar'}</button>`}
+      </div>
+    </div>`).join('') +
+    (conv?.length ? '<h3 style="margin:18px 0 6px;font-size:13px;color:var(--suave)">Aguardando primeiro login</h3>' +
+      conv.map(c => `<div class="linha-at"><div><b>${esc(c.nome)}</b><small>${esc(c.email)}</small></div>
+        <button class="btn sec peq" data-conv="${esc(c.email)}">Remover</button></div>`).join('') : '');
+  $$('[data-papel]').forEach(s => s.onchange = async () => {
+    const { error } = await sb.from('perfis').update({ papel: s.value }).eq('id', s.dataset.papel);
+    error ? toast(traduz(error), true) : toast('Acesso atualizado.');
+    carregarEquipe();
+  });
+  $$('[data-ativo]').forEach(b => b.onclick = async () => {
+    const p = equipe.find(x => x.id === b.dataset.ativo);
+    const { error } = await sb.from('perfis').update({ ativo: !p.ativo }).eq('id', p.id);
+    error ? toast(traduz(error), true) : toast(p.ativo ? `${p.nome} bloqueado.` : `${p.nome} liberado.`);
+    carregarEquipe();
+  });
+  $$('[data-conv]').forEach(b => b.onclick = async () => {
+    await sb.from('convites').delete().eq('email', b.dataset.conv); carregarEquipe();
+  });
+}
+
+$('#form-at').onsubmit = async e => {
+  e.preventDefault();
+  const nome = $('#a-nome').value.trim(), email = $('#a-email').value.trim().toLowerCase(),
+    senha = $('#a-senha').value, papel = $('#a-papel').value, b = $('#a-btn');
+  ocupado(b, true);
+  try {
+    const { data: tipo, error } = await sb.rpc('convidar', { p_email: email, p_nome: nome, p_papel: papel });
+    if (error) throw error;
+    if (tipo === 'novo') {
+      // cria o login sem derrubar a sessão do admin
+      const temp = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY,
+        { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'crm-temp' } });
+      const { error: e2 } = await temp.auth.signUp({ email, password: senha });
+      if (e2) throw e2;
+      toast(`${nome} cadastrado! Login: ${email}`);
+    } else {
+      toast(`${nome} já tinha login. Acesso liberado com a senha que ele já usava.`);
+    }
+    $('#form-at').reset();
+  } catch (err) { toast(traduz(err), true); }
+  ocupado(b, false);
+  carregarEquipe();
+};
+
+/* ---------- minha conta ---------- */
+$('#form-senha').onsubmit = async e => {
+  e.preventDefault();
+  if ($('#s-nova').value !== $('#s-nova2').value) return toast('As senhas não são iguais.', true);
+  const { error } = await sb.auth.updateUser({ password: $('#s-nova').value });
+  if (error) return toast(traduz(error), true);
+  $('#form-senha').reset(); toast('Senha alterada.');
+};
+
+if (sb) sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') mostrarLogin(); });
+iniciar();
+</script>
+</body>
+</html>
