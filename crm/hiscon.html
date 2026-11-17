@@ -88,6 +88,7 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="hiscon.js?v=20261117d"></script>
+<script src="presenca.js"></script>
 <script type="module">
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
 pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
@@ -102,6 +103,7 @@ try {
   const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
   const { data: { session } } = await sb.auth.getSession();
   if (!session) location.href = './';
+  else sb.from('perfis').select('id,nome').eq('id', session.user.id).single().then(({ data }) => { if (data && window.XYZPresenca) XYZPresenca.entrar(sb, data, {}); });
 } catch (e) { location.href = './'; }
 
 if (/de=controle/.test(location.search)) { const v = $('#voltar'); v.href = '../controle/'; v.textContent = '← Voltar ao Controle'; }

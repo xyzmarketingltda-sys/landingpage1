@@ -511,8 +511,7 @@ function estadoDe(p) {
   const n = agoraMin(), ai = hm(p.almoco_ini), af = hm(p.almoco_fim), sa = hm(p.saida), en = hm(p.entrada);
   const trabalhou = en == null || n >= en;
   if (ai != null && af != null && n >= ai && n < af && trabalhou && online.has(p.id)) return 'almoco';
-  if (sa != null && n >= sa) return 'fora';
-  return online.has(p.id) ? 'mesa' : 'fora';
+  return online.has(p.id) ? 'mesa' : 'fora';   // logado no sistema = aparece, em qualquer horário
 }
 function assentoDe(p, i) {
   if (p.papel === 'advogado') { let k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); k = Math.max(0, k); if (k < VIP_SEATS.length) return [VIP_SEATS[k][0] - .05, VIP_SEATS[k][1]]; return [7.15 + (k % 2) * .35, .55 + (k - 3) * .45]; }
