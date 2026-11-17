@@ -117,11 +117,12 @@ sol.shadow.bias = -.0008; scene.add(sol, sol.target);
 const W = (x, z, y = 0) => new THREE.Vector3(x * U, y, z * U); // lógico -> mundo
 
 /* ---------- carregar modelos ---------- */
-const mtlLoader = new MTLLoader(), objLoader = new OBJLoader(), modelos = {};
-async function carregar(nome) {
-  if (modelos[nome]) return modelos[nome];
-  const mat = await mtlLoader.setPath('modelos/').loadAsync(nome + '.mtl'); mat.preload();
-  const obj = await objLoader.setMaterials(mat).setPath('modelos/').loadAsync(nome + '.obj');
+const modelos = {};
+function carregar(nome) { return modelos[nome] || (modelos[nome] = carregarModelo(nome)); }
+async function carregarModelo(nome) {
+  // um carregador por modelo: evita misturar os materiais de um móvel com outro
+  const mat = await new MTLLoader().setPath('modelos/').loadAsync(nome + '.mtl'); mat.preload();
+  const obj = await new OBJLoader().setMaterials(mat).setPath('modelos/').loadAsync(nome + '.obj');
   obj.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true;
     const ms = Array.isArray(m.material) ? m.material : [m.material];
     const novos = ms.map(x => { const k = new THREE.MeshStandardMaterial({ color: x.color, roughness: .7, metalness: /metal/i.test(x.name) ? .5 : 0, name: x.name, side: THREE.DoubleSide });
@@ -130,7 +131,7 @@ async function carregar(nome) {
   const box = new THREE.Box3().setFromObject(obj), c = box.getCenter(new THREE.Vector3());
   obj.position.set(-c.x, -box.min.y, -c.z);
   const g = new THREE.Group(); g.add(obj); g.userData.tam = box.getSize(new THREE.Vector3());
-  return (modelos[nome] = g);
+  return g;
 }
 async function por(nome, x, z, rot = 0, opc = {}) { // x,z = centro em tiles; rot em graus
   const g = (await carregar(nome)).clone(true);
@@ -292,35 +293,101 @@ async function montarMoveis() {
   montarSalaVidro();
 }
 
-/* ---------- bonecos 3D (sprites em pé na cena) ---------- */
-const AV_ALT = 8.9, AV_LARG = AV_ALT * 28 / 58, texCache = new Map();
-function texDe(canvas, chave) {
-  if (texCache.has(chave)) return texCache.get(chave);
-  const t = new THREE.CanvasTexture(canvas); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
-  texCache.set(chave, t); return t;
+/* ---------- bonecos voxel 3D (arte própria XYZ) ---------- */
+const AV_ALT = 9.8, SENTA = -1.0;
+const geoCache = new Map();
+const caixaGeo = (w, h, d) => { const k = w + '|' + h + '|' + d; if (!geoCache.has(k)) geoCache.set(k, new THREE.BoxGeometry(w, h, d)); return geoCache.get(k); };
+function bloco(pai, w, h, d, cor, x, y, z, mats) {
+  const m = new THREE.Mesh(caixaGeo(w, h, d), mats.get(cor)); m.position.set(x, y, z); m.castShadow = true; pai.add(m); return m;
 }
-const sombraGeo = new THREE.CircleGeometry(1.6, 20), sombraMat = new THREE.MeshBasicMaterial({ color: 0x0a0a1e, transparent: true, opacity: .3, depthWrite: false });
+function criarVoxel(v) {
+  const mats = new Map(), cache = cor => { if (!mats.has(cor)) mats.set(cor, new THREE.MeshStandardMaterial({ color: cor, roughness: .75, transparent: true })); return mats.get(cor); };
+  const M = { get: cache };
+  const tom = (hex, f) => { const c = new THREE.Color(hex); c.offsetHSL(0, 0, f); return '#' + c.getHexString(); };
+  const pele = v.pele, cab = v.cab, cabC = tom(cab, .08), rou = v.rou, rouE = tom(rou, -.08), calca = '#2c3650', sapato = '#16181d';
+  const raiz = new THREE.Group(), corpo = new THREE.Group(); raiz.add(corpo);
+  // pernas (coxa + canela com joelho), quadril em y=3.6
+  const perna = lado => {
+    const coxa = new THREE.Group(); coxa.position.set(lado * .62, 3.6, 0); corpo.add(coxa);
+    bloco(coxa, 1.1, 1.9, 1.15, calca, 0, -.95, 0, M);
+    const canela = new THREE.Group(); canela.position.set(0, -1.9, 0); coxa.add(canela);
+    bloco(canela, 1.05, 1.35, 1.1, calca, 0, -.68, 0, M);
+    bloco(canela, 1.15, .45, 1.5, sapato, 0, -1.48, .18, M);
+    return { coxa, canela };
+  };
+  const pe = perna(-1), pd = perna(1);
+  // tronco
+  const tronco = new THREE.Group(); tronco.position.y = 3.6; corpo.add(tronco);
+  bloco(tronco, 2.7, 3.0, 1.55, rou, 0, 1.5, 0, M);
+  if (v.gravata) { bloco(tronco, .9, 2.5, .05, '#f8fafc', 0, 1.65, .79, M); bloco(tronco, .35, 2.1, .08, '#dc2626', 0, 1.6, .82, M); bloco(tronco, .9, .2, .1, '#0b2d6b', 0, 2.9, .8, M); }
+  else if (rou === '#1e3a8a') { bloco(tronco, .12, 2.8, .06, '#0b1840', 0, 1.5, .8, M); bloco(tronco, 2.75, .45, 1.6, rouE, 0, 2.85, 0, M); }
+  else bloco(tronco, 1.0, .25, .06, tom(pele, -.06), 0, 2.88, .79, M);
+  // braços (pivô no ombro)
+  const braco = lado => {
+    const g = new THREE.Group(); g.position.set(lado * 1.75, 6.35, 0); corpo.add(g);
+    bloco(g, .8, 2.4, .9, rou, 0, -1.2, 0, M); bloco(g, .78, .6, .85, pele, 0, -2.7, 0, M);
+    return g;
+  };
+  const be = braco(-1), bd = braco(1);
+  // cabeça
+  const cabeca = new THREE.Group(); cabeca.position.y = 6.65; corpo.add(cabeca);
+  bloco(cabeca, .9, .35, .9, tom(pele, -.06), 0, .1, 0, M); // pescoço
+  bloco(cabeca, 2.7, 2.6, 2.45, pele, 0, 1.55, 0, M);
+  bloco(cabeca, .42, .55, .06, '#ffffff', -.6, 1.6, 1.24, M); bloco(cabeca, .42, .55, .06, '#ffffff', .6, 1.6, 1.24, M);
+  bloco(cabeca, .26, .4, .08, '#111827', -.55, 1.55, 1.27, M); bloco(cabeca, .26, .4, .08, '#111827', .65, 1.55, 1.27, M);
+  bloco(cabeca, .8, .16, .06, tom(pele, -.25), 0, .85, 1.24, M); // boca
+  bloco(cabeca, .38, .18, .05, tom(pele, -.12), -.95, 1.1, 1.23, M); bloco(cabeca, .38, .18, .05, tom(pele, -.12), .95, 1.1, 1.23, M); // bochechas
+  bloco(cabeca, .2, .5, .5, tom(pele, -.05), -1.4, 1.4, 0, M); bloco(cabeca, .2, .5, .5, tom(pele, -.05), 1.4, 1.4, 0, M); // orelhas
+  const H = (w, h, d, x, y, z, c = cab) => bloco(cabeca, w, h, d, c, x, y, z, M);
+  switch (v.est) {
+    case 'curto': H(2.85, .6, 2.6, 0, 3.0, -.02); H(2.85, 1.3, .4, 0, 2.3, -1.15); H(.3, .9, 2.0, -1.38, 2.45, -.2); H(.3, .9, 2.0, 1.38, 2.45, -.2); H(1.4, .15, .3, -.3, 3.32, .5, cabC); break;
+    case 'bagunca':
+      H(2.95, .8, 2.7, 0, 3.05, -.05); H(2.95, 1.9, .45, 0, 2.1, -1.2); H(.35, 1.6, 2.4, -1.45, 2.2, -.1); H(.35, 1.6, 2.4, 1.45, 2.2, -.1);
+      for (const [x, z, h] of [[-.9, .5, .7], [.1, .9, .6], [.9, .3, .8], [-.4, -.6, .9], [.6, -.8, .7]]) H(.7, h, .7, x, 3.4 + h / 2, z);
+      H(.8, .7, .25, -.75, 2.45, 1.2); H(.7, .9, .25, .1, 2.4, 1.22); H(.7, .6, .25, .85, 2.55, 1.2); break;
+    case 'longo':
+      H(2.95, .7, 2.65, 0, 3.0, -.03); H(2.95, 4.0, .5, 0, 1.0, -1.2); H(.4, 3.6, 1.6, -1.47, 1.2, -.35); H(.4, 3.6, 1.6, 1.47, 1.2, -.35);
+      H(1.3, .45, .25, -.65, 2.6, 1.2); H(.9, .3, .25, .85, 2.72, 1.2); H(1.2, .12, .3, -.5, 3.36, .4, cabC); break;
+    case 'franja':
+      H(2.95, .7, 2.65, 0, 3.0, -.03); H(2.95, 4.2, .5, 0, .9, -1.2); H(.4, 3.8, 1.7, -1.47, 1.1, -.3); H(.4, 3.8, 1.7, 1.47, 1.1, -.3);
+      H(2.8, .65, .25, 0, 2.45, 1.22); H(1.0, .12, .3, .5, 3.36, .4, cabC); break;
+    case 'cacho':
+      for (const [x, y, z] of [[-1, 3.1, .6], [0, 3.35, .7], [1, 3.1, .5], [-1.2, 3.2, -.5], [0, 3.45, -.4], [1.2, 3.2, -.6], [-1.65, 2.4, .3], [1.65, 2.4, .2], [-1.7, 1.5, -.3], [1.7, 1.5, -.4], [-1.6, .6, -.6], [1.6, .6, -.7], [0, 2.6, -1.4], [-.9, 1.6, -1.5], [.9, 1.6, -1.5], [0, .7, -1.5], [-1.4, 2.9, -1.0], [1.4, 2.9, -1.0]])
+        H(1.05, 1.05, 1.05, x, y, z, (x + y + z) % 2 > 1 ? cabC : cab);
+      H(2.4, .5, .3, 0, 2.75, 1.1); break;
+  }
+  raiz.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { raiz, corpo, pe, pd, be, bd, cabeca, mats };
+}
+const sombraGeo = new THREE.CircleGeometry(1.8, 20), sombraMat = new THREE.MeshBasicMaterial({ color: 0x0a0a1e, transparent: true, opacity: .28, depthWrite: false });
 function objetoDe(a) {
-  if (a.obj) return a.obj;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, alphaTest: .5 }));
-  sp.center.set(.5, .02); sp.scale.set(AV_LARG, AV_ALT, 1);
-  const sombra = new THREE.Mesh(sombraGeo, sombraMat); sombra.rotation.x = -Math.PI / 2; sombra.position.y = .06;
-  const g = new THREE.Group(); g.add(sp, sombra); scene.add(g);
-  a.obj = g; a.sp = sp; return g;
+  if (a.vx) return a.vx;
+  const vx = criarVoxel(a.vis);
+  const sombra = new THREE.Mesh(sombraGeo, sombraMat); sombra.rotation.x = -Math.PI / 2; sombra.position.y = .06; vx.raiz.add(sombra);
+  scene.add(vx.raiz); a.vx = vx; a.dir = 0; return vx;
 }
 function desenharBonecos() {
-  const vivos = new Set();
   atores.forEach(a => {
-    vivos.add(a.id); const g = objetoDe(a);
-    const danca = a.danca > T, sent = a.sentado && !a.andando;
-    const fr = a.andando ? Math.floor(T / 130) % 4 : 0, pulo = danca ? Math.abs(Math.sin(T / 140)) * .8 : 0;
-    const braco = a.acena > T ? 'cima' : danca ? (Math.sin(T / 140) > 0 ? 'cima' : 'danca') : '';
-    const pose = sent ? 'sentado' : 'pe', chave = [a.id, pose, fr, braco].join('|');
-    a.sp.material.map = texDe(sprite(a.vis, pose, fr, braco), chave); a.sp.material.needsUpdate = a.sp.material.map !== a._ultimo; a._ultimo = a.sp.material.map;
-    a.sp.material.opacity = Math.max(0, a.alpha);
-    g.position.set(a.x * U, 0, a.y * U); a.sp.position.y = (sent ? -.7 : 0) + pulo;
+    const vx = objetoDe(a), danca = a.danca > T, sent = a.sentado && !a.andando;
+    // direção: para onde anda; sentado olha para a mesa (+z)
+    if (a.andando && a.rota[0]) { const dx = a.rota[0][0] - a.x, dz = a.rota[0][1] - a.y; if (Math.hypot(dx, dz) > .01) a.dir = Math.atan2(dx, dz); }
+    else if (sent) a.dir = 0;
+    else if (!a.andando) a.dir += (Math.atan2(1, 1) - a.dir) * .1; // parado: vira pra câmera
+    vx.raiz.position.set(a.x * U, 0, a.y * U); vx.raiz.rotation.y = a.dir;
+    const passo = a.andando ? Math.sin(T / 110) * .6 : 0, pulo = danca ? Math.abs(Math.sin(T / 140)) * .9 : 0;
+    vx.corpo.position.y = (sent ? SENTA : 0) + pulo + (a.andando ? Math.abs(Math.sin(T / 110)) * .15 : 0);
+    if (sent) { vx.pe.coxa.rotation.x = vx.pd.coxa.rotation.x = -Math.PI / 2; vx.pe.canela.rotation.x = vx.pd.canela.rotation.x = Math.PI / 2; }
+    else { vx.pe.coxa.rotation.x = passo; vx.pd.coxa.rotation.x = -passo; vx.pe.canela.rotation.x = vx.pd.canela.rotation.x = 0; }
+    const acena = a.acena > T;
+    vx.be.rotation.x = sent ? -.9 : -passo * .8; vx.bd.rotation.x = sent ? -.9 : passo * .8; vx.be.rotation.z = vx.bd.rotation.z = 0;
+    if (acena) { vx.bd.rotation.x = 0; vx.bd.rotation.z = Math.PI * .85 + Math.sin(T / 90) * .25; }
+    if (danca) { const s = Math.sin(T / 140); vx.be.rotation.z = -Math.PI * (.55 + s * .3); vx.bd.rotation.z = Math.PI * (.55 - s * .3); vx.corpo.rotation.y = Math.sin(T / 280) * .4; } else vx.corpo.rotation.y = 0;
+    vx.cabeca.rotation.y = sent ? Math.sin(T / 2400 + a.x) * .25 : 0; // olha pros lados de vez em quando
+    const op = Math.max(0, Math.min(1, a.alpha)); vx.mats.forEach(m => { m.opacity = op; m.depthWrite = op > .98; });
   });
-  scene.children.filter(o => o.isGroup && o.children[0]?.isSprite && ![...atores.values()].some(a => a.obj === o)).forEach(o => scene.remove(o));
+  // remove quem saiu
+  scene.children.filter(o => o.userData.voxel && ![...atores.values()].some(a => a.vx && a.vx.raiz === o)).forEach(o => scene.remove(o));
+  atores.forEach(a => { if (a.vx) a.vx.raiz.userData.voxel = true; });
 }
 function telaDe(x, y, z) { const v = new THREE.Vector3(x, y, z).project(camera); return [(v.x + 1) / 2 * LARG, (1 - v.y) / 2 * ALT]; }
 
@@ -476,7 +543,7 @@ let t0 = performance.now(), T = 0;
 const efeitos = [];
 function balao(id, txt, dur = 3500) { const a = atores.get(id); if (a) a.balao = { txt, ate: T + dur }; }
 function particulas(id, emoji, n = 6) { const a = atores.get(id); if (!a) return; for (let k = 0; k < n; k++) efeitos.push({ x: a.x, y: a.y, dx: (Math.random() - .5) * 60, v: 40 + Math.random() * 40, emoji, ate: T + 1600 + Math.random() * 600 }); }
-function cabecaDe(a) { return telaDe(a.x * U, (a.sentado && !a.andando ? -.7 : 0) + AV_ALT + .6, a.y * U); }
+function cabecaDe(a) { return telaDe(a.x * U, (a.sentado && !a.andando ? SENTA : 0) + AV_ALT + .6, a.y * U); }
 function textos() {
   mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.clearRect(0, 0, cv.width, cv.height);
   const esc2 = Math.max(.8, Math.min(1.3, ZOOM));
@@ -549,7 +616,7 @@ function enviar(tipo, para, texto) { XYZPresenca.enviar('acao', { de: eu.id, par
 gl.addEventListener('click', e => {
   const r = gl.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
   let melhor = null, dmin = 1e9;
-  atores.forEach(a => { const [x, y] = telaDe(a.x * U, (a.sentado && !a.andando ? -.7 : 0) + AV_ALT / 2, a.y * U), d = Math.hypot(mx - x, my - y); if (d < dmin) { dmin = d; melhor = a; } });
+  atores.forEach(a => { const [x, y] = telaDe(a.x * U, (a.sentado && !a.andando ? SENTA : 0) + AV_ALT / 2, a.y * U), d = Math.hypot(mx - x, my - y); if (d < dmin) { dmin = d; melhor = a; } });
   const m = $('#menu');
   if (!melhor || dmin > 55 * ZOOM) { m.hidden = true; return; }
   const eh = melhor.id === eu.id, nome = melhor.p.nome.split(' ')[0];
