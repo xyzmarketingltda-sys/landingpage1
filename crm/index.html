@@ -291,7 +291,7 @@ tbody tr:last-child td{border-bottom:0}
     <div class="marca">XYZ <span>CRM</span></div>
     <p class="sub">Acesso restrito à equipe</p>
     <div id="aviso-config" class="aviso" hidden>Falta configurar o Supabase no arquivo <b>config.js</b>.</div>
-    <div class="campo"><label>E-mail</label><input type="email" id="l-email" required autocomplete="username"></div>
+    <div class="campo"><label>E-mail</label><input type="text" id="l-email" required autocomplete="username"></div>
     <div class="campo"><label>Senha</label><input type="password" id="l-senha" required autocomplete="current-password"></div>
     <button class="btn" style="width:100%" id="l-btn">Entrar</button>
     <button type="button" class="btn sec" style="width:100%;margin-top:8px" id="l-primeiro">Primeiro acesso? Criar minha senha</button>
@@ -648,11 +648,17 @@ function mostrarLogin(msg) {
   $('#l-erro').textContent = msg || '';
   clearInterval(timerFlut);
 }
+const LOGIN_NOMES = { naira: 0, julia: 1, luis: 2, barbara: 3, rina: 4 };
+function loginEmail(v) {
+  v = v.trim(); if (v.includes('@')) return v;
+  const k = v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '');
+  return k in LOGIN_NOMES ? 'xyzmarketingltda' + LOGIN_NOMES[k] + '@gmail.com' : v;
+}
 $('#form-login').onsubmit = async e => {
   e.preventDefault();
   if (!CONFIGURADO) return;
   const b = $('#l-btn'); ocupado(b, true); $('#l-erro').textContent = '';
-  const { error } = await sb.auth.signInWithPassword({ email: $('#l-email').value.trim(), password: $('#l-senha').value });
+  const { error } = await sb.auth.signInWithPassword({ email: loginEmail($('#l-email').value), password: $('#l-senha').value });
   ocupado(b, false);
   if (error) return $('#l-erro').textContent = traduz(error);
   iniciar();
