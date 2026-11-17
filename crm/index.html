@@ -52,7 +52,7 @@ nav{display:flex;gap:6px;padding:14px 22px 0;overflow-x:auto}
 nav button{white-space:nowrap;background:none;border:1px solid transparent;padding:9px 14px;border-radius:10px;color:var(--suave);cursor:pointer;font-weight:600}
 nav button.ativa{background:var(--painel2);color:var(--texto);border-color:var(--borda)}
 main{padding:18px 22px 40px;max-width:1200px;margin:0 auto}
-.barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px}
+.barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px}
 .resumo{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .kpi{border-radius:var(--raio);padding:12px 16px;min-width:150px}
 .kpi small{color:var(--suave);font-size:12px}
@@ -281,6 +281,7 @@ tbody tr:last-child td{border-bottom:0}
       <div id="metas"></div>
       <div class="barra">
         <div class="busca"><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite e aguarde…"></div>
+        <div><label>Advogado</label><select id="f-adv"><option value="">Todos</option></select></div>
         <div><label>Fechado de</label><input type="date" id="f-de"></div>
         <div><label>até</label><input type="date" id="f-ate"></div>
         <div id="f-at-box" hidden><label>Atendente</label><select id="f-at"><option value="">Todos</option></select></div>
@@ -289,7 +290,7 @@ tbody tr:last-child td{border-bottom:0}
       </div>
       <div class="tabela vidro">
         <table>
-          <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Fechamento</th><th>Valor</th><th>Acesso INSS</th><th class="col-at">Atendente</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Banco</th><th>Advogado</th><th>Fechamento</th><th>Acesso INSS</th><th class="col-at">Atendente</th></tr></thead>
           <tbody id="lista"></tbody>
         </table>
       </div>
@@ -389,6 +390,7 @@ tbody tr:last-child td{border-bottom:0}
       <div><label>Data do fechamento</label><input type="date" id="c-data"></div>
       <div><label>Valor (R$)</label><input id="c-valor" inputmode="decimal" placeholder="0,00"></div>
       <div><label>Banco *</label><input id="c-banco" placeholder="Ex.: Facta, Banrisul…" required></div>
+      <div><label>Advogado (escritório) *</label><input id="c-adv" list="lista-adv" placeholder="Ex.: IGOR" required autocomplete="off"><datalist id="lista-adv"></datalist></div>
       <div id="c-at-box" hidden><label>Atendente</label><select id="c-at"></select></div>
       <div class="inteiro cofre">
         <label>🔒 Acesso Meu INSS · senha do cliente</label>
@@ -606,6 +608,7 @@ async function iniciar() {
   if (admin) await carregarEquipe();
   iniciarFlutuante();
   try { iniciarCardEsc(); } catch (e) {}
+  carregarAdvogados();
   abrirAba('clientes');
 }
 
@@ -622,11 +625,11 @@ function abrirAba(aba) {
 /* ---------- clientes ---------- */
 let tb;
 $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(carregarClientes, 350); };
-['#f-de', '#f-ate', '#f-at'].forEach(s => $(s).onchange = carregarClientes);
+['#f-de', '#f-ate', '#f-at', '#f-adv'].forEach(s => $(s).onchange = carregarClientes);
 
 async function carregarClientes() {
   const admin = eu.papel === 'admin';
-  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,observacoes,atendente_id,tem_senha_inss,perfis(nome)')
+  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,perfis(nome)')
     .order('data_contato', { ascending: false }).order('id', { ascending: false }).limit(1000);
   const termo = $('#f-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
   if (termo) {
@@ -635,6 +638,7 @@ async function carregarClientes() {
     if (dig.length >= 3) conds.push(`cpf.ilike.*${dig}*`, `telefone.ilike.*${dig}*`);
     q = q.or(conds.join(','));
   }
+  if ($('#f-adv').value) q = q.eq('advogado', $('#f-adv').value);
   if ($('#f-de').value) q = q.gte('data_contato', $('#f-de').value);
   if ($('#f-ate').value) q = q.lte('data_contato', $('#f-ate').value);
   if (admin && $('#f-at').value) q = q.eq('atendente_id', $('#f-at').value);
@@ -647,11 +651,12 @@ async function carregarClientes() {
       <td class="nm">${esc(c.nome)}</td>
       <td data-r="CPF">${esc(fmtCPF(c.cpf))}</td>
       <td data-r="Telefone">${esc(fmtTel(c.telefone))}</td>
+      <td data-r="Banco">${esc(c.banco)}</td>
+      <td data-r="Advogado">${esc(c.advogado || '—')}</td>
       <td data-r="Fechamento">${fmtData(c.data_contato)}</td>
-      <td data-r="Valor">${brl(c.valor)}</td>
       <td><span class="cadeado ${c.tem_senha_inss ? '' : 'nao'}">${c.tem_senha_inss ? '🔒 Senha salva' : 'Sem senha'}</span></td>
       ${admin ? `<td data-r="Atendente">${esc(c.perfis?.nome)}</td>` : ''}
-    </tr>`).join('') : `<tr><td colspan="7" class="vazio">Nenhum cliente encontrado.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="8" class="vazio">Nenhum cliente encontrado.</td></tr>`;
   $$('#lista tr[data-id]').forEach(tr => tr.onclick = () => abrirCliente(clientesAtuais.find(c => c.id == tr.dataset.id)));
 }
 
@@ -682,6 +687,7 @@ function abrirCliente(c) {
   $('#c-data').value = c?.data_contato || hoje();
   $('#c-valor').value = c && Number(c.valor) ? Number(c.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
   $('#c-banco').value = c?.banco || '';
+  $('#c-adv').value = c?.advogado || '';
   $('#c-obs').value = c?.observacoes || '';
   $('#c-inss').value = ''; $('#c-inss').type = 'password'; $('#c-inss-ver').textContent = 'Mostrar';
   $('#c-inss').placeholder = c?.tem_senha_inss ? '•••••••• (salva, clique em Mostrar)' : 'Senha do Meu INSS';
@@ -710,7 +716,7 @@ $('#form-cli').onsubmit = async e => {
   const reg = {
     nome: $('#c-nome').value.trim(), cpf, telefone: so($('#c-tel').value),
     data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
-    banco: $('#c-banco').value.trim() || null, observacoes: $('#c-obs').value.trim() || null
+    banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null
   };
   if (eu.papel === 'admin') reg.atendente_id = $('#c-at').value;
   const b = $('#c-salvar'); ocupado(b, true);
@@ -745,14 +751,25 @@ $('#c-apagar').onclick = async () => {
 
 $('#exportar').onclick = () => {
   if (!clientesAtuais.length) return toast('Nada para exportar.', true);
-  const cab = ['Nome', 'CPF', 'Telefone', 'Data fechamento', 'Valor', 'Banco', 'Atendente', 'Tem senha INSS', 'Observações'];
+  const cab = ['Nome', 'CPF', 'Telefone', 'Data fechamento', 'Valor', 'Banco', 'Advogado', 'Atendente', 'Tem senha INSS', 'Observações'];
   const linhas = clientesAtuais.map(c => [c.nome, fmtCPF(c.cpf), fmtTel(c.telefone), fmtData(c.data_contato),
-    Number(c.valor).toFixed(2).replace('.', ','), c.banco, c.perfis?.nome || eu.nome, c.tem_senha_inss ? 'Sim' : 'Não', c.observacoes]);
+    Number(c.valor).toFixed(2).replace('.', ','), c.banco, c.advogado, c.perfis?.nome || eu.nome, c.tem_senha_inss ? 'Sim' : 'Não', c.observacoes]);
   const csv = [cab, ...linhas].map(l => l.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
   a.download = `clientes_${hoje()}.csv`; a.click();
 };
+
+/* ---------- advogados ---------- */
+const ADV_BASE = ['CARINA', 'CIBELE', 'DANYELLE', 'DIEGO', 'DIVINO', 'EDUARDO', 'GEORGE', 'HALISSON', 'HENRIQUE', 'IGOR', 'JOSE', 'JUNNY', 'LUIZ', 'RITA', 'ZACARIAS'];
+async function carregarAdvogados() {
+  let lista = ADV_BASE;
+  try { const { data, error } = await sb.rpc('lista_advogados'); if (!error && data?.length) lista = [...new Set([...data.map(x => x.lista_advogados ?? x), ...ADV_BASE])].sort(); } catch (e) {}
+  $('#lista-adv').innerHTML = lista.map(a => `<option value="${esc(a)}">`).join('');
+  const sel = $('#f-adv'), atual = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + lista.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  sel.value = atual;
+}
 
 /* ---------- cartão do escritório virtual (ao vivo) ---------- */
 let equipeEsc = [];
