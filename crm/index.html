@@ -71,6 +71,55 @@ tbody tr:last-child td{border-bottom:0}
 .rodape{position:relative;z-index:2;display:flex;gap:14px;justify-content:center;padding:10px 0 26px}
 .rodape button{background:none;border:0;color:var(--suave);font-size:11px;opacity:.55;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .rodape button:hover,.rodape button.ativa{opacity:1;color:var(--roxo2)}
+/* METAS */
+#metas{margin-bottom:16px}
+.metas{border-radius:18px;padding:20px 22px;position:relative;overflow:hidden}
+.metas::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 85% 0%,rgba(30,144,255,.18),transparent 60%);pointer-events:none}
+.metas-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;flex-wrap:wrap;position:relative}
+.metas small{color:var(--suave);font-size:12px}
+.contador{font-size:15px;color:var(--suave);margin-top:2px}
+.contador b{font-size:46px;line-height:1;color:var(--texto);font-weight:800;letter-spacing:-1px;margin-right:4px}
+.dica{font-size:14px;margin-top:6px;color:var(--suave)}
+.dica b{color:var(--texto)}
+.ganho{text-align:right}
+.ganho div{font-size:30px;font-weight:800;color:var(--suave)}
+.ouro{background:linear-gradient(90deg,#f59e0b,#fde68a,#fbbf24,#fff7d6,#f59e0b);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:brilho 2.6s linear infinite;filter:drop-shadow(0 0 12px rgba(251,191,36,.55))}
+@keyframes brilho{to{background-position:-250% 0}}
+.trilha{position:relative;height:12px;border-radius:99px;background:rgba(255,255,255,.07);margin:22px 6px 18px}
+.trilha>i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,#0066ff,#00c2ff,#22c55e);box-shadow:0 0 18px rgba(0,194,255,.6);transition:width 1.2s cubic-bezier(.2,.8,.2,1)}
+.marco{position:absolute;top:50%;width:20px;height:20px;border-radius:50%;transform:translate(-50%,-50%);background:#0a1a3a;border:2px solid rgba(140,200,255,.45)}
+.marco.ok{background:#22c55e;border-color:#bbf7d0;box-shadow:0 0 14px rgba(34,197,94,.9)}
+.premios{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;position:relative}
+.premio{border-radius:14px;padding:14px 12px;text-align:center;background:rgba(255,255,255,.03);border:1px solid rgba(140,200,255,.15);position:relative;transition:transform .3s}
+.premio .cad{font-size:18px;opacity:.7}
+.premio .valor{font-size:22px;font-weight:800;margin:4px 0 2px;color:#5d6f8f}
+.premio small{font-size:12px}
+.premio .mini{height:4px;border-radius:99px;background:rgba(255,255,255,.07);margin-top:8px;overflow:hidden}
+.premio .mini i{display:block;height:100%;background:linear-gradient(90deg,#0066ff,#00c2ff)}
+.premio.prox{border-color:rgba(30,144,255,.6);box-shadow:0 0 22px rgba(30,144,255,.25)}
+.premio.prox .valor{color:var(--texto)}
+.premio.livre{border-color:rgba(34,197,94,.7);background:radial-gradient(circle at 50% 0%,rgba(34,197,94,.22),rgba(5,40,20,.35));box-shadow:0 0 25px rgba(34,197,94,.3),inset 0 0 20px rgba(251,191,36,.08);animation:pulsar 2.4s ease-in-out infinite}
+.premio.livre .cad{opacity:1;color:#4ade80;font-weight:800}
+.premio.livre small{color:#86efac}
+.premio.livre::after{content:"✨";position:absolute;top:6px;right:8px;font-size:14px;animation:piscar 1.6s ease-in-out infinite}
+@keyframes pulsar{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes piscar{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1.15)}}
+.equipe-metas{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:14px;position:relative}
+.cm{border-radius:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(140,200,255,.15)}
+.cm.bateu{border-color:rgba(34,197,94,.6);box-shadow:0 0 18px rgba(34,197,94,.2)}
+.cm-top{display:flex;align-items:center;gap:10px}
+.cm-top .av{width:42px;height:42px}
+.cm-top b{display:block;font-size:14px}
+.cm-top small{font-size:11px}
+.cm-top .n{margin-left:auto;text-align:right;font-size:22px;font-weight:800;line-height:1}
+.cm .trilha{height:8px;margin:14px 4px 8px}
+.cm .marco{width:13px;height:13px}
+.cm-pe{display:flex;justify-content:space-between;font-size:12px;color:var(--suave)}
+.cm-pe .ouro{font-weight:800;font-size:14px}
+.tag-tipo{font-size:10px;padding:2px 7px;border-radius:99px;background:rgba(30,144,255,.15);color:var(--roxo2);margin-left:4px}
+.confete{position:fixed;top:-12px;width:9px;height:14px;z-index:40;pointer-events:none;border-radius:2px;animation:cair linear forwards}
+@keyframes cair{to{transform:translateY(105vh) rotate(720deg);opacity:.9}}
+@media (max-width:860px){.premios{grid-template-columns:1fr 1fr}.contador b{font-size:38px}.ganho div{font-size:24px}}
 /* AVATAR */
 .av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:linear-gradient(135deg,#0047b3,#00a6ff);color:#fff;border:2px solid rgba(255,255,255,.15);overflow:hidden}
 .av img{display:block;width:100%;height:100%;object-fit:cover;aspect-ratio:1/1}
@@ -211,6 +260,7 @@ tbody tr:last-child td{border-bottom:0}
   <main>
     <!-- CLIENTES -->
     <div id="aba-clientes">
+      <div id="metas"></div>
       <div class="barra">
         <div class="busca"><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite e aguarde…"></div>
         <div><label>Fechado de</label><input type="date" id="f-de"></div>
@@ -219,7 +269,6 @@ tbody tr:last-child td{border-bottom:0}
         <button class="btn sec" id="exportar" title="Baixar lista em planilha (sem senhas)">Exportar</button>
         <button class="btn" id="novo">+ Novo cliente</button>
       </div>
-      <div class="resumo" id="resumo"></div>
       <div class="tabela vidro">
         <table>
           <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Fechamento</th><th>Valor</th><th>Acesso INSS</th><th class="col-at">Atendente</th></tr></thead>
@@ -566,12 +615,7 @@ async function carregarClientes() {
   const { data, error } = await q;
   if (error) return toast(traduz(error), true);
   clientesAtuais = data;
-  const mesIni = hoje().slice(0, 8) + '01';
-  $('#resumo').innerHTML = `
-    <div class="kpi vidro"><small>Clientes na lista</small><div>${data.length}</div></div>
-    <div class="kpi vidro"><small>Fechados este mês</small><div>${data.filter(c => c.data_contato >= mesIni).length}</div></div>
-    <div class="kpi vidro"><small>Valor total</small><div>${brl(data.reduce((s, c) => s + Number(c.valor), 0))}</div></div>
-    <div class="kpi vidro"><small>Com acesso INSS</small><div>${data.filter(c => c.tem_senha_inss).length}</div></div>`;
+  carregarMetas();
   $('#lista').innerHTML = data.length ? data.map(c => `
     <tr data-id="${c.id}">
       <td class="nm">${esc(c.nome)}</td>
@@ -683,6 +727,68 @@ $('#exportar').onclick = () => {
   a.download = `clientes_${hoje()}.csv`; a.click();
 };
 
+/* ---------- metas ---------- */
+const FAIXAS = { clt: [90, 110, 140, 200], estagiario: [60, 74, 94, 134] };
+const PREMIOS = [300, 500, 750, 1500];
+const TIPO_NOME = { clt: 'CLT', estagiario: 'Estagiário' };
+const brl0 = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+function trilha(n, f) {
+  const max = f[f.length - 1];
+  return `<div class="trilha"><i style="width:0%" data-w="${Math.min(100, n / max * 100).toFixed(1)}"></i>${f.map(x =>
+    `<span class="marco ${n >= x ? 'ok' : ''}" style="left:${(x / max * 100).toFixed(1)}%"></span>`).join('')}</div>`;
+}
+function animarTrilhas() { requestAnimationFrame(() => $$('.trilha>i[data-w]').forEach(i => i.style.width = i.dataset.w + '%')); }
+function confete() {
+  const cores = ['#fbbf24', '#fde68a', '#22c55e', '#1e90ff', '#00e5ff', '#ffffff'];
+  for (let k = 0; k < 110; k++) {
+    const d = document.createElement('div'); d.className = 'confete';
+    d.style.left = Math.random() * 100 + 'vw'; d.style.background = cores[k % cores.length];
+    d.style.animationDuration = (2.2 + Math.random() * 2) + 's'; d.style.animationDelay = Math.random() * .6 + 's';
+    document.body.appendChild(d); setTimeout(() => d.remove(), 5000);
+  }
+}
+async function carregarMetas() {
+  const [ini, fim] = intervalo('mes');
+  const { data, error } = await sb.rpc('metas_mes', { inicio: ini, fim });
+  if (error || !data) return;
+  const mes = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+  if (eu.papel === 'admin') {
+    const tot = data.reduce((s, r) => s + Number(r.vendas), 0);
+    const premios = data.reduce((s, r) => { const nv = FAIXAS[r.tipo].filter(x => r.vendas >= x).length; return s + (nv ? PREMIOS[nv - 1] : 0); }, 0);
+    $('#metas').innerHTML = `<div class="metas vidro">
+      <div class="metas-top"><div><small>Fechados pela equipe em ${mes}</small><div class="contador"><b>${tot}</b> vendas</div></div>
+        <div class="ganho"><small>Prêmios destravados</small><div class="${premios ? 'ouro' : ''}">${brl0(premios)}</div></div></div>
+      <div class="equipe-metas">${data.length ? data.map(r => {
+        const f = FAIXAS[r.tipo], n = Number(r.vendas), nv = f.filter(x => n >= x).length, prox = f[nv];
+        return `<div class="cm ${nv ? 'bateu' : ''}"><div class="cm-top">${avatar(r.atendente, r.foto_url)}
+          <div><b>${esc(r.atendente)}</b><small><span class="tag-tipo">${TIPO_NOME[r.tipo]}</span></small></div><div class="n">${n}</div></div>
+          ${trilha(n, f)}
+          <div class="cm-pe"><span>${prox ? `faltam ${prox - n} p/ ${brl0(PREMIOS[nv])}` : 'todas batidas 🏆'}</span><span class="${nv ? 'ouro' : ''}">${nv ? brl0(PREMIOS[nv - 1]) : '—'}</span></div></div>`;
+      }).join('') : '<small>Nenhum atendente ativo.</small>'}</div></div>`;
+    return animarTrilhas();
+  }
+  const me = data.find(r => r.id === eu.id) || { vendas: 0, tipo: 'clt' };
+  const f = FAIXAS[me.tipo] || FAIXAS.clt, n = Number(me.vendas), nv = f.filter(x => n >= x).length, prox = f[nv];
+  $('#metas').innerHTML = `<div class="metas vidro">
+    <div class="metas-top">
+      <div><small>Suas vendas em ${mes}</small><div class="contador"><b>${n}</b> venda${n == 1 ? '' : 's'}</div>
+        <div class="dica">${prox ? `Faltam <b>${prox - n}</b> para destravar <b>${brl0(PREMIOS[nv])}</b>` : '🏆 Você bateu todas as metas do mês!'}</div></div>
+      <div class="ganho"><small>Prêmio garantido</small><div class="${nv ? 'ouro' : ''}">${brl0(nv ? PREMIOS[nv - 1] : 0)}</div></div>
+    </div>
+    ${trilha(n, f)}
+    <div class="premios">${f.map((x, k) => `
+      <div class="premio ${n >= x ? 'livre' : ''} ${k === nv ? 'prox' : ''}">
+        <div class="cad">${n >= x ? '✓ DESTRAVADO' : '🔒'}</div>
+        <div class="valor ${n >= x ? 'ouro' : ''}">${brl0(PREMIOS[k])}</div>
+        <small>${x} vendas</small>
+        ${n < x ? `<div class="mini"><i style="width:${Math.min(100, n / x * 100).toFixed(1)}%"></i></div>` : ''}
+      </div>`).join('')}</div></div>`;
+  animarTrilhas();
+  const chave = 'crm-nivel-' + eu.id + '-' + ini, antes = Number(ler(chave) || 0);
+  if (nv > antes) { if (ler(chave) !== null || nv > 0) { confete(); toast(`🎉 Parabéns! Você destravou ${brl0(PREMIOS[nv - 1])}!`); } }
+  guardar(chave, String(nv));
+}
+
 /* ---------- ranking ---------- */
 let periodo = 'mes';
 function intervalo(p) {
@@ -773,6 +879,9 @@ async function carregarEquipe() {
       <div class="info"><span data-foto="${p.id}">${avatar(p.nome, p.foto_url, 'troca')}</span>
         <div><b>${esc(p.nome)}</b>${p.id === eu.id ? ' (você)' : ''}<small>${esc(p.email)}</small></div></div>
       <div class="acoes">
+        ${p.papel === 'atendente' ? `<select data-tipo="${p.id}" title="Tipo de contrato (define a meta)">
+          <option value="clt" ${p.tipo !== 'estagiario' ? 'selected' : ''}>CLT</option>
+          <option value="estagiario" ${p.tipo === 'estagiario' ? 'selected' : ''}>Estagiário</option></select>` : ''}
         <select data-papel="${p.id}" ${p.id === eu.id ? 'disabled' : ''}>
           <option value="atendente" ${p.papel === 'atendente' ? 'selected' : ''}>Atendente</option>
           <option value="admin" ${p.papel === 'admin' ? 'selected' : ''}>Admin</option>
@@ -788,6 +897,10 @@ async function carregarEquipe() {
     const { error } = await sb.from('perfis').update({ papel: s.value }).eq('id', s.dataset.papel);
     error ? toast(traduz(error), true) : toast('Acesso atualizado.');
     carregarEquipe(); atualizarFlutuante();
+  });
+  $$('[data-tipo]').forEach(s => s.onchange = async () => {
+    const { error } = await sb.from('perfis').update({ tipo: s.value }).eq('id', s.dataset.tipo);
+    error ? toast(traduz(error), true) : toast('Meta atualizada para ' + TIPO_NOME[s.value] + '.');
   });
   $$('[data-ativo]').forEach(b => b.onclick = async () => {
     const p = equipe.find(x => x.id === b.dataset.ativo);
