@@ -506,6 +506,9 @@ const PORTA = [6.45, 1.1], CORREDOR = 3.12;
 const atores = new Map();
 const hm = t => { if (!t) return null; const [h, m] = t.split(':'); return +h * 60 + +m; };
 function agoraMin() { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).split(':'); return +h * 60 + +m; }
+const DRAS = ['carina', 'cibele', 'danyelle', 'junny', 'rita'];
+const titulo = p => p.papel !== 'advogado' ? '' : (DRAS.includes(norm(p.nome).split(' ')[0]) ? 'Dra. ' : 'Dr. ');
+const nomeExib = p => titulo(p) + (p.papel === 'advogado' && /^luiz$/i.test(p.nome) ? 'Luís' : p.nome.split(' ')[0]);
 function estadoDe(p) {
   if (p.papel === 'advogado') return online.has(p.id) ? 'mesa' : 'fora';
   const n = agoraMin(), ai = hm(p.almoco_ini), af = hm(p.almoco_fim), sa = hm(p.saida), en = hm(p.entrada);
@@ -576,7 +579,7 @@ function textos() {
     const [X, Y] = cabecaDe(a);
     mctx.globalAlpha = Math.max(0, a.alpha);
     mctx.font = `700 ${Math.round(12 * esc2)}px Inter, sans-serif`; mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
-    const nome = a.p.nome.split(' ')[0] + (a.est === 'almoco' ? ' 🍽️' : '');
+    const nome = nomeExib(a.p) + (a.est === 'almoco' ? ' 🍽️' : '');
     const w = mctx.measureText(nome).width + 14, h = 20 * esc2;
     mctx.fillStyle = a.id === eu.id ? 'rgba(30,144,255,.92)' : 'rgba(3,10,26,.8)';
     mctx.beginPath(); mctx.roundRect(X - w / 2, Y - h, w, h, 7); mctx.fill();
@@ -614,7 +617,7 @@ function desenharLista() {
   $('#lista').innerHTML = equipe.filter(p => p.papel !== 'advogado' || online.has(p.id)).map(p => {
     const e = estadoDe(p), cls = e === 'mesa' ? 'on' : e === 'almoco' ? 'alm' : '';
     const txt = p.papel === 'advogado' ? 'no hall' : e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
-    return `<div class="pessoa"><i class="${cls}"></i>${p.papel === 'advogado' ? 'Dr(a). ' : ''}${esc(p.nome)}${p.papel === 'admin' ? ' 👑' : p.papel === 'advogado' ? ' ⭐' : ''}<small>${txt}</small></div>`;
+    return `<div class="pessoa"><i class="${cls}"></i>${esc(p.papel === 'advogado' ? nomeExib(p) : p.nome)}${p.papel === 'admin' ? ' 👑' : p.papel === 'advogado' ? ' ⭐' : ''}<small>${txt}</small></div>`;
   }).join('');
 }
 setInterval(() => { $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); atualizarAtores(); }, 15000);
@@ -627,7 +630,7 @@ const ACOES = {
 function executar(m) {
   const de = atores.get(m.de), para = m.para ? atores.get(m.para) : null;
   if (!de) return;
-  const nomePara = para ? para.p.nome.split(' ')[0] : '';
+  const nomePara = para ? nomeExib(para.p) : '';
   if (m.tipo === 'falar') return balao(m.de, m.texto, 5000);
   const a = ACOES[m.tipo]; if (!a) return;
   if (m.tipo === 'acenar') de.acena = T + 2500;
@@ -644,10 +647,10 @@ gl.addEventListener('click', e => {
   atores.forEach(a => { const [x, y] = telaDe(a.x * U, (a.sentado && !a.andando ? SENTA : 0) + AV_ALT / 2, a.y * U), d = Math.hypot(mx - x, my - y); if (d < dmin) { dmin = d; melhor = a; } });
   const m = $('#menu');
   if (!melhor || dmin > 55 * ZOOM) { m.hidden = true; return; }
-  const eh = melhor.id === eu.id, nome = melhor.p.nome.split(' ')[0];
+  const eh = melhor.id === eu.id, nome = nomeExib(melhor.p);
   const ops = eh ? [['acenar', '👋 Acenar para todos'], ['dancar', '💃 Dançar'], ['cafe', '☕ Chamar pro café'], ['palmas', '👏 Bater palmas']]
                  : [['acenar', `👋 Acenar para ${nome}`], ['highfive', '✋ Toca aqui!'], ['coracao', '❤️ Mandar coração'], ['palmas', '👏 Aplaudir']];
-  m.innerHTML = `<b>${esc(melhor.p.nome)}${eh ? ' (você)' : ''}</b>` + ops.map(([k, t]) => `<button data-a="${k}">${t}</button>`).join('') +
+  m.innerHTML = `<b>${esc(melhor.p.papel === 'advogado' ? nomeExib(melhor.p) : melhor.p.nome)}${eh ? ' (você)' : ''}</b>` + ops.map(([k, t]) => `<button data-a="${k}">${t}</button>`).join('') +
     `<form id="f-falar"><input id="i-falar" maxlength="80" placeholder="Dizer algo…"><button class="btn" style="padding:6px 10px">➤</button></form>`;
   m.style.left = Math.min(innerWidth - 190, e.clientX + 8) + 'px'; m.style.top = Math.min(innerHeight - 260, e.clientY + 8) + 'px'; m.hidden = false;
   m.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { enviar(b.dataset.a, eh ? null : melhor.id); m.hidden = true; });
@@ -660,7 +663,7 @@ gl.addEventListener('mousemove', e => {
   atores.forEach(a => { const [X, Y] = cabecaDe(a); if (Math.abs(mx - X) < 45 && my > Y - 26 && my < Y + 4) alvo = a; });
   if (!alvo || !alvo.p.foto_url) { card.hidden = true; gl.style.cursor = alvo ? 'pointer' : ''; return; }
   const [X, Y] = cabecaDe(alvo);
-  card.querySelector('img').src = alvo.p.foto_url; card.querySelector('b').textContent = alvo.p.nome;
+  card.querySelector('img').src = alvo.p.foto_url; card.querySelector('b').textContent = alvo.p.papel === 'advogado' ? nomeExib(alvo.p) : alvo.p.nome;
   card.querySelector('small').textContent = alvo.p.papel === 'advogado' ? 'advogado parceiro · no hall' : alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? 'diretoria' : 'na mesa';
   card.style.left = (r.left + X) + 'px'; card.style.top = (r.top + Y - 30) + 'px'; card.hidden = false; gl.style.cursor = 'pointer';
 });
