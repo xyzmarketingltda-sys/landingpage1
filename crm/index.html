@@ -480,6 +480,8 @@ tbody tr:last-child td{border-bottom:0}
         <p id="c-inss-info">Guardada com criptografia. Só você e o administrador podem ver, e cada visualização fica registrada.</p>
       </div>
       <div class="inteiro"><label>Observações</label><textarea id="c-obs"></textarea></div>
+      <div class="inteiro" id="c-pasta-box" hidden><label>Pasta do cliente no Google Drive (o advogado vê esse link)</label><input id="c-pasta" placeholder="https://drive.google.com/drive/folders/..."></div>
+      <div class="inteiro" id="c-stadv" hidden></div>
     </div>
     <div class="rodape-modal">
       <button type="button" class="btn perigo" id="c-apagar" hidden>Apagar</button>
@@ -676,6 +678,7 @@ async function iniciar() {
     await sb.auth.signOut();
     return mostrarLogin('Seu acesso não está liberado. Fale com o administrador.');
   }
+  if (perfil.papel === 'advogado') return location.href = '../controle/';
   eu = perfil;
   $('#login').hidden = true; $('#app').hidden = false;
   $('#eu-nome').textContent = eu.nome;
@@ -882,7 +885,7 @@ $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(carregarClient
 
 async function carregarClientes() {
   const admin = eu.papel === 'admin';
-  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,perfis(nome)')
+  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,pasta_url,status_adv,obs_adv,status_adv_em,perfis(nome)')
     .order('data_contato', { ascending: false }).order('id', { ascending: false }).limit(1000);
   const termo = $('#f-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
   if (termo) {
@@ -942,6 +945,9 @@ function abrirCliente(c) {
   $('#c-banco').value = c?.banco || '';
   $('#c-adv').value = c?.advogado || '';
   $('#c-obs').value = c?.observacoes || '';
+  $('#c-pasta-box').hidden = eu.papel !== 'admin'; $('#c-pasta').value = c?.pasta_url || '';
+  $('#c-stadv').hidden = !c?.status_adv;
+  if (c?.status_adv) $('#c-stadv').innerHTML = `<label>Status informado pelo advogado</label><div style="padding:8px 10px;border:1px solid var(--borda);border-radius:10px"><b>${esc(c.status_adv)}</b>${c.obs_adv ? ' — ' + esc(c.obs_adv) : ''} <small style="color:var(--suave)">${c.status_adv_em ? new Date(c.status_adv_em).toLocaleString('pt-BR') : ''}</small></div>`;
   $('#c-inss').value = ''; $('#c-inss').type = 'password'; $('#c-inss-ver').textContent = 'Mostrar';
   $('#c-inss').placeholder = c?.tem_senha_inss ? '•••••••• (salva, clique em Mostrar)' : 'Senha do Meu INSS';
   if (eu.papel === 'admin') {
@@ -969,7 +975,7 @@ $('#form-cli').onsubmit = async e => {
   const reg = {
     nome: $('#c-nome').value.trim(), cpf, telefone: so($('#c-tel').value),
     data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
-    banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null
+    banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null, ...(eu.papel === 'admin' ? { pasta_url: $('#c-pasta').value.trim() || null } : {})
   };
   if (eu.papel === 'admin') reg.atendente_id = $('#c-at').value;
   const b = $('#c-salvar'); ocupado(b, true);
@@ -1180,7 +1186,7 @@ async function carregarEquipe() {
     sb.from('convites').select('*').order('nome')
   ]);
   if (error) return toast(traduz(error), true);
-  equipe = perfis;
+  equipe = perfis.filter(p => p.papel !== 'advogado');
   const sel = $('#f-at'), atual = sel.value;
   sel.innerHTML = '<option value="">Todos</option>' + equipe.map(p => `<option value="${p.id}">${esc(p.nome)}${p.ativo ? '' : ' (inativo)'}</option>`).join('');
   sel.value = atual;

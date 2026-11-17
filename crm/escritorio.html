@@ -96,7 +96,8 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
 const scene = new THREE.Scene();
-const centro = new THREE.Vector3(GX * U / 2, 0, GY * U / 2);
+const VIPX = 3;                     // largura da sala VIP (à direita)
+const centro = new THREE.Vector3((GX + VIPX) * U / 2, 0, GY * U / 2);
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -500, 1000);
 camera.position.set(centro.x + 100, 92, centro.z + 100); camera.lookAt(centro.x, 8, centro.z);
 let S = 1, LARG = 1, ALT = 1, ZOOM = 1;
@@ -295,6 +296,36 @@ async function montarMoveis() {
     }
   }
   montarSalaVidro();
+  await montarSalaVip();
+}
+
+/* ---------- SALA VIP dos advogados (lounge de aeroporto) ---------- */
+const VIP_SEATS = [[7.75, 1.25, 90], [9.35, 1.25, -90], [8.55, .7, 0], [7.75, 2.05, 90], [9.35, 2.05, -90],
+                   [7.75, 4.25, 90], [9.35, 4.25, -90], [7.75, 5.05, 90], [9.35, 5.05, -90], [8.55, 5.6, 180]];
+async function montarSalaVip() {
+  const X0 = GX * U, X1 = (GX + VIPX) * U, Z1 = GY * U;
+  for (let x = GX; x < GX + VIPX; x++) for (let z = 0; z < GY; z++) por('floorFull', x + .5, z + .5, 0, { cor: '#6b5233' });
+  for (let x = GX; x < GX + VIPX; x++) por('wall', x + .5, -.025, 0, { cor: '#1c1530' });
+  // divisória de vidro com porta no corredor
+  const vidro = { color: '#fde68a', transparent: true, opacity: .16, roughness: .05, metalness: .3, depthWrite: false }, ouro = { color: '#b8860b', metalness: .9, roughness: .25 };
+  const h = 10.5, pz = [CORREDOR * U - 5, CORREDOR * U + 5];
+  caixa3(.2, h, pz[0], '#fde68a', X0, 0, pz[0] / 2, vidro); caixa3(.2, h, Z1 - pz[1], '#fde68a', X0, 0, (pz[1] + Z1) / 2, vidro);
+  caixa3(.35, .35, Z1, '#b8860b', X0, h, Z1 / 2, ouro); for (const z of [.2, pz[0], pz[1], Z1 - .2]) caixa3(.35, h, .35, '#b8860b', X0, 0, z, ouro);
+  // faixas douradas de LED
+  const led = (x, y, z, sx, sz) => { const m = caixa3(sx, .25, sz, '#fbbf24', x, y, z, { emissive: '#f59e0b', emissiveIntensity: 2 }); animados.push(t => m.material.emissiveIntensity = 1.5 + Math.sin(t / 900) * .5); };
+  led((X0 + X1) / 2, ALT_PAREDE - .6, .45, X1 - X0, .15); led((X0 + X1) / 2, .4, .45, X1 - X0, .15);
+  // letreiro
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(13, 4.3), new THREE.MeshBasicMaterial({ map: texturaTexto('SALA VIP', 512, 168, '800 96px Inter, sans-serif', '#fff3c4', '#f59e0b'), transparent: true }));
+  placa.position.set((X0 + X1) / 2, 9.4, .6); scene.add(placa);
+  // tapetes, mesas e poltronas
+  por('rugRound', 8.55, 1.6, 0, { cor: '#7c2d12', so: /carpet/i }); por('rugRound', 8.55, 4.65, 0, { cor: '#7c2d12', so: /carpet/i });
+  por('tableCoffeeGlass', 8.55, 1.65, 90); por('tableCoffeeGlass', 8.55, 4.65, 90);
+  VIP_SEATS.forEach(([x, z, r]) => por('loungeChair', x, z, r, { cor: '#1f1b2e', so: /carpet/i }));
+  // bar de café e decoração
+  por('kitchenBar', 9.55, 3.1, -90); por('kitchenCoffeeMachine', 9.62, 3.1, -90, { y: 4.5 });
+  por('pottedPlant', 7.3, .3); por('pottedPlant', 9.7, .3); por('pottedPlant', 9.7, 5.75); por('lampRoundFloor', 7.3, 5.75);
+  por('plantSmall1', 8.55, 1.65, 0, { y: 2.3 }); por('plantSmall2', 8.55, 4.65, 0, { y: 2.3 });
+  const luz = new THREE.PointLight(0xfbbf24, 35, 45); luz.position.set((X0 + X1) / 2, 11, Z1 / 2); scene.add(luz);
 }
 
 /* ---------- bonecos voxel 3D (arte própria XYZ) ---------- */
@@ -487,6 +518,7 @@ const atores = new Map();
 const hm = t => { if (!t) return null; const [h, m] = t.split(':'); return +h * 60 + +m; };
 function agoraMin() { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).split(':'); return +h * 60 + +m; }
 function estadoDe(p) {
+  if (p.papel === 'advogado') return online.has(p.id) ? 'mesa' : 'fora';
   const n = agoraMin(), ai = hm(p.almoco_ini), af = hm(p.almoco_fim), sa = hm(p.saida), en = hm(p.entrada);
   const trabalhou = en == null || n >= en;
   if (ai != null && af != null && n >= ai && n < af && trabalhou && online.has(p.id)) return 'almoco';
@@ -494,6 +526,7 @@ function estadoDe(p) {
   return online.has(p.id) ? 'mesa' : 'fora';
 }
 function assentoDe(p, i) {
+  if (p.papel === 'advogado') { const k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); const [x, z, r] = VIP_SEATS[Math.max(0, k) % VIP_SEATS.length]; return [x, z]; }
   const idx = p.papel === 'admin' ? DESKS.length - 1 : i % (DESKS.length - 1);
   mesaDe[p.id] = idx;
   const [x, y] = DESKS[idx]; return p.papel === 'admin' ? [x - .25, y - .35] : [x, y - .4];
@@ -508,7 +541,7 @@ function rota(a, alvo) {
 function atualizarAtores() {
   let iAt = 0;
   equipe.forEach(p => {
-    const est = estadoDe(p), i = p.papel === 'admin' ? 0 : iAt++;
+    const est = estadoDe(p), i = p.papel === 'admin' || p.papel === 'advogado' ? 0 : iAt++;
     let a = atores.get(p.id);
     if (!a) {
       if (est === 'fora') return;
@@ -524,7 +557,7 @@ function atualizarAtores() {
       else rota(a, PORTA);
     }
   });
-  equipe.forEach((p, k) => { if (p.papel !== 'admin') assentoDe(p, equipe.filter(q => q.papel !== 'admin').indexOf(p)); });
+  equipe.forEach((p, k) => { if (p.papel === 'atendente') assentoDe(p, equipe.filter(q => q.papel === 'atendente').indexOf(p)); });
   aplicarMetas();
   if (equipe.length && syncOk) jaCarregou = true;
   desenharLista();
@@ -590,10 +623,10 @@ function quadro(agora) {
 
 /* ---------- lista lateral, relógio ---------- */
 function desenharLista() {
-  $('#lista').innerHTML = equipe.map(p => {
+  $('#lista').innerHTML = equipe.filter(p => p.papel !== 'advogado' || online.has(p.id)).map(p => {
     const e = estadoDe(p), cls = e === 'mesa' ? 'on' : e === 'almoco' ? 'alm' : '';
-    const txt = e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
-    return `<div class="pessoa"><i class="${cls}"></i>${esc(p.nome)}${p.papel === 'admin' ? ' 👑' : ''}<small>${txt}</small></div>`;
+    const txt = p.papel === 'advogado' ? 'sala VIP' : e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
+    return `<div class="pessoa"><i class="${cls}"></i>${p.papel === 'advogado' ? 'Dr(a). ' : ''}${esc(p.nome)}${p.papel === 'admin' ? ' 👑' : p.papel === 'advogado' ? ' ⭐' : ''}<small>${txt}</small></div>`;
   }).join('');
 }
 setInterval(() => { $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); atualizarAtores(); }, 15000);
@@ -640,14 +673,14 @@ gl.addEventListener('mousemove', e => {
   if (!alvo || !alvo.p.foto_url) { card.hidden = true; gl.style.cursor = alvo ? 'pointer' : ''; return; }
   const [X, Y] = cabecaDe(alvo);
   card.querySelector('img').src = alvo.p.foto_url; card.querySelector('b').textContent = alvo.p.nome;
-  card.querySelector('small').textContent = alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? 'diretoria' : 'na mesa';
+  card.querySelector('small').textContent = alvo.p.papel === 'advogado' ? 'advogado parceiro · sala VIP' : alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? 'diretoria' : 'na mesa';
   card.style.left = (r.left + X) + 'px'; card.style.top = (r.top + Y - 30) + 'px'; card.hidden = false; gl.style.cursor = 'pointer';
 });
 gl.addEventListener('mouseleave', () => $('#foto-hover').hidden = true);
 
 /* ---------- horários (admin) ---------- */
 $('#btn-horarios').onclick = () => {
-  $('#tb-hor').innerHTML = equipe.map(p => `<tr data-id="${p.id}"><td>${esc(p.nome)}</td>${['entrada', 'almoco_ini', 'almoco_fim', 'saida'].map(c =>
+  $('#tb-hor').innerHTML = equipe.filter(p => p.papel !== 'advogado').map(p => `<tr data-id="${p.id}"><td>${esc(p.nome)}</td>${['entrada', 'almoco_ini', 'almoco_fim', 'saida'].map(c =>
     `<td><input type="time" data-c="${c}" value="${(p[c] || '').slice(0, 5)}"></td>`).join('')}</tr>`).join('');
   $('#modal').hidden = false;
 };
@@ -690,6 +723,7 @@ async function carregarEquipe() {
   const { data: perfil } = await sb.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
   if (!perfil || !perfil.ativo) return location.href = './';
   eu = perfil;
+  if (eu.papel === 'advogado') { const v = document.querySelector('a[href="./"]'); if (v) { v.href = '../controle/'; v.textContent = '← Controle'; } }
   $('#btn-horarios').hidden = eu.papel !== 'admin';
   $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   XYZPresenca.entrar(sb, eu, {
