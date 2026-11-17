@@ -351,6 +351,7 @@ tbody tr:last-child td{border-bottom:0}
           <button class="btn sec peq" data-g="desp">💸 Despesas do mês</button>
           <button class="btn sec peq" data-g="com">💰 Comissões</button>
           <button class="btn sec peq" data-g="hist">📈 Histórico mensal</button>
+          <button class="btn sec peq" data-g="mis">📜 Missões diárias</button>
         </div>
         <div class="g-painel" id="gp-proc" hidden>
           <form class="g-linha" id="gp-form"><input id="gpn-nome" placeholder="Cliente" required><input id="gpn-adv" list="lista-adv" placeholder="Advogado(a)" required style="max-width:170px"><input id="gpn-num" placeholder="Nº do processo" style="max-width:240px"><input id="gpn-pct" placeholder="% comissão" style="max-width:110px" inputmode="decimal"><button class="btn peq">+ Adicionar</button></form>
@@ -359,6 +360,7 @@ tbody tr:last-child td{border-bottom:0}
           <div class="g-tab"><table><thead><tr><th>Cliente</th><th>Advogado</th><th>Nº do processo</th><th>Comissão</th><th>Status</th><th></th></tr></thead><tbody id="gp-lista"></tbody></table></div>
         </div>
         <div class="g-painel" id="gp-desp" hidden>
+          <div class="g-cats" id="gd-meses" style="margin-bottom:6px"></div>
           <div class="g-cats" id="gd-cats"></div>
           <div class="g-tab"><table><thead><tr><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody id="gd-lista"></tbody></table></div>
         </div>
@@ -366,6 +368,20 @@ tbody tr:last-child td{border-bottom:0}
           <div class="g-linha"><input id="gc-busca" placeholder="Buscar cliente ou CPF (todo o histórico)"><select id="gc-vend"><option value="">Todos os vendedores</option></select><select id="gc-mes"></select></div>
           <div class="g-cats" id="gc-resumo"></div>
           <div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Vendedor</th><th>Tipo</th><th>Banco</th><th>Advogado</th><th style="text-align:right">Valor</th><th style="text-align:right">Comissão</th><th>Situação</th></tr></thead><tbody id="gc-lista"></tbody></table></div>
+        </div>
+        <div class="g-painel" id="gp-mis" hidden>
+          <form class="g-linha" id="gm-form" style="flex-wrap:wrap">
+            <input type="date" id="gm-dia" required style="max-width:160px;color-scheme:dark">
+            <input id="gm-tit" placeholder="Nome da missão (ex.: Caçador de Seguros)" required>
+            <input id="gm-desc" placeholder="Descrição (opcional)">
+            <label style="font-size:12px;color:var(--suave)">Seguro prestamista <input id="gm-seg" type="number" min="0" value="0" style="width:64px"></label>
+            <label style="font-size:12px;color:var(--suave)">Revisão de juros <input id="gm-rev" type="number" min="0" value="0" style="width:64px"></label>
+            <label style="font-size:12px;color:var(--suave)">Aumento de margem <input id="gm-mar" type="number" min="0" value="0" style="width:64px"></label>
+            <label style="font-size:12px;color:var(--suave)">Prêmio R$ <input id="gm-pre" inputmode="decimal" value="20" style="width:70px"></label>
+            <button class="btn peq">+ Criar missão</button>
+          </form>
+          <div class="g-linha"><b style="font-size:13px">🧪 Testar quest diária:</b><input type="date" id="gm-teste" style="max-width:160px;color-scheme:dark"><button class="btn sec peq" id="gm-ver" type="button">👁 Ver como fica</button><small style="color:var(--suave)">abre o escritório com a janela da missão do dia escolhido e o progresso de cada atendente</small></div>
+          <div class="g-tab"><table><thead><tr><th>Dia</th><th>Missão</th><th>Objetivos</th><th style="text-align:right">Prêmio</th><th></th></tr></thead><tbody id="gm-lista"></tbody></table></div>
         </div>
         <div class="g-painel" id="gp-hist" hidden>
           <div class="g-tab"><table><thead><tr><th>Mês</th><th style="text-align:right">Comissões</th><th style="text-align:right">Despesas</th><th style="text-align:right">Resultado</th><th style="width:40%"></th></tr></thead><tbody id="gh-lista"></tbody></table></div>
@@ -740,7 +756,7 @@ $('#g-prox').onclick = () => mudaMes(1);
 $$('.g-abas button').forEach(b => b.onclick = () => {
   G.aba = G.aba === b.dataset.g ? null : b.dataset.g;
   $$('.g-abas button').forEach(x => x.classList.toggle('sel', x.dataset.g === G.aba));
-  ['proc', 'desp', 'com', 'hist'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
+  ['proc', 'desp', 'com', 'hist', 'mis'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
   carregarPainel();
 });
 async function carregarGestao() {
@@ -764,7 +780,30 @@ function carregarPainel() {
   if (G.aba === 'desp') carregarDespesas();
   if (G.aba === 'com') carregarComissoes();
   if (G.aba === 'hist') desenharHistorico();
+  if (G.aba === 'mis') carregarMissoesAdm();
 }
+const abrirTesteMissao = d => window.open('escritorio.html?missao=1&teste=1&dia=' + d, '_blank');
+async function carregarMissoesAdm() {
+  if (!$('#gm-dia').value) { const a = new Date(); a.setDate(a.getDate() + 1); $('#gm-dia').value = a.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
+  if (!$('#gm-teste').value) $('#gm-teste').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const { data } = await sb.from('missoes').select('*').order('dia', { ascending: false }).limit(60);
+  const obj = m => [m.meta_seguro && m.meta_seguro + ' prestamista', m.meta_revisional && m.meta_revisional + ' revisão', m.meta_margem && m.meta_margem + ' aumento de margem'].filter(Boolean).join(' + ');
+  $('#gm-lista').innerHTML = (data || []).map(m => `<tr><td>${new Date(m.dia + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td><td><b>${esc(m.titulo)}</b><br><small style="color:var(--suave)">${esc(m.descricao || '')}</small></td><td>${obj(m) || '—'}</td><td class="num">${brl(m.recompensa)}</td>
+    <td style="white-space:nowrap"><button class="btn sec peq" data-mver="${m.dia}">👁 Testar</button> <button class="x" title="Apagar" data-mdel="${m.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--suave)">Nenhuma missão cadastrada.</td></tr>';
+  $$('#gm-lista [data-mver]').forEach(b => b.onclick = () => abrirTesteMissao(b.dataset.mver));
+  $$('#gm-lista [data-mdel]').forEach(b => b.onclick = async () => { if (!confirm('Apagar esta missão?')) return; const { error } = await sb.from('missoes').delete().eq('id', b.dataset.mdel); if (error) return alert(traduz(error)); carregarMissoesAdm(); });
+}
+$('#gm-ver').onclick = () => abrirTesteMissao($('#gm-teste').value);
+$('#gm-form').onsubmit = async e => {
+  e.preventDefault();
+  const n = id => Math.max(0, parseInt($(id).value) || 0), seg = n('#gm-seg'), rev = n('#gm-rev'), mar = n('#gm-mar');
+  if (!seg && !rev && !mar) return alert('Coloque pelo menos uma quantidade.');
+  const partes = [seg && seg + ' clientes de seguro prestamista', rev && rev + ' de revisão de juros', mar && mar + ' de aumento de margem'].filter(Boolean);
+  const desc = $('#gm-desc').value.trim() || 'Feche ' + partes.join(', ').replace(/, ([^,]*)$/, ' e $1') + ' hoje.';
+  const { error } = await sb.from('missoes').insert({ dia: $('#gm-dia').value, titulo: $('#gm-tit').value.trim(), descricao: desc, meta_seguro: seg, meta_revisional: rev, meta_margem: mar, recompensa: numBR($('#gm-pre').value) || 0 });
+  if (error) return alert(traduz(error));
+  toast('📜 Missão criada!'); $('#gm-tit').value = ''; $('#gm-desc').value = ''; carregarMissoesAdm();
+};
 $('#g-form-desp').onsubmit = async e => {
   e.preventDefault();
   const valor = numBR($('#gd-valor').value);
@@ -776,6 +815,9 @@ $('#g-form-desp').onsubmit = async e => {
   carregarGestao();
 };
 async function carregarDespesas() {
+  const meses = [...new Set([G.mes, ...G.resumo.filter(l => Number(l.despesas) > 0).map(l => l.mes)])].sort().reverse();
+  $('#gd-meses').innerHTML = meses.map(m => { const l = G.resumo.find(x => x.mes === m); return `<span data-dmes="${m}" style="cursor:pointer;${m === G.mes ? 'border-color:var(--ciano);color:var(--ciano)' : ''}">${mesCurto(m)}: <b>${brl(l ? l.despesas : 0)}</b></span>`; }).join('');
+  $$('#gd-meses [data-dmes]').forEach(b => b.onclick = () => { G.mes = b.dataset.dmes; carregarGestao(); });
   const { data } = await sb.from('despesas').select('*').eq('mes_ref', G.mes).order('valor', { ascending: false });
   const cats = {};
   (data || []).forEach(d => cats[d.categoria || 'Outros'] = (cats[d.categoria || 'Outros'] || 0) + Number(d.valor));

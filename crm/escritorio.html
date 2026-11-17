@@ -49,7 +49,7 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
 @media (max-width:760px){#lado{width:auto;right:14px;bottom:10px;max-height:28vh;overflow:auto}#dica{display:none}header h1{font-size:10px}#relogio{display:none}}
 
 /* ---------- missão diária: estilo quest (WoW futurista) ---------- */
-#quest-btn{position:fixed;left:14px;bottom:14px;z-index:6;width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0}
+#quest-btn{position:fixed;left:18px;top:74px;z-index:6;width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0}
 #quest-btn .hex{position:absolute;inset:0;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);background:linear-gradient(160deg,#fde68a,#f59e0b 45%,#b45309);box-shadow:0 0 18px rgba(251,191,36,.7)}
 #quest-btn .hex::after{content:"";position:absolute;inset:3px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#0b2a5c,#050d22 70%)}
 #quest-btn b{position:relative;z-index:1;display:block;text-align:center;font:900 24px/44px Inter,sans-serif;color:#fde047;text-shadow:0 0 10px #fbbf24}
@@ -145,8 +145,8 @@ addEventListener('resize', ajustar); ajustar();
 gl.addEventListener('wheel', e => { e.preventDefault(); ZOOM = Math.min(2.2, Math.max(.7, ZOOM * (e.deltaY < 0 ? 1.08 : .93))); ajustar(); }, { passive: false });
 
 // luzes
-scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x3a3045, .75));
-const sol = new THREE.DirectionalLight(0xfff4e0, 1.25);
+scene.add(new THREE.HemisphereLight(0xe6f0ff, 0x0b0f18, .8));
+const sol = new THREE.DirectionalLight(0xeef4ff, 1.3);
 sol.position.set(centro.x + 40, 90, centro.z + 60); sol.target.position.copy(centro);
 sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
 Object.assign(sol.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 250 });
@@ -164,7 +164,13 @@ async function carregarModelo(nome) {
   obj.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true;
     const ms = Array.isArray(m.material) ? m.material : [m.material];
     const novos = ms.map(x => { const k = new THREE.MeshStandardMaterial({ color: x.color, roughness: .7, metalness: /metal/i.test(x.name) ? .5 : 0, name: x.name, side: THREE.DoubleSide });
-      if (/glass/i.test(x.name)) { k.transparent = true; k.opacity = .35; k.roughness = .05; } return k; });
+      if (/glass/i.test(x.name)) { k.transparent = true; k.opacity = .35; k.roughness = .05; }
+      // visual NY futurista: madeira/marrom vira laca branca (claros) ou grafite (escuros)
+      const hsl = {}; k.color.getHSL(hsl);
+      if (!/glass|metal/i.test(x.name) && hsl.h > .02 && hsl.h < .15 && hsl.s > .18 && hsl.l > .12 && hsl.l < .8) {
+        if (hsl.l > .38) { k.color.set('#e9edf3'); k.roughness = .28; k.metalness = .05; } else { k.color.set('#161a22'); k.roughness = .4; k.metalness = .25; }
+      }
+      return k; });
     m.material = Array.isArray(m.material) ? novos : novos[0]; } });
   const box = new THREE.Box3().setFromObject(obj), c = box.getCenter(new THREE.Vector3());
   obj.position.set(-c.x, -box.min.y, -c.z);
@@ -191,11 +197,20 @@ function texturaTexto(txt, w, h, fonte, cor, brilho) {
 /* ---------- ambiente ---------- */
 const animados = [];
 async function montarAmbiente() {
-  // piso de madeira (tiles Kenney)
-  for (let x = 0; x < GX; x++) for (let z = 0; z < GY; z++) por('floorFull', x + .5, z + .5);
+  // piso: carpete preto em placas (estilo escritório de NY) + passarela preta polida com LED
+  const cp = document.createElement('canvas'); cp.width = cp.height = 512; const cg = cp.getContext('2d');
+  cg.fillStyle = '#0b0d12'; cg.fillRect(0, 0, 512, 512);
+  const img = cg.getImageData(0, 0, 512, 512); for (let k = 0; k < img.data.length; k += 4) { const n = (Math.random() * 14) | 0; img.data[k] += n; img.data[k + 1] += n; img.data[k + 2] += n + 2; } cg.putImageData(img, 0, 0);
+  cg.strokeStyle = 'rgba(120,160,220,.10)'; cg.lineWidth = 2; for (let k = 0; k <= 512; k += 128) { cg.beginPath(); cg.moveTo(k, 0); cg.lineTo(k, 512); cg.stroke(); cg.beginPath(); cg.moveTo(0, k); cg.lineTo(512, k); cg.stroke(); }
+  const carp = new THREE.CanvasTexture(cp); carp.colorSpace = THREE.SRGBColorSpace; carp.wrapS = carp.wrapT = THREE.RepeatWrapping; carp.repeat.set(GX * 1.5, GY * 1.5); carp.anisotropy = 4;
+  const chao = new THREE.Mesh(new THREE.PlaneGeometry(GX * U, GY * U), new THREE.MeshStandardMaterial({ map: carp, roughness: .95, metalness: 0 }));
+  chao.rotation.x = -Math.PI / 2; chao.position.set(GX * U / 2, .01, GY * U / 2); chao.receiveShadow = true; scene.add(chao);
+  const pass = new THREE.Mesh(new THREE.PlaneGeometry(GX * U, 7), new THREE.MeshStandardMaterial({ color: '#05070b', roughness: .12, metalness: .6 }));
+  pass.rotation.x = -Math.PI / 2; pass.position.set(GX * U / 2, .03, CORREDOR * U); pass.receiveShadow = true; scene.add(pass);
+  for (const dz of [-3.6, 3.6]) { const l = caixa3(GX * U, .05, .18, '#00e5ff', GX * U / 2, .02, CORREDOR * U + dz, { emissive: '#00e5ff', emissiveIntensity: 1.6 }); animados.push(t => l.material.emissiveIntensity = 1.2 + Math.sin(t / 900) * .5); }
   // paredes azul-marinho (fundo e esquerda), com janelões na esquerda
-  for (let x = 0; x < GX; x++) por('wall', x + .5, -.025, 0, { cor: '#1a2f5c' });
-  for (let z = 0; z < GY; z++) por(z === 1 || z === 2 ? 'wallWindow' : 'wall', -.025, z + .5, 90, { cor: '#15284f', so: /^(?!.*glass)/i });
+  for (let x = 0; x < GX; x++) por('wall', x + .5, -.025, 0, { cor: '#0e121a' });
+  for (let z = 0; z < GY; z++) por(z === 1 || z === 2 ? 'wallWindow' : 'wall', -.025, z + .5, 90, { cor: '#0e121a', so: /^(?!.*glass)/i });
   // faixas de LED
   const led = (x, y, z, sx, sz) => { const m = caixa3(sx, .25, sz, '#00e5ff', x, y, z, { emissive: '#00e5ff', emissiveIntensity: 2.2 }); animados.push(t => m.material.emissiveIntensity = 1.6 + Math.sin(t / 700) * .6); };
   led(GX * U / 2, ALT_PAREDE - .6, .45, GX * U, .15); led(.45, ALT_PAREDE - .6, GY * U / 2, .15, GY * U);
@@ -203,8 +218,10 @@ async function montarAmbiente() {
   // cidade lá fora (atrás dos janelões)
   const ct = document.createElement('canvas'); ct.width = 512; ct.height = 256; const g = ct.getContext('2d');
   const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#020617'); gr.addColorStop(1, '#0b2d6b'); g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
-  for (let k = 0; k < 40; k++) { const w = 14 + Math.random() * 26, h = 50 + Math.random() * 170, x = Math.random() * 512; g.fillStyle = '#071433'; g.fillRect(x, 256 - h, w, h);
-    g.fillStyle = '#ffe9a8'; for (let j = 0; j < h / 10; j++) if (Math.random() < .35) g.fillRect(x + 3 + Math.random() * (w - 6), 256 - h + 6 + j * 10, 2, 3); }
+  for (let k = 0; k < 55; k++) { const w = 12 + Math.random() * 28, h = 60 + Math.random() * 185, x = Math.random() * 512; g.fillStyle = k % 3 ? '#060d22' : '#0a1530'; g.fillRect(x, 256 - h, w, h);
+    for (let j = 0; j < h / 8; j++) for (let i = 2; i < w - 3; i += 5) if (Math.random() < .28) { g.fillStyle = Math.random() < .8 ? '#ffe9a8' : '#9be7ff'; g.fillRect(x + i, 256 - h + 5 + j * 8, 2, 3); } }
+  // torre com antena (tipo Empire State) e luz vermelha
+  g.fillStyle = '#081228'; g.fillRect(300, 20, 26, 236); g.fillRect(306, 4, 14, 20); g.fillRect(312, -10, 2, 18); g.fillStyle = '#ff4d4d'; g.fillRect(311, 0, 4, 4);
   const cidade = new THREE.CanvasTexture(ct); cidade.colorSpace = THREE.SRGBColorSpace;
   const fora = new THREE.Mesh(new THREE.PlaneGeometry(GY * U, 18), new THREE.MeshBasicMaterial({ map: cidade }));
   fora.position.set(-3, 7, GY * U / 2); fora.rotation.y = Math.PI / 2; scene.add(fora);
@@ -310,9 +327,9 @@ async function montarMoveis() {
   por('pottedPlant', 4.75, .25); por('pottedPlant', 6.85, 3.6); por('speaker', 5.9, .2);
   // área de descanso (frente, perto dos janelões)
   por('rugRound', 1.25, 4.55, 0, { cor: '#1e3a8a', so: /carpet/i });
-  por('loungeSofaCorner', .55, 4.7, 90, { cor: '#e8743b', so: /carpet/i });
+  por('loungeSofaCorner', .55, 4.7, 90, { cor: '#eef2f7', so: /carpet/i });
   por('tableCoffeeGlass', 1.35, 4.5, 90);
-  por('loungeChair', 2.25, 4.6, -90, { cor: '#e8743b', so: /carpet/i });
+  por('loungeChair', 2.25, 4.6, -90, { cor: '#eef2f7', so: /carpet/i });
   por('lampRoundFloor', .25, 3.45); por('pottedPlant', .25, 5.75); por('plantSmall1', 1.35, 4.5, 0, { y: 2.3 });
   // estações de trabalho
   for (let i = 0; i < DESKS.length; i++) {
@@ -336,7 +353,7 @@ async function montarMoveis() {
 const VIP_SEATS = [[7.55, .75, -90], [7.55, 1.5, -90], [7.55, 2.25, -90]];
 async function montarSalaVip() {
   const X0 = GX * U, X1 = (GX + VIPX) * U, Z1 = 3 * U;
-  for (let z = 0; z < 3; z++) por('floorFull', GX + .5, z + .5, 0, { cor: '#5b4a35' });
+  for (let z = 0; z < 3; z++) por('floorFull', GX + .5, z + .5, 0, { cor: '#0b0d12' });
   por('wall', GX + .5, -.025, 0, { cor: '#1c1530' });
   const vidro = { color: '#fde68a', transparent: true, opacity: .16, roughness: .05, metalness: .3, depthWrite: false }, ouro = { color: '#b8860b', metalness: .9, roughness: .25 };
   const h = 10.5;
@@ -738,20 +755,20 @@ setInterval(carregarMetas, 60000);
 
 
 /* ---------- missões diárias ---------- */
-const diaSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+const diaSP = () => (location.search.match(/dia=(\d{4}-\d{2}-\d{2})/) || [])[1] || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 const brlM = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 let missoes = [], marcaMissao = [], animMissao = [], abriuMissao = false;
 const animar = f => { animados.push(f); animMissao.push(f); };
 function abrirMissao() {
   const meus = missoes.filter(r => r.atendente_id === eu.id), ref = meus[0] || missoes[0]; if (!ref) return;
-  const sg = meus[0]?.seguros || 0, rv = meus[0]?.revisionais || 0, feita = meus.length && meus[0].cumpriu;
+  const sg = meus[0]?.seguros || 0, rv = meus[0]?.revisionais || 0, mg = meus[0]?.margens || 0, feita = meus.length && meus[0].cumpriu;
   const obj = (nome, n, meta) => meta ? `<div class="obj ${n >= meta ? 'ok' : ''}"><span>${n >= meta ? '✔' : '◇'} ${nome}</span><b>${Math.min(n, meta)}/${meta}</b></div><div class="barra"><i style="width:${Math.min(100, n / meta * 100)}%"></i></div>` : '';
   const q = $('#quest'); q.hidden = false;
   q.innerHTML = `<div class="q"><div class="selo"><span>${feita ? '✓' : '!'}</span></div>
-    <div class="tipo">Missão diária · ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}</div>
+    <div class="tipo">Missão diária · ${new Date(diaSP() + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}${/teste=1/.test(location.search) ? ' · PRÉVIA' : ''}</div>
     <h2>${esc(ref.titulo)}</h2><div class="desc">${esc(ref.descricao || '')}</div>
-    ${eu.papel === 'atendente' ? `<h4>Objetivos</h4>${obj('Seguros prestamistas fechados', sg, ref.meta_seguro)}${obj('Revisionais fechados', rv, ref.meta_revisional)}`
-      : `<h4>Equipe</h4>${missoes.map(r => `<div class="obj ${r.cumpriu ? 'ok' : ''}"><span>${r.cumpriu ? '✔' : '◇'} ${esc(r.atendente)}</span><b>${r.seguros}/${r.meta_seguro} · ${r.revisionais}/${r.meta_revisional}</b></div>`).join('')}`}
+    ${eu.papel === 'atendente' ? `<h4>Objetivos</h4>${obj('Seguros prestamistas fechados', sg, ref.meta_seguro)}${obj('Revisionais fechados', rv, ref.meta_revisional)}${obj('Aumentos de margem fechados', mg, ref.meta_margem)}`
+      : `<h4>Equipe</h4>${missoes.map(r => `<div class="obj ${r.cumpriu ? 'ok' : ''}"><span>${r.cumpriu ? '✔' : '◇'} ${esc(r.atendente)}</span><b>${r.seguros}/${r.meta_seguro} · ${r.revisionais}/${r.meta_revisional}${r.meta_margem ? ' · ' + r.margens + '/' + r.meta_margem : ''}</b></div>`).join('')}`}
     <h4>Recompensa</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(ref.recompensa)}</b><small>paga junto com a premiação da meta · aparece na sua mesa ao concluir</small></div></div>
     ${feita ? '<div class="completa">✦ MISSÃO CUMPRIDA ✦</div>' : ''}
     <div class="acoes">${feita || eu.papel !== 'atendente' ? '<button data-q="fechar">Fechar</button>' : '<button data-q="aceitar">Aceitar missão</button><button class="sec" data-q="fechar">Depois</button>'}</div></div>`;
@@ -777,8 +794,8 @@ function marcadoresMissao() {
     const alca = new THREE.Mesh(new THREE.TorusGeometry(.28, .06, 8, 16, Math.PI), new THREE.MeshStandardMaterial({ color: '#78350f' }));
     alca.position.set(x * U - 2.3, 3.85 + .9, z * U + .3); scene.add(alca); marcaMissao.push(alca);
     const txt = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto('+' + brlM(r.recompensa).replace(/,00$/, ''), 160, 56, '800 34px Inter, sans-serif', '#fde68a', '#b45309'), transparent: true }));
-    txt.scale.set(3.6, 1.26, 1); txt.position.set(x * U - 2.3, 6.4, z * U + .3); scene.add(txt); marcaMissao.push(txt);
-    animar(t => { txt.position.y = 6.4 + Math.sin(t / 340 + i) * .25; mala.rotation.y = Math.sin(t / 900) * .25; });
+    txt.scale.set(6, 2.1, 1); txt.position.set(x * U - 2.3, 7.4, z * U + .3); scene.add(txt); marcaMissao.push(txt);
+    animar(t => { txt.position.y = 7.4 + Math.sin(t / 340 + i) * .25; mala.rotation.y = Math.sin(t / 900) * .25; });
   });
 }
 async function carregarMissoes() {
