@@ -203,7 +203,7 @@
     });
     const porDia = {};
     novos.forEach(c => { (porDia[c.inclusao] = porDia[c.inclusao] || []).push(c); });
-    Object.entries(porDia).forEach(([d, g]) => { if (g.length > 1 && new Set(g.map(c => c.parcela)).size > 1) add('medio', 'Vários contratos novos no mesmo dia', 'Mais de uma averbação nova na mesma data: verificar se o cliente reconhece todas (possível contratação não solicitada).', g.map(id), dBR(d)); });
+    Object.entries(porDia).forEach(([d, g]) => { if (g.length > 1 && d >= IN204) add('alto', 'Mais de um contrato no mesmo dia (após bloqueio automático)', 'Desde as novas regras de 2026, cada contratação bloqueia o benefício automaticamente e exige novo desbloqueio por biometria e anuência no Meu INSS. Dois ou mais contratos no mesmo dia são forte indício de contratação sem a participação do cliente. Pedir prova da anuência/biometria de cada um (ônus do banco).', g.map(id), dBR(d)); else if (g.length > 1 && new Set(g.map(c => c.parcela)).size > 1) add('medio', 'Vários contratos novos no mesmo dia', 'Mais de uma averbação nova na mesma data: verificar se o cliente reconhece todas (possível contratação não solicitada).', g.map(id), dBR(d)); });
 
     // 7. refinanciamento / portabilidade em sequência (giro de carteira)
     C.filter(c => c.tipo === 'excluido' && /refinanc|portab/i.test(c.motivoExcl)).forEach(c => {
@@ -221,6 +221,8 @@
       const mesmoDia = U.filter(c => c.inclusao && k.inclusao && Math.abs(new Date(c.inclusao) - new Date(k.inclusao)) <= 3 * 864e5);
       if (mesmoDia.length) add('alto', `Cartão ${k.t} contratado junto com empréstimo`, 'Cartão consignado averbado no mesmo dia (ou em até 3 dias) de um empréstimo: forte indício de venda casada — o cliente pediu empréstimo e recebeu também um cartão (CDC art. 39, I). Pedido de cancelamento, devolução em dobro dos descontos do cartão e dano moral.', mesmoDia.map(id), `${k.t} incluído em ${dBR(k.inclusao)}.`);
     });
+    // TCU Acórdão 1094/2026 (cautelar, fim de abr/2026): novas operações de RMC/RCC suspensas
+    cart.filter(k => k.inclusao && k.inclusao >= '2026-04-29').forEach(k => add('alto', `Cartão ${k.t} contratado com a modalidade suspensa`, 'Novas operações de cartão de crédito consignado (RMC) e cartão consignado de benefício (RCC) estão suspensas por medida cautelar do TCU (Acórdão 1094/2026), e a MP 1.355/2026 previu a extinção gradual desses cartões. Cartão averbado depois disso: contratação irregular — pedir nulidade, devolução integral dos descontos (Lei 15.327/2026) e dano moral.', [], `${k.t} incluído em ${dBR(k.inclusao)}.`));
     if (h.bpc && h.cartoes.RMC.length && h.cartoes.RCC.length) add('alto', 'BPC com RMC e RCC ao mesmo tempo', 'Para BPC (espécies 87/88) a margem de cartão é de 5% e o beneficiário pode optar por somente UMA modalidade (RMC ou RCC).', []);
     const desc = h.descontosCartao;
     if (desc.length >= 4) {
