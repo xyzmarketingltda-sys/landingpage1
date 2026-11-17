@@ -131,7 +131,9 @@ const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().repla
 $('#f-login').onsubmit = async e => {
   e.preventDefault();
   const u = $('#l-user').value.trim(), b = $('#l-btn'); b.disabled = true; $('#l-erro').textContent = '';
-  const email = u.includes('@') ? u.toLowerCase() : slug(u) + '@adv.xyzmarketing.com.br';
+  const APELIDO = { luis: 'luiz' };
+  const chave = APELIDO[slug(u)] || slug(u);
+  const email = u.includes('@') ? u.toLowerCase() : chave + '@adv.xyzmarketing.com.br';
   const { error } = await sb.auth.signInWithPassword({ email, password: $('#l-senha').value });
   b.disabled = false;
   if (error) return $('#l-erro').textContent = /invalid/i.test(error.message) ? 'Usuário ou senha incorretos.' : error.message;
