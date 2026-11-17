@@ -270,6 +270,7 @@ let tt;
 function toast(msg, ruim) { const t = $('#toast'); t.textContent = msg; t.className = ruim ? 'ruim' : ''; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 4000); }
 function traduz(e) {
   const m = (e && e.message) || String(e);
+  if (/Email logins are disabled|email provider/i.test(m)) return 'Login por e-mail desligado no Supabase. Ative o provedor Email (Authentication > Sign In / Providers > Email).';
   if (/Invalid login/i.test(m)) return 'E-mail ou senha incorretos.';
   if (/already registered/i.test(m)) return 'Este e-mail já tem cadastro.';
   if (/at least 6/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
