@@ -295,7 +295,8 @@
     const vSeg = valor(/(?:pr[êe]mio|seguro)[^R]{0,60}R\$\s?([\d.]+,\d{2})/i);
     if (seguro) R.alertas.push({ nivel: 'alto', titulo: 'Seguro prestamista no contrato' + (vSeg ? ` (${vSeg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})` : ''), tese: 'Seguro embutido no empréstimo: conferir se havia termo de adesão separado, com opção clara de recusa e livre escolha da seguradora. Sem isso, venda casada (CDC art. 39, I; STJ Tema 972) — restituição em dobro e dano moral.' });
     if (pacote) R.alertas.push({ nivel: 'alto', titulo: 'Pacote de benefícios / assistência / capitalização', tese: 'Produto adicional embutido no consignado: típico de venda casada (CDC art. 39, I). Pedir devolução em dobro.' });
-    if (tarifa) R.alertas.push({ nivel: 'medio', titulo: 'Tarifa de cadastro/abertura cobrada', tese: 'Verificar legalidade da tarifa (Res. CMN 3.919/2010; STJ Temas 618/620): só é válida no início do relacionamento e se prevista.' });
+    const vTar = (T.match(/tarifa de (?:cadastro|abertura)[^R\d]{0,20}(?:R\$\s*)?([\d.]+,\d{2})/i) || [])[1];
+    if (tarifa && (!vTar || Number(vTar.replace(/\./g, '').replace(',', '.')) > 0)) R.alertas.push({ nivel: 'medio', titulo: 'Tarifa de cadastro/abertura cobrada', tese: 'Verificar legalidade da tarifa (Res. CMN 3.919/2010; STJ Temas 618/620): só é válida no início do relacionamento e se prevista.' });
     if (tem(/cart[ãa]o de cr[ée]dito consignado|reserva de margem consign[áa]vel|\bRMC\b|\bRCC\b|cart[ãa]o benef[ií]cio/i)) R.alertas.push({ nivel: 'alto', titulo: 'Contrato de cartão consignado (RMC/RCC)', tese: 'Verificar se o cliente foi informado de que contratava CARTÃO e não empréstimo (dever de informação, CDC arts. 6º, III, e 52). Tese de conversão em empréstimo consignado e devolução em dobro.' });
     if (tem(/a rogo|testemunha/i)) R.alertas.push({ nivel: 'info', titulo: 'Contrato com assinatura a rogo / testemunhas', tese: 'Cliente possivelmente analfabeto: conferir se há assinatura a rogo E duas testemunhas identificadas (CC art. 595). Sem isso, o contrato é nulo.' });
     else if (!(icp || eletr || bio)) R.alertas.push({ nivel: 'medio', titulo: 'Se o cliente for analfabeto: falta assinatura a rogo e testemunhas', tese: 'Contrato com analfabeto exige assinatura a rogo e duas testemunhas (CC art. 595 — STJ). Perguntar ao cliente se sabe ler e escrever.' });
@@ -319,14 +320,20 @@
     while ((m = rot.exec(T))) {
       const ini = m.index, janela = T.slice(ini, ini + 170);
       // corta a janela no próximo rótulo de outra coisa (IOF, juros, CET, liberado, parcela, total)
-      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|total\s+(?:financiado|do\s+empr)|tarifa|TAC)\b/i);
+      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|total\s+(?:financiado|do\s+empr)|tarifa|TAC|l[íi]quido|creditad|quita[çc]|valor\s+(?:da|das|do)\s+(?:opera|parcel|princip))/i);
       const trecho = corte >= 0 ? janela.slice(0, m[0].length + corte) : janela;
-      if (/\bIOF\s*(?:do|da|de|sobre|s\/)?\s*(?:o\s+)?$/i.test(T.slice(Math.max(0, ini - 25), ini))) continue;         // "IOF do seguro" etc.
+      if (/\bIOF\s*(?:do|da|de|sobre|s\/)?\s*(?:o\s+)?$/i.test(T.slice(Math.max(0, ini - 25), ini))) continue;
+      const depois = T.slice(ini + m[0].length, ini + m[0].length + 60), antes2 = T.slice(Math.max(0, ini - 30), ini);
+      if (/^[^\d]{0,6}(,?\s*se (contratad|houver|aplic)|\s*n[ãa]o [ée] obrigat|\s*poder[áa]|\s*apartad|\s*para quita)/i.test(depois) || /(abatido o|cancelar.{0,20}|contratar)\s*$/i.test(antes2)) continue;
+      if (/\(\s*\)\s*SIM\s*\(\s*X\s*\)\s*N[ÃA]O/i.test(T.slice(ini, ini + 80))) continue;   // marcado "NÃO" no quadro         // "IOF do seguro" etc.
       let n; NUM.lastIndex = 0;
       while ((n = NUM.exec(trecho))) {
         const v = Number(n[1].replace(/\./g, '').replace(',', '.'));
         const antes = trecho.slice(Math.max(0, n.index - 18), n.index);
         if (/IOF|%|CET|juros/i.test(antes)) continue;
+        const meio = trecho.slice(m[0].length, n.index);
+        if (/\.\s+[A-ZÀ-Ú]|\b(declar|autoriz|poder|ser[áa]|caso|cl[áa]usula|termo)/i.test(meio) || meio.split(/\s+/).length > 9) break; // texto de cláusula, não valor
+        if (v === 0) break;                                        // valor zerado = não contratado
         if (v > 0) { achados.push({ v, trecho: trecho.slice(0, n.index + n[0].length).trim() }); break; }
       }
     }
@@ -342,6 +349,13 @@
     const vistos = new Set(), uniq = a => a.filter(x => { const k = x.v.toFixed(2); if (vistos.has(k)) return false; vistos.add(k); return true; });
     r.seguro = uniq(acharValores(T, ROT_SEGURO));
     r.pacote = uniq(acharValores(T, ROT_PACOTE));
+    // layout tipo Paraná Banco: rótulos num bloco e valores preenchidos depois ("15,06 X 95,43 ...")
+    if (!r.seguro.length && /Seguro Prestamista\*?\s*\(\s*X?\s*\)\s*SIM.{0,40}Valor do Seguro R\$/i.test(T)) {
+      const i = T.search(/Valor do Seguro R\$/i), bloco = T.slice(i, i + 900);
+      const mx = bloco.match(/\d,\d{2}\s+X\s+(\d{1,3}(?:\.\d{3})*,\d{2})/) || bloco.match(/\(\s*X\s*\)\s*SIM.{0,60}?R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})/i);
+      const v = mx ? Number(mx[1].replace(/\./g, '').replace(',', '.')) : 0;
+      if (v > 0) r.seguro.push({ v, trecho: 'Quadro "Seguro Prestamista (X) SIM" · valor ' + mx[1] + ' (conferir)' });
+    }
     r.totalSeguro = r.seguro.reduce((a, x) => a + x.v, 0); r.totalPacote = r.pacote.reduce((a, x) => a + x.v, 0);
     r.tem = r.totalSeguro > 0 || r.totalPacote > 0;
     return r;
