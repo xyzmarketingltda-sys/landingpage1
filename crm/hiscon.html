@@ -68,6 +68,20 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
   <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
     <b>📄 Solte HISCONs e contratos aqui ou clique para escolher</b><small>Pode mandar vários de uma vez (PDF)</small></label>
   <div id="erro" class="erro"></div>
+
+  <section class="vidro" style="margin-top:22px;padding:18px" id="lote">
+    <h2 style="font-size:18px">📦 Verificar seguro prestamista / pacote em lote</h2>
+    <p class="sub" style="margin:6px 0 12px">Jogue dezenas ou centenas de contratos (ou uma pasta inteira). O sistema lista quais têm <b>seguro prestamista</b> ou <b>pacote de benefícios</b> com valor acima de zero — IOF não conta. Tudo roda no seu computador, sem custo.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <label class="btn" style="display:inline-block">📄 Escolher contratos<input type="file" id="lote-arq" accept="application/pdf" multiple hidden></label>
+      <label class="btn sec" style="display:inline-block">📁 Escolher uma pasta inteira<input type="file" id="lote-pasta" webkitdirectory directory multiple hidden></label>
+      <button class="btn sec" id="lote-csv" hidden>⬇️ Baixar planilha (CSV)</button>
+      <button class="btn sec" id="lote-copiar" hidden>📋 Copiar lista dos que têm</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--suave)"><input type="checkbox" id="lote-so" checked> mostrar só os que têm seguro/pacote</label>
+    </div>
+    <div id="lote-prog" class="sub" style="margin-top:10px"></div>
+    <div class="tab" id="lote-tab" hidden><table><thead><tr><th>Arquivo</th><th>Cliente</th><th>CPF</th><th>Banco</th><th style="text-align:right">Seguro</th><th style="text-align:right">Pacote</th><th>Onde achou</th></tr></thead><tbody id="lote-lista"></tbody></table></div>
+  </section>
   <div id="saida"></div>
   <p class="aviso">⚖️ Análise automática de <b>indícios</b> a partir do HISCON, para triagem. Cada alerta precisa ser confirmado com o contrato e analisado pelo advogado antes de qualquer ação. Parâmetros usados: teto de juros 1,85% a.m. (empréstimo) e 2,46% a.m. (cartão), prazo máximo de 96 parcelas (108 a partir de 19/05/2026).</p>
 </main>
@@ -117,6 +131,50 @@ async function processar(arqs) {
     catch (e) { $('#erro').textContent = `${f.name}: ${e.message}`; console.error(e); }
   }
 }
+/* ---------- LOTE ---------- */
+let LOTE = [];
+const natural = (a, b) => a.arquivo.localeCompare(b.arquivo, 'pt-BR', { numeric: true, sensitivity: 'base' });
+$('#lote-arq').onchange = e => { lote([...e.target.files]); e.target.value = ''; };
+$('#lote-pasta').onchange = e => { lote([...e.target.files]); e.target.value = ''; };
+$('#lote-so').onchange = desenharLote;
+async function lote(arqs) {
+  const pdfs = arqs.filter(f => /\.pdf$/i.test(f.name)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
+  if (!pdfs.length) return $('#lote-prog').textContent = 'Nenhum PDF encontrado.';
+  LOTE = []; let k = 0;
+  for (const f of pdfs) {
+    k++; $('#lote-prog').textContent = `Lendo ${k} de ${pdfs.length}: ${f.name}…`;
+    try {
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
+      const r = detectarSeguro(await textoPdf(doc), f.webkitRelativePath || f.name); r.arquivo = f.name; r.pasta = (f.webkitRelativePath || '').split('/').slice(0, -1).join('/');
+      LOTE.push(r); doc.destroy();
+    } catch (e) { LOTE.push({ arquivo: f.name, erro: e.message, seguro: [], pacote: [], totalSeguro: 0, totalPacote: 0 }); }
+    if (k % 10 === 0) desenharLote();
+  }
+  const com = LOTE.filter(r => r.tem).length, img = LOTE.filter(r => r.imagem && !r.tem).length;
+  $('#lote-prog').innerHTML = `✅ ${LOTE.length} contratos lidos · <b style="color:#fca5a5">${com} com seguro/pacote</b> · ${LOTE.length - com - img} sem${img ? ` · <b>${img} são imagem (escaneados) — conferir à mão</b>` : ''}`;
+  desenharLote();
+}
+function desenharLote() {
+  const lista = LOTE.filter(r => !$('#lote-so').checked || r.tem || r.imagem || r.erro).sort(natural);
+  $('#lote-tab').hidden = !LOTE.length; $('#lote-csv').hidden = $('#lote-copiar').hidden = !LOTE.length;
+  $('#lote-lista').innerHTML = lista.map(r => `<tr${r.tem ? '' : ' class="exc"'}><td>${esc(r.arquivo)}${r.pasta ? `<br><small style="color:var(--suave)">${esc(r.pasta)}</small>` : ''}</td>
+    <td>${esc(r.nome || '')}</td><td>${esc(r.cpf || '')}</td><td>${esc(r.banco || '')}</td>
+    <td class="n" style="color:${r.totalSeguro ? '#fca5a5' : ''}">${r.totalSeguro ? brl(r.totalSeguro) : '—'}</td>
+    <td class="n" style="color:${r.totalPacote ? '#fca5a5' : ''}">${r.totalPacote ? brl(r.totalPacote) : '—'}</td>
+    <td style="white-space:normal;max-width:360px;font-size:11.5px;color:var(--suave)">${r.erro ? 'Erro: ' + esc(r.erro) : r.imagem && !r.tem ? '⚠️ PDF é imagem — abrir e conferir' : esc([...r.seguro, ...r.pacote].map(x => x.trecho).join(' … ').slice(0, 220))}</td></tr>`).join('')
+    || '<tr><td colspan="7" style="color:var(--suave)">Nenhum contrato com seguro/pacote.</td></tr>';
+}
+$('#lote-csv').onclick = () => {
+  const lin = [['Arquivo', 'Pasta', 'Cliente', 'CPF', 'Banco', 'Seguro', 'Pacote', 'Situação']].concat([...LOTE].sort(natural).map(r => [r.arquivo, r.pasta || '', r.nome || '', r.cpf || '', r.banco || '',
+    r.totalSeguro ? r.totalSeguro.toFixed(2).replace('.', ',') : '', r.totalPacote ? r.totalPacote.toFixed(2).replace('.', ',') : '', r.erro ? 'erro' : r.imagem ? 'imagem - conferir' : r.tem ? 'TEM' : 'não tem']));
+  const csv = '\ufeff' + lin.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'seguro_pacote_lote.csv'; a.click();
+};
+$('#lote-copiar').onclick = async e => {
+  const t = [...LOTE].filter(r => r.tem).sort(natural).map(r => `${r.arquivo} — ${r.banco || ''}${r.totalSeguro ? ' · seguro ' + brl(r.totalSeguro) : ''}${r.totalPacote ? ' · pacote ' + brl(r.totalPacote) : ''}`).join('\n');
+  await navigator.clipboard.writeText(t || 'Nenhum com seguro/pacote'); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar lista dos que têm', 2000);
+};
+
 function ligar(R) {
   const so = s => String(s || '').replace(/\W/g, '');
   for (const h of HISCONS) for (const c of h.contratos) {

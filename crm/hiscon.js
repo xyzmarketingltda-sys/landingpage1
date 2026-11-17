@@ -308,6 +308,45 @@
     return R;
   }
 
+  /* ===================== LOTE: seguro prestamista / pacote de benefícios ===================== */
+  // procura os rótulos e o valor em R$ logo depois; ignora IOF, taxas (%), valores zerados e cláusulas sem valor
+  const ROT_SEGURO = /(seguro\s+prestamista|prestamista|seguro\s+de\s+prote[çc][ãa]o\s+financeira|seguro\s+de\s+vida|pr[êe]mio\s+(?:do\s+)?seguro|valor\s+(?:do\s+)?seguro|seguro\s+(?:financiado|contratado)|\bseguro\b)/gi;
+  const ROT_PACOTE = /(pacote\s+de\s+benef[ií]cios|cesta\s+de\s+(?:servi[çc]os|benef[ií]cios)|assist[êe]ncia\s+(?:funeral|residencial|sa[úu]de|odontol[óo]gica|farm[áa]cia|24h)|clube\s+de\s+(?:benef[ií]cios|vantagens)|t[íi]tulo\s+de\s+capitaliza[çc][ãa]o|capitaliza[çc][ãa]o|plano\s+de\s+benef[ií]cios|benef[ií]cios?\s+adicionais)/gi;
+  const NUM = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2})(?!\s*%)/g;
+  function acharValores(T, rot) {
+    const achados = [];
+    let m; rot.lastIndex = 0;
+    while ((m = rot.exec(T))) {
+      const ini = m.index, janela = T.slice(ini, ini + 170);
+      // corta a janela no próximo rótulo de outra coisa (IOF, juros, CET, liberado, parcela, total)
+      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|total\s+(?:financiado|do\s+empr)|tarifa|TAC)\b/i);
+      const trecho = corte >= 0 ? janela.slice(0, m[0].length + corte) : janela;
+      if (/\bIOF\s*(?:do|da|de|sobre|s\/)?\s*(?:o\s+)?$/i.test(T.slice(Math.max(0, ini - 25), ini))) continue;         // "IOF do seguro" etc.
+      let n; NUM.lastIndex = 0;
+      while ((n = NUM.exec(trecho))) {
+        const v = Number(n[1].replace(/\./g, '').replace(',', '.'));
+        const antes = trecho.slice(Math.max(0, n.index - 18), n.index);
+        if (/IOF|%|CET|juros/i.test(antes)) continue;
+        if (v > 0) { achados.push({ v, trecho: trecho.slice(0, n.index + n[0].length).trim() }); break; }
+      }
+    }
+    return achados;
+  }
+  function detectarSeguro(texto, arquivo) {
+    const T = texto.replace(/\s+/g, ' ');
+    const r = { arquivo, imagem: T.replace(/\W/g, '').length < 60 };
+    r.cpf = (T.match(/(\d{3}\.\d{3}\.\d{3}-\d{2})/) || [])[1] || '';
+    r.nome = ((T.match(/(?:Nome(?: completo)?|Emitente|Cliente|Tomador|Contratante|Mutu[áa]rio)\s*[:\-]?\s*([A-ZÀ-Ú][A-ZÀ-Ú ]{6,60}?)(?=\s+(?:CPF|RG|Data|Nacionalidade|Estado|Endere|Sexo|N[ºo°]|\d))/) || [])[1] || '').trim();
+    const bm = T.match(/(BANCO [A-ZÀ-Ú0-9 .&]{2,30}?(?:S\.?\/?A\.?|LTDA))|(FACTA|C6|AGIBANK|PAN|BMG|MERCANTIL|PARAN[ÁA] BANCO|QI SOCIEDADE|BANRISUL|DAYCOVAL|SAFRA|INBURSA|PICPAY|PRESEN[ÇC]A|BRB|CREFISA|OL[ÉE]|ITA[ÚU]|BRADESCO|SANTANDER|CAIXA|BANCO DO BRASIL|PINE|SEGUE|FINANTO|QUALI)/i);
+    r.banco = bm ? (bm[1] || bm[2]).toUpperCase().replace(/\s+/g, ' ') : '';
+    const vistos = new Set(), uniq = a => a.filter(x => { const k = x.v.toFixed(2); if (vistos.has(k)) return false; vistos.add(k); return true; });
+    r.seguro = uniq(acharValores(T, ROT_SEGURO));
+    r.pacote = uniq(acharValores(T, ROT_PACOTE));
+    r.totalSeguro = r.seguro.reduce((a, x) => a + x.v, 0); r.totalPacote = r.pacote.reduce((a, x) => a + x.v, 0);
+    r.tem = r.totalSeguro > 0 || r.totalPacote > 0;
+    return r;
+  }
+  root.detectarSeguro = detectarSeguro;
   root.textoPdf = textoPdf; root.analisarContrato = analisarContrato;
   root.lerHiscon = lerHiscon; root.analisarHiscon = analisarHiscon;
   if (typeof module !== 'undefined') module.exports = { lerHiscon, analisarHiscon };

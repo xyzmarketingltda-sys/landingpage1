@@ -96,8 +96,8 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
 const scene = new THREE.Scene();
-const VIPX = 3;                     // largura da sala VIP (à direita)
-const centro = new THREE.Vector3((GX + VIPX) * U / 2, 0, GY * U / 2);
+const VIPX = 1;                     // largura do hall dos advogados (à direita)
+const centro = new THREE.Vector3((GX + VIPX * .5) * U / 2, 0, GY * U / 2);
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -500, 1000);
 camera.position.set(centro.x + 100, 92, centro.z + 100); camera.lookAt(centro.x, 8, centro.z);
 let S = 1, LARG = 1, ALT = 1, ZOOM = 1;
@@ -299,33 +299,22 @@ async function montarMoveis() {
   await montarSalaVip();
 }
 
-/* ---------- SALA VIP dos advogados (lounge de aeroporto) ---------- */
-const VIP_SEATS = [[7.75, 1.25, 90], [9.35, 1.25, -90], [8.55, .7, 0], [7.75, 2.05, 90], [9.35, 2.05, -90],
-                   [7.75, 4.25, 90], [9.35, 4.25, -90], [7.75, 5.05, 90], [9.35, 5.05, -90], [8.55, 5.6, 180]];
+/* ---------- HALL dos advogados (pequeno, ao lado do portal) ---------- */
+const VIP_SEATS = [[7.55, .75, -90], [7.55, 1.5, -90], [7.55, 2.25, -90]];
 async function montarSalaVip() {
-  const X0 = GX * U, X1 = (GX + VIPX) * U, Z1 = GY * U;
-  for (let x = GX; x < GX + VIPX; x++) for (let z = 0; z < GY; z++) por('floorFull', x + .5, z + .5, 0, { cor: '#6b5233' });
-  for (let x = GX; x < GX + VIPX; x++) por('wall', x + .5, -.025, 0, { cor: '#1c1530' });
-  // divisória de vidro com porta no corredor
+  const X0 = GX * U, X1 = (GX + VIPX) * U, Z1 = 3 * U;
+  for (let z = 0; z < 3; z++) por('floorFull', GX + .5, z + .5, 0, { cor: '#5b4a35' });
+  por('wall', GX + .5, -.025, 0, { cor: '#1c1530' });
   const vidro = { color: '#fde68a', transparent: true, opacity: .16, roughness: .05, metalness: .3, depthWrite: false }, ouro = { color: '#b8860b', metalness: .9, roughness: .25 };
-  const h = 10.5, pz = [CORREDOR * U - 5, CORREDOR * U + 5];
-  caixa3(.2, h, pz[0], '#fde68a', X0, 0, pz[0] / 2, vidro); caixa3(.2, h, Z1 - pz[1], '#fde68a', X0, 0, (pz[1] + Z1) / 2, vidro);
-  caixa3(.35, .35, Z1, '#b8860b', X0, h, Z1 / 2, ouro); for (const z of [.2, pz[0], pz[1], Z1 - .2]) caixa3(.35, h, .35, '#b8860b', X0, 0, z, ouro);
-  // faixas douradas de LED
-  const led = (x, y, z, sx, sz) => { const m = caixa3(sx, .25, sz, '#fbbf24', x, y, z, { emissive: '#f59e0b', emissiveIntensity: 2 }); animados.push(t => m.material.emissiveIntensity = 1.5 + Math.sin(t / 900) * .5); };
-  led((X0 + X1) / 2, ALT_PAREDE - .6, .45, X1 - X0, .15); led((X0 + X1) / 2, .4, .45, X1 - X0, .15);
-  // letreiro
-  const placa = new THREE.Mesh(new THREE.PlaneGeometry(13, 4.3), new THREE.MeshBasicMaterial({ map: texturaTexto('SALA VIP', 512, 168, '800 96px Inter, sans-serif', '#fff3c4', '#f59e0b'), transparent: true }));
+  const h = 10.5;
+  caixa3(.2, h, Z1 - 8, '#fde68a', X0, 0, (Z1 - 8) / 2, vidro);                 // divisória com passagem perto do corredor
+  caixa3(.35, .35, Z1, '#b8860b', X0, h, Z1 / 2, ouro); for (const z of [.2, Z1 - 8, Z1 - .2]) caixa3(.35, h, .35, '#b8860b', X0, 0, z, ouro);
+  const led = caixa3(X1 - X0, .25, .15, '#fbbf24', (X0 + X1) / 2, ALT_PAREDE - .6, .45, { emissive: '#f59e0b', emissiveIntensity: 2 });
+  animados.push(t => led.material.emissiveIntensity = 1.5 + Math.sin(t / 900) * .5);
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.6), new THREE.MeshBasicMaterial({ map: texturaTexto('HALL', 384, 124, '800 84px Inter, sans-serif', '#fff3c4', '#f59e0b'), transparent: true }));
   placa.position.set((X0 + X1) / 2, 9.4, .6); scene.add(placa);
-  // tapetes, mesas e poltronas
-  por('rugRound', 8.55, 1.6, 0, { cor: '#7c2d12', so: /carpet/i }); por('rugRound', 8.55, 4.65, 0, { cor: '#7c2d12', so: /carpet/i });
-  por('tableCoffeeGlass', 8.55, 1.65, 90); por('tableCoffeeGlass', 8.55, 4.65, 90);
   VIP_SEATS.forEach(([x, z, r]) => por('loungeChair', x, z, r, { cor: '#1f1b2e', so: /carpet/i }));
-  // bar de café e decoração
-  por('kitchenBar', 9.55, 3.1, -90); por('kitchenCoffeeMachine', 9.62, 3.1, -90, { y: 4.5 });
-  por('pottedPlant', 7.3, .3); por('pottedPlant', 9.7, .3); por('pottedPlant', 9.7, 5.75); por('lampRoundFloor', 7.3, 5.75);
-  por('plantSmall1', 8.55, 1.65, 0, { y: 2.3 }); por('plantSmall2', 8.55, 4.65, 0, { y: 2.3 });
-  const luz = new THREE.PointLight(0xfbbf24, 35, 45); luz.position.set((X0 + X1) / 2, 11, Z1 / 2); scene.add(luz);
+  por('pottedPlant', 7.75, 2.75);
 }
 
 /* ---------- bonecos voxel 3D (arte própria XYZ) ---------- */
@@ -526,7 +515,7 @@ function estadoDe(p) {
   return online.has(p.id) ? 'mesa' : 'fora';
 }
 function assentoDe(p, i) {
-  if (p.papel === 'advogado') { const k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); const [x, z, r] = VIP_SEATS[Math.max(0, k) % VIP_SEATS.length]; return [x, z]; }
+  if (p.papel === 'advogado') { let k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); k = Math.max(0, k); if (k < VIP_SEATS.length) return [VIP_SEATS[k][0] - .05, VIP_SEATS[k][1]]; return [7.15 + (k % 2) * .35, .55 + (k - 3) * .45]; }
   const idx = p.papel === 'admin' ? DESKS.length - 1 : i % (DESKS.length - 1);
   mesaDe[p.id] = idx;
   const [x, y] = DESKS[idx]; return p.papel === 'admin' ? [x - .25, y - .35] : [x, y - .4];
@@ -625,7 +614,7 @@ function quadro(agora) {
 function desenharLista() {
   $('#lista').innerHTML = equipe.filter(p => p.papel !== 'advogado' || online.has(p.id)).map(p => {
     const e = estadoDe(p), cls = e === 'mesa' ? 'on' : e === 'almoco' ? 'alm' : '';
-    const txt = p.papel === 'advogado' ? 'sala VIP' : e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
+    const txt = p.papel === 'advogado' ? 'no hall' : e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
     return `<div class="pessoa"><i class="${cls}"></i>${p.papel === 'advogado' ? 'Dr(a). ' : ''}${esc(p.nome)}${p.papel === 'admin' ? ' 👑' : p.papel === 'advogado' ? ' ⭐' : ''}<small>${txt}</small></div>`;
   }).join('');
 }
@@ -673,7 +662,7 @@ gl.addEventListener('mousemove', e => {
   if (!alvo || !alvo.p.foto_url) { card.hidden = true; gl.style.cursor = alvo ? 'pointer' : ''; return; }
   const [X, Y] = cabecaDe(alvo);
   card.querySelector('img').src = alvo.p.foto_url; card.querySelector('b').textContent = alvo.p.nome;
-  card.querySelector('small').textContent = alvo.p.papel === 'advogado' ? 'advogado parceiro · sala VIP' : alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? 'diretoria' : 'na mesa';
+  card.querySelector('small').textContent = alvo.p.papel === 'advogado' ? 'advogado parceiro · no hall' : alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? 'diretoria' : 'na mesa';
   card.style.left = (r.left + X) + 'px'; card.style.top = (r.top + Y - 30) + 'px'; card.hidden = false; gl.style.cursor = 'pointer';
 });
 gl.addEventListener('mouseleave', () => $('#foto-hover').hidden = true);
