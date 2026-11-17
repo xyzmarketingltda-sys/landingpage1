@@ -198,7 +198,36 @@ tbody tr:last-child td{border-bottom:0}
   background:radial-gradient(circle at 30% 30%,#7cc4ff,#0066ff 60%,#001a4d);box-shadow:0 10px 30px rgba(0,90,220,.6),0 0 30px rgba(30,144,255,.5);animation:flutuar 4s ease-in-out infinite}
 
 /* ATENDENTES */
+.is-admin [data-filtra]{cursor:pointer}.cm.filtro{outline:2px solid var(--ciano);box-shadow:0 0 18px rgba(0,229,255,.35)}
 .grade2{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
+#gestao{border-radius:var(--raio);padding:16px 18px;margin-bottom:16px}
+.g-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.g-top h3{font-size:15px}.g-top small{color:var(--suave);font-weight:400}
+.g-mes{display:flex;align-items:center;gap:8px}.g-mes b{min-width:120px;text-align:center;text-transform:capitalize}
+.g-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.g-kpi{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.g-kpi span{font-size:12px;color:var(--suave)}.g-kpi b{font-size:20px}.g-kpi small{font-size:11px;color:var(--suave)}
+#g-res-box.pos b{color:var(--verde)}#g-res-box.neg b{color:var(--vermelho)}
+.g-lanca{display:grid;grid-template-columns:auto 2fr 1fr 120px auto;gap:8px;align-items:center;margin-bottom:12px}
+.g-lanca b{font-size:13px;color:var(--roxo2)}
+.g-lanca input,.g-lanca select,.g-linha input,.g-linha select{padding:8px 10px}
+.g-abas{display:flex;gap:6px;flex-wrap:wrap}.g-abas .sel{border-color:var(--ciano);color:var(--ciano)}
+.g-painel{margin-top:12px}
+.g-linha{display:flex;gap:8px;margin-bottom:10px}.g-linha input{flex:1}
+.g-tab{max-height:420px;overflow:auto;border:1px solid var(--borda);border-radius:10px}
+.g-tab table{width:100%;border-collapse:collapse;font-size:13px}
+.g-tab th{position:sticky;top:0;background:#071430;text-align:left;padding:8px;font-size:12px;color:var(--suave);font-weight:600}
+.g-tab td{padding:7px 8px;border-top:1px solid rgba(30,144,255,.12)}
+.g-tab td.num{text-align:right;white-space:nowrap}
+.g-tab .x{background:none;border:0;color:var(--suave);cursor:pointer;font-size:14px}.g-tab .x:hover{color:var(--vermelho)}
+.g-tab input.ed,.g-tab select.ed{padding:5px 7px;font-size:13px;width:100%}
+.g-cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.g-cats span{background:var(--painel2);border:1px solid var(--borda);border-radius:99px;padding:4px 10px;font-size:12px}
+.g-barra{height:8px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;display:flex}
+.g-barra i{display:block;height:100%}
+.pill{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--borda);white-space:nowrap}
+.pill.ok{border-color:var(--verde);color:var(--verde)}.pill.no{border-color:var(--vermelho);color:var(--vermelho)}.pill.wait{border-color:var(--ouro);color:var(--ouro)}
+@media(max-width:820px){.g-kpis{grid-template-columns:1fr 1fr}.g-lanca{grid-template-columns:1fr 1fr}.g-lanca b{grid-column:1/-1}}
 .bloco{border-radius:var(--raio);padding:18px}
 .bloco h3{font-size:15px;margin-bottom:14px}
 .linha-at{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(30,144,255,.12);flex-wrap:wrap}
@@ -282,6 +311,48 @@ tbody tr:last-child td{border-bottom:0}
   <main>
     <!-- CLIENTES -->
     <div id="aba-clientes">
+      <!-- GESTÃO (só admin) -->
+      <section id="gestao" class="vidro" hidden>
+        <div class="g-top">
+          <h3>📊 Gestão XYZ <small>· só você vê isso</small></h3>
+          <div class="g-mes"><button class="btn sec peq" id="g-ant">‹</button><b id="g-mes-txt"></b><button class="btn sec peq" id="g-prox">›</button></div>
+        </div>
+        <div class="g-kpis">
+          <div class="g-kpi"><span>Comissões do mês</span><b id="g-com">–</b><small id="g-com-q"></small></div>
+          <div class="g-kpi"><span>Despesas do mês</span><b id="g-desp">–</b><small id="g-desp-q"></small></div>
+          <div class="g-kpi" id="g-res-box"><span>Resultado</span><b id="g-res">–</b><small>comissões − despesas</small></div>
+          <div class="g-kpi"><span>Processos</span><b id="g-proc">–</b><small id="g-proc-sub"></small></div>
+        </div>
+        <form class="g-lanca" id="g-form-desp">
+          <b>Lançar despesa</b>
+          <input id="gd-desc" placeholder="Descrição (ex.: Aluguel, Tráfego, Rina)" required>
+          <select id="gd-cat"><option>Salários</option><option>Aluguel</option><option>Contas</option><option>Tráfego/Marketing</option><option>Sistemas</option><option>Equipamentos</option><option>Outros</option></select>
+          <input id="gd-valor" placeholder="Valor R$" inputmode="decimal" required>
+          <button class="btn peq">Lançar no mês</button>
+        </form>
+        <div class="g-abas">
+          <button class="btn sec peq" data-g="proc">⚖️ Processos</button>
+          <button class="btn sec peq" data-g="desp">💸 Despesas do mês</button>
+          <button class="btn sec peq" data-g="com">💰 Comissões</button>
+          <button class="btn sec peq" data-g="hist">📈 Histórico mensal</button>
+        </div>
+        <div class="g-painel" id="gp-proc" hidden>
+          <div class="g-linha"><input id="gp-busca" placeholder="Buscar nome, nº do processo ou advogado"><button class="btn peq" id="gp-novo">+ Processo</button></div>
+          <div class="g-tab"><table><thead><tr><th>Cliente</th><th>Advogado</th><th>Nº do processo</th><th>Comissão</th><th>Status</th><th></th></tr></thead><tbody id="gp-lista"></tbody></table></div>
+        </div>
+        <div class="g-painel" id="gp-desp" hidden>
+          <div class="g-cats" id="gd-cats"></div>
+          <div class="g-tab"><table><thead><tr><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody id="gd-lista"></tbody></table></div>
+        </div>
+        <div class="g-painel" id="gp-com" hidden>
+          <div class="g-linha"><input id="gc-busca" placeholder="Buscar cliente ou CPF (todo o histórico)"><select id="gc-vend"><option value="">Todos os vendedores</option></select><select id="gc-escopo"><option value="mes">Só o mês</option><option value="tudo">Todo o histórico</option></select></div>
+          <div class="g-cats" id="gc-resumo"></div>
+          <div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Vendedor</th><th>Tipo</th><th>Banco</th><th>Advogado</th><th style="text-align:right">Valor</th><th style="text-align:right">Comissão</th><th>Situação</th></tr></thead><tbody id="gc-lista"></tbody></table></div>
+        </div>
+        <div class="g-painel" id="gp-hist" hidden>
+          <div class="g-tab"><table><thead><tr><th>Mês</th><th style="text-align:right">Comissões</th><th style="text-align:right">Despesas</th><th style="text-align:right">Resultado</th><th style="width:40%"></th></tr></thead><tbody id="gh-lista"></tbody></table></div>
+        </div>
+      </section>
       <div id="metas"></div>
       <div class="barra">
         <div class="busca"><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite e aguarde…"></div>
@@ -610,12 +681,167 @@ async function iniciar() {
   $('#f-at-box').hidden = !admin;
   $('#c-at-box').hidden = !admin;
   $$('.col-at').forEach(x => x.hidden = !admin);
-  if (admin) await carregarEquipe();
+  $('#gestao').hidden = !admin;
+  document.body.classList.toggle('is-admin', admin);
+  if (admin) { await carregarEquipe(); iniciarGestao(); }
   iniciarFlutuante();
   try { iniciarCardEsc(); } catch (e) {}
   carregarAdvogados();
   abrirAba('clientes');
 }
+
+/* ---------- gestão (admin) ---------- */
+const G = { mes: null, aba: null, resumo: [] };
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const mesIso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
+const mesNome = iso => { const [a, m] = iso.split('-'); return MESES[+m - 1] + ' ' + a; };
+const mesCurto = iso => { const [a, m] = iso.split('-'); return MESES[+m - 1].slice(0, 3) + '/' + a.slice(2); };
+const numBR = t => Number(String(t).replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+function pillSit(s) {
+  if (!s) return '';
+  const cls = /não aprovado/i.test(s) ? 'no' : /pago/i.test(s) ? 'ok' : /aprovado|receber/i.test(s) ? 'wait' : '';
+  return `<span class="pill ${cls}" title="${esc(s)}">${esc(s.length > 34 ? s.slice(0, 32) + '…' : s)}</span>`;
+}
+function iniciarGestao() {
+  if (!G.mes) { const h = new Date(); G.mes = mesIso(new Date(h.getFullYear(), h.getMonth(), 1)); }
+  carregarGestao();
+}
+function mudaMes(n) { const [a, m] = G.mes.split('-').map(Number); G.mes = mesIso(new Date(a, m - 1 + n, 1)); carregarGestao(); }
+$('#g-ant').onclick = () => mudaMes(-1);
+$('#g-prox').onclick = () => mudaMes(1);
+$$('.g-abas button').forEach(b => b.onclick = () => {
+  G.aba = G.aba === b.dataset.g ? null : b.dataset.g;
+  $$('.g-abas button').forEach(x => x.classList.toggle('sel', x.dataset.g === G.aba));
+  ['proc', 'desp', 'com', 'hist'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
+  carregarPainel();
+});
+async function carregarGestao() {
+  $('#g-mes-txt').textContent = mesNome(G.mes);
+  const [{ data: r }, { count: np }, { count: na }] = await Promise.all([
+    sb.rpc('gestao_resumo'),
+    sb.from('processos').select('id', { count: 'exact', head: true }),
+    sb.from('processos').select('id', { count: 'exact', head: true }).eq('status', 'Em andamento')
+  ]);
+  G.resumo = r || [];
+  const x = G.resumo.find(l => l.mes === G.mes) || { comissoes: 0, despesas: 0, qtd_com: 0, qtd_desp: 0 };
+  const res = Number(x.comissoes) - Number(x.despesas);
+  $('#g-com').textContent = brl(x.comissoes); $('#g-com-q').textContent = x.qtd_com + ' lançamentos';
+  $('#g-desp').textContent = brl(x.despesas); $('#g-desp-q').textContent = x.qtd_desp + ' itens';
+  $('#g-res').textContent = brl(res); $('#g-res-box').className = 'g-kpi ' + (res >= 0 ? 'pos' : 'neg');
+  $('#g-proc').textContent = np ?? 0; $('#g-proc-sub').textContent = (na ?? 0) + ' em andamento';
+  carregarPainel();
+}
+function carregarPainel() {
+  if (G.aba === 'proc') carregarProcessos();
+  if (G.aba === 'desp') carregarDespesas();
+  if (G.aba === 'com') carregarComissoes();
+  if (G.aba === 'hist') desenharHistorico();
+}
+$('#g-form-desp').onsubmit = async e => {
+  e.preventDefault();
+  const valor = numBR($('#gd-valor').value);
+  if (!(valor > 0)) return alert('Valor inválido.');
+  const { error } = await sb.from('despesas').insert({ mes_ref: G.mes, descricao: $('#gd-desc').value.trim(), categoria: $('#gd-cat').value, valor });
+  if (error) return alert(traduz(error));
+  $('#gd-desc').value = ''; $('#gd-valor').value = '';
+  if (G.aba !== 'desp') $$('.g-abas button[data-g="desp"]')[0].click(); else carregarGestao();
+  carregarGestao();
+};
+async function carregarDespesas() {
+  const { data } = await sb.from('despesas').select('*').eq('mes_ref', G.mes).order('valor', { ascending: false });
+  const cats = {};
+  (data || []).forEach(d => cats[d.categoria || 'Outros'] = (cats[d.categoria || 'Outros'] || 0) + Number(d.valor));
+  $('#gd-cats').innerHTML = Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<span>${esc(c)}: <b>${brl(v)}</b></span>`).join('');
+  $('#gd-lista').innerHTML = (data || []).map(d => `<tr><td>${esc(d.descricao)}</td><td>${esc(d.categoria || '')}</td><td class="num">${brl(d.valor)}</td>
+    <td><button class="x" title="Apagar" data-del="${d.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--suave)">Nenhuma despesa lançada neste mês.</td></tr>';
+  $$('#gd-lista [data-del]').forEach(b => b.onclick = async () => {
+    if (!confirm('Apagar esta despesa?')) return;
+    const { error } = await sb.from('despesas').delete().eq('id', b.dataset.del);
+    if (error) return alert(traduz(error));
+    carregarGestao();
+  });
+}
+let tgp; $('#gp-busca').oninput = () => { clearTimeout(tgp); tgp = setTimeout(carregarProcessos, 300); };
+async function carregarProcessos() {
+  let q = sb.from('processos').select('*').order('nome');
+  const t = $('#gp-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
+  if (t) q = q.or(`nome.ilike.*${t}*,numero.ilike.*${t}*,advogado.ilike.*${t}*`);
+  const { data } = await q;
+  const st = ['Em andamento', 'Ganho', 'Acordo', 'Pago', 'Perdido', 'Arquivado'];
+  $('#gp-lista').innerHTML = (data || []).map(p => `<tr data-id="${p.id}">
+    <td><input class="ed" data-f="nome" value="${esc(p.nome)}"></td>
+    <td><input class="ed" data-f="advogado" value="${esc(p.advogado || '')}" style="max-width:120px"></td>
+    <td><input class="ed" data-f="numero" value="${esc(p.numero || '')}"></td>
+    <td><input class="ed" data-f="comissao_pct" value="${p.comissao_pct ?? ''}" style="max-width:70px" title="% de comissão"></td>
+    <td><select class="ed" data-f="status">${st.map(s => `<option${s === p.status ? ' selected' : ''}>${s}</option>`).join('')}</select></td>
+    <td><button class="x" title="Apagar" data-del="${p.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="6" style="color:var(--suave)">Nenhum processo.</td></tr>';
+  $$('#gp-lista .ed').forEach(i => i.onchange = async () => {
+    const id = i.closest('tr').dataset.id, f = i.dataset.f;
+    let v = i.value.trim(); if (f === 'comissao_pct') v = v === '' ? null : numBR(v);
+    const { error } = await sb.from('processos').update({ [f]: v, atualizado_em: new Date().toISOString() }).eq('id', id);
+    i.style.borderColor = error ? 'var(--vermelho)' : 'var(--verde)';
+    if (error) alert(traduz(error)); else if (f === 'status') carregarGestao();
+  });
+  $$('#gp-lista [data-del]').forEach(b => b.onclick = async () => {
+    if (!confirm('Apagar este processo?')) return;
+    const { error } = await sb.from('processos').delete().eq('id', b.dataset.del);
+    if (error) return alert(traduz(error)); carregarGestao();
+  });
+}
+$('#gp-novo').onclick = async () => {
+  const nome = prompt('Nome do cliente do processo:'); if (!nome) return;
+  const numero = prompt('Número do processo:') || null;
+  const advogado = prompt('Advogado(a):') || null;
+  const pct = prompt('Comissão (%):', '5');
+  const { error } = await sb.from('processos').insert({ nome: nome.trim(), numero, advogado, comissao_pct: pct ? numBR(pct) : null });
+  if (error) return alert(traduz(error)); carregarGestao();
+};
+let tgc; $('#gc-busca').oninput = () => { clearTimeout(tgc); tgc = setTimeout(carregarComissoes, 350); };
+$('#gc-vend').onchange = $('#gc-escopo').onchange = () => carregarComissoes();
+async function carregarComissoes() {
+  if ($('#gc-vend').options.length < 2) {
+    ['RINA', 'JULIA', 'NAIRA', 'KAUANY', 'MATHEUS', 'ARLETE', 'ANGELA', 'LUCAS'].forEach(v => $('#gc-vend').add(new Option(v[0] + v.slice(1).toLowerCase(), v)));
+    $('#gc-vend').add(new Option('Sem vendedor', '-'));
+  }
+  let q = sb.from('comissoes').select('*').order('data_fechamento', { ascending: false, nullsFirst: false }).order('id').limit(1000);
+  const t = $('#gc-busca').value.replace(/[,()*%\\"]/g, ' ').trim(), dig = so(t);
+  if (t) q = q.or([/[a-zA-ZÀ-ú]/.test(t) ? `cliente.ilike.*${t}*` : null, dig.length >= 3 ? `cpf.ilike.*${dig}*` : null].filter(Boolean).join(','));
+  if ($('#gc-escopo').value === 'mes' && !t) q = q.eq('mes_ref', G.mes);
+  const v = $('#gc-vend').value; if (v === '-') q = q.is('vendedor', null); else if (v) q = q.eq('vendedor', v);
+  const { data } = await q;
+  const porV = {};
+  (data || []).forEach(c => { const k = c.vendedor || 'Sem vendedor'; porV[k] = porV[k] || { n: 0, s: 0, cpf: new Set() }; porV[k].n++; porV[k].s += Number(c.comissao || 0); if (c.cpf) porV[k].cpf.add(c.cpf); });
+  $('#gc-resumo').innerHTML = Object.entries(porV).sort((a, b) => b[1].s - a[1].s)
+    .map(([k, o]) => `<span>${esc(k)}: <b>${brl(o.s)}</b> · ${o.cpf.size} clientes</span>`).join('') +
+    `<span>Total: <b>${brl((data || []).reduce((a, c) => a + Number(c.comissao || 0), 0))}</b>${(data || []).length >= 1000 ? ' (primeiros 1000)' : ''}</span>`;
+  $('#gc-lista').innerHTML = (data || []).map(c => `<tr><td>${esc(c.cliente)}${c.cliente_id ? ' <span class="pill" title="Está no CRM">CRM</span>' : ''}</td>
+    <td>${esc(fmtCPF(c.cpf))}</td><td>${esc(c.vendedor || '–')}</td><td>${esc(c.tipo || '')}</td><td>${esc(c.banco || '')}</td><td>${esc(c.advogado || '')}</td>
+    <td class="num">${c.valor != null ? brl(c.valor) : ''}</td><td class="num">${c.comissao != null ? brl(c.comissao) : ''}</td><td>${pillSit(c.situacao)}</td></tr>`).join('')
+    || '<tr><td colspan="9" style="color:var(--suave)">Nada encontrado.</td></tr>';
+}
+function desenharHistorico() {
+  const max = Math.max(1, ...G.resumo.map(r => Math.max(Number(r.comissoes), Number(r.despesas))));
+  $('#gh-lista').innerHTML = G.resumo.map(r => {
+    const c = Number(r.comissoes), d = Number(r.despesas), res = c - d;
+    return `<tr><td>${mesCurto(r.mes)}</td><td class="num">${brl(c)}</td><td class="num">${brl(d)}</td>
+      <td class="num" style="color:${res >= 0 ? 'var(--verde)' : 'var(--vermelho)'}">${brl(res)}</td>
+      <td><div class="g-barra" title="azul = comissões · vermelho = despesas"><i style="width:${c / max * 100}%;background:var(--ciano)"></i></div>
+      <div class="g-barra" style="margin-top:3px"><i style="width:${d / max * 100}%;background:var(--vermelho)"></i></div></td></tr>`;
+  }).join('');
+}
+
+/* clique na cara do atendente = filtra os clientes dele (admin) */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-filtra]');
+  if (!el || !eu || eu.papel !== 'admin') return;
+  const id = el.dataset.filtra, sel = $('#f-at');
+  sel.value = sel.value === id ? '' : id;
+  abrirAba('clientes');
+  $$('[data-filtra]').forEach(x => x.classList.toggle('filtro', x.dataset.filtra === sel.value));
+  const nome = sel.value ? sel.selectedOptions[0]?.textContent : '';
+  toast(nome ? `Mostrando só os clientes de ${nome} (clique de novo para ver todos)` : 'Mostrando todos os clientes');
+  document.querySelector('.barra')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
 /* ---------- abas ---------- */
 $$('nav button, .rodape button').forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
@@ -822,7 +1048,7 @@ async function carregarMetas() {
         <div class="ganho"><small>Prêmios destravados</small><div class="${premios ? 'ouro' : ''}">${brl0(premios)}</div></div></div>
       <div class="equipe-metas">${data.length ? data.map(r => {
         const f = FAIXAS[r.tipo], n = Number(r.vendas), nv = f.filter(x => n >= x).length, prox = f[nv];
-        return `<div class="cm ${nv ? 'bateu' : ''}"><div class="cm-top">${avatar(r.atendente, r.foto_url)}
+        return `<div class="cm ${nv ? 'bateu' : ''} ${$('#f-at').value === r.id ? 'filtro' : ''}" data-filtra="${r.id}" title="Clique para ver só os clientes de ${esc(r.atendente)}"><div class="cm-top">${avatar(r.atendente, r.foto_url)}
           <div><b>${esc(r.atendente)}</b><small><span class="tag-tipo">${TIPO_NOME[r.tipo]}</span></small></div><div class="n">${n}</div></div>
           ${trilha(n, f)}
           <div class="cm-pe"><span>${prox ? `faltam ${prox - n} p/ ${brl0(PREMIOS[nv])}` : 'todas batidas 🏆'}</span><span class="${nv ? 'ouro' : ''}">${nv ? brl0(PREMIOS[nv - 1]) : '—'}</span></div></div>`;
@@ -915,13 +1141,13 @@ async function atualizarFlutuante() {
   const top = data.slice(0, 3), ordem = [1, 0, 2];
   $('#flut-podio').innerHTML = top.length ? ordem.map(i => {
     const r = top[i]; if (!r) return '<div></div>';
-    return `<div class="lugar p${i + 1}">${i === 0 ? '<span class="coroa">👑</span>' : ''}
+    return `<div class="lugar p${i + 1}" data-filtra="${r.id}">${i === 0 ? '<span class="coroa">👑</span>' : ''}
       ${avatar(r.atendente, r.foto_url)}
       <div class="n">${esc(r.atendente.split(' ')[0])}</div><div class="q">${plural(r.clientes)}</div>
       <div class="degrau">${i + 1}º</div></div>`;
   }).join('') : '<div style="grid-column:1/-1;text-align:center;color:var(--suave);font-size:13px">Cadastre atendentes para ver o pódio</div>';
   $('#flut-lista').innerHTML = data.slice(3, 7).map((r, i) => `
-    <div class="${r.id === eu.id ? 'eu' : ''}"><span style="width:18px;color:var(--suave)">${i + 4}º</span>${avatar(r.atendente, r.foto_url)}<span>${esc(r.atendente)}</span><b>${r.clientes}</b></div>`).join('');
+    <div class="${r.id === eu.id ? 'eu' : ''}" data-filtra="${r.id}"><span style="width:18px;color:var(--suave)">${i + 4}º</span>${avatar(r.atendente, r.foto_url)}<span>${esc(r.atendente)}</span><b>${r.clientes}</b></div>`).join('');
 }
 
 /* ---------- atendentes (admin) ---------- */
