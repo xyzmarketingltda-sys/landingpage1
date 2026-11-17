@@ -144,6 +144,12 @@
 
   /* ===================== REGRAS (teses) ===================== */
   const TETO_JUROS = 1.85, TETO_CARTAO = 2.46;      // CNPS, vigentes em 2026
+  // histórico do teto do CNPS (empréstimo) — data de vigência → teto % a.m. (10 dias de folga p/ averbação)
+  const TETOS = [['2020-01-01', 2.14], ['2023-03-28', 1.97], ['2023-08-25', 1.91], ['2023-10-23', 1.84], ['2023-12-04', 1.80], ['2024-01-11', 1.76],
+    ['2024-02-28', 1.72], ['2024-04-24', 1.68], ['2024-05-27', 1.66], ['2025-01-09', 1.80], ['2025-03-25', 1.85]];
+  const tetoEm = d => { if (!d || d < TETOS[0][0]) return null; let t = null; for (const [ini, v] of TETOS) { const lim = new Date(new Date(ini).getTime() + 10 * 864e5).toISOString().slice(0, 10); if (d >= lim) t = v; else if (d >= ini && t == null) t = v; } return t; };
+  const ESPECIES_VEDADAS = { '9': 'complemento acidente do trabalho rural', '10': 'auxílio-doença acidentário rural', '13': 'auxílio-doença rural', '15': 'auxílio-reclusão rural', '25': 'auxílio-reclusão', '31': 'auxílio por incapacidade temporária (auxílio-doença)', '35': 'auxílio-doença ex-combatente', '36': 'auxílio-acidente previdenciário', '39': 'auxílio-invalidez estudante', '47': 'abono de permanência', '48': 'abono de permanência', '50': 'auxílio-doença (plano básico)', '53': 'auxílio-reclusão (plano básico)', '61': 'auxílio-natalidade', '62': 'auxílio-funeral', '63': 'auxílio-funeral rural', '64': 'auxílio-funeral', '91': 'auxílio-doença acidentário', '94': 'auxílio-acidente' };
+  const BANCOS_TERMO = /caixa|inter\b|077|facta|935|cobuccio|picpay|380|inbursa|012 /i;
   const IN204 = '2026-05-19';                        // prazo máx. 108x + biometria obrigatória
   const IN190 = '2025-08-27';                        // volta da autorização judicial p/ representante de incapaz
   const fmt = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -154,6 +160,12 @@
   function analisarHiscon(h) {
     const A = [], add = (nivel, titulo, tese, contratos, detalhe) => A.push({ nivel, titulo, tese, contratos: contratos || [], detalhe: detalhe || '' });
     const C = h.contratos, vistos = new Set(), U = C.filter(c => { const k = c.contrato + '|' + c.emprestado; if (vistos.has(k)) return false; vistos.add(k); return true; }), ativos = C.filter(c => c.tipo === 'ativo'), novos = C.filter(c => /nova/i.test(c.origem));
+
+    // 0. espécie que não admite consignado (IN 138, Anexo II)
+    const esp = String(Number(h.especie || 0));
+    if (ESPECIES_VEDADAS[esp] && C.length) A.unshift({ nivel: 'alto', titulo: `⚠️ Benefício que não admite consignado (espécie ${esp})`, tese: `A espécie ${esp} — ${ESPECIES_VEDADAS[esp]} — está no Anexo II da IN PRES/INSS 138/2022 (espécies não permitidas). Nenhum empréstimo ou cartão poderia ter sido averbado: nulidade de todos os contratos, devolução em dobro e dano moral.`, contratos: C.map(id), detalhe: `${C.length} contrato(s) averbado(s) em benefício não elegível.` });
+    // carência acima do permitido (até 90 dias adicionais ao prazo normal)
+    U.forEach(c => { if (c.inclusao && c.primeiro) { const d = Math.round((new Date(c.primeiro) - new Date(c.inclusao)) / 864e5); if (d > 150) add('medio', 'Carência longa antes da 1ª parcela', 'A carência permitida é de até 90 dias além do prazo normal do primeiro desconto. Carência maior faz os juros correrem sem pagamento e aumenta a dívida — verificar se foi informada e pedida pelo cliente.', [id(c)], `${d} dias entre a inclusão (${dBR(c.inclusao)}) e o 1º desconto (${dBR(c.primeiro)}).`); } });
 
     // 1. representante legal / incapaz
     if (h.representante) {
@@ -175,7 +187,7 @@
     U.forEach(c => {
       if (c.emprestado && c.liberado > 0) {
         const dif = c.emprestado - c.liberado - (c.iof || 0) - (c.pago || 0);
-        if (dif > 20) add('alto', 'Valor financiado maior que o liberado (possível seguro/tarifa embutida)', 'Diferença entre valor emprestado e (liberado + IOF + dívida paga) indica cobrança embutida — típico de seguro prestamista ou "pacote de benefícios" (venda casada, CDC art. 39, I; Tema 972 STJ). Pedir o contrato para confirmar.', [id(c)], `Diferença de ${fmt(dif)} (${(dif / c.emprestado * 100).toFixed(1)}% do contrato).`);
+        if (dif > 20) add('alto', 'Valor financiado maior que o liberado (possível seguro/tarifa embutida)', 'Diferença entre valor emprestado e (liberado + IOF + dívida paga) indica cobrança embutida — típico de seguro prestamista ou "pacote de benefícios". No consignado INSS isso é vedado: a IN PRES/INSS 138/2022 (art. 12, V) proíbe vincular seguro ou outro produto à operação, além da venda casada (CDC art. 39, I; Tema 972 STJ). Pedir o contrato para confirmar.' + (BANCOS_TERMO.test(c.banco || '') ? ' ⭐ Este banco assinou Termo de Compromisso com o INSS para suspender o seguro prestamista e restituir os valores cobrados — reforça muito o pedido.' : ''), [id(c)], `Diferença de ${fmt(dif)} (${(dif / c.emprestado * 100).toFixed(1)}% do contrato).`);
       }
       if (c.cetM && c.jurosM && c.cetM - c.jurosM >= 0.25) add('medio', 'CET bem acima dos juros', 'CET muito maior que a taxa de juros sugere encargos embutidos (seguro, tarifa). Reforça a análise de seguro prestamista/venda casada.', [id(c)], `Juros ${c.jurosM}% a.m. x CET ${c.cetM}% a.m.`);
     });
@@ -186,11 +198,11 @@
       const dias = c.inclusao && c.primeiro ? Math.max(30, (new Date(c.primeiro) - new Date(c.inclusao)) / 864e5) : 30;
       const r = taxaImplicita(c.emprestado - (c.iof || 0), c.parcela, c.parcelas, dias);
       if (r != null && c.cetM && r - c.cetM > 0.15) add('alto', 'Parcela maior do que a taxa informada permite', 'Recalculando pela parcela, prazo e valor financiado, a taxa real fica acima da taxa/CET informados — indica encargo oculto (seguro, tarifa) ou cálculo irregular. Cabe revisão e devolução da diferença em dobro (CDC art. 42).', [id(c)], `Taxa real ≈ ${r.toFixed(2)}% a.m. x CET informado ${c.cetM}% a.m.`);
-      if (r != null && r > TETO_JUROS + 0.15 && c.inclusao >= '2025-01-01' && !(c.jurosM > TETO_JUROS)) add('alto', 'Taxa real acima do teto do INSS', `Pela parcela e prazo, a taxa efetiva passa do teto de ${TETO_JUROS}% a.m.`, [id(c)], `≈ ${r.toFixed(2)}% a.m.`);
+      { const t = tetoEm(c.inclusao); if (r != null && t && r > t + 0.15 && !(c.jurosM > t)) add('alto', 'Taxa real acima do teto do INSS', `Pela parcela e prazo, a taxa efetiva passa do teto do CNPS vigente na contratação (${t}% a.m.).`, [id(c)], `≈ ${r.toFixed(2)}% a.m. em ${dBR(c.inclusao)} (teto ${t}%).`); }
     });
 
     // 4. juros acima do teto
-    U.forEach(c => { if (c.jurosM > TETO_JUROS + 0.001 && c.inclusao >= '2025-01-01') add('alto', 'Juros acima do teto do INSS', `Teto do CNPS para empréstimo consignado: ${TETO_JUROS}% a.m. Juros acima do teto: revisão/restituição do excedente.`, [id(c)], `${c.jurosM}% a.m. (incluído em ${dBR(c.inclusao)}).`); });
+    U.forEach(c => { const t = tetoEm(c.inclusao); if (t && c.jurosM > t + 0.001) add('alto', 'Juros acima do teto do INSS na data da contratação', `O teto do CNPS muda com o tempo; na data deste contrato era ${t}% a.m. Juros acima do teto vigente: revisão e restituição em dobro do excedente.`, [id(c)], `${c.jurosM}% a.m. em ${dBR(c.inclusao)} — teto da época ${t}% a.m.`); });
 
     // 5. prazo acima do permitido
     U.forEach(c => { const max = c.inclusao && c.inclusao >= IN204 ? 108 : 96; if (c.parcelas > max) add('alto', `Prazo acima do máximo (${max} parcelas)`, 'Número de parcelas acima do limite normativo vigente na data da contratação.', [id(c)], `${c.parcelas} parcelas em ${dBR(c.inclusao)}.`); });
