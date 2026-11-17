@@ -294,6 +294,13 @@ tbody tr:last-child td{border-bottom:0}
 .missao-linha small{color:var(--suave)}
 .missao-linha .v{font-weight:800;font-size:17px}
 .cm .missao-mini{display:block;margin-top:6px;font-size:11px;color:#fde68a}
+
+.docs-drop{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1.5px dashed rgba(0,229,255,.35);border-radius:12px;background:rgba(0,229,255,.04);font-size:13px;color:var(--suave);transition:.2s}
+.docs-drop.sobre{border-color:var(--ciano);background:rgba(0,229,255,.12);color:var(--texto)}
+.docs-lista{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.docs-lista span{font-size:12px;padding:4px 8px;border-radius:99px;border:1px solid var(--borda);background:rgba(255,255,255,.03);display:inline-flex;gap:6px;align-items:center}
+.docs-lista span.ok{border-color:rgba(34,197,94,.5);color:#86efac}
+.docs-lista button{background:none;border:0;color:var(--suave);cursor:pointer;font-size:12px}
 </style>
 </head>
 <body>
@@ -509,6 +516,9 @@ tbody tr:last-child td{border-bottom:0}
         </div>
         <p id="c-inss-info">Guardada com criptografia. Só você e o administrador podem ver, e cada visualização fica registrada.</p>
       </div>
+      <div class="inteiro"><label>Documentos do cliente <small style="color:var(--suave);font-weight:400">(opcional — vão sozinhos para a pasta do advogado no Drive)</small></label>
+        <div id="c-docs-drop" class="docs-drop"><span>📎 Arraste aqui RG, comprovante, extrato, contrato…</span><button type="button" class="btn sec peq" id="c-docs-mais">+ Adicionar</button><input type="file" id="c-docs-arq" multiple hidden></div>
+        <div id="c-docs-lista" class="docs-lista"></div></div>
       <div class="inteiro"><label>Observações</label><textarea id="c-obs"></textarea></div>
       <div class="inteiro" id="c-pasta-box" hidden><label>Pasta do cliente no Google Drive (o advogado vê esse link)</label><input id="c-pasta" placeholder="https://drive.google.com/drive/folders/..."></div>
       <div class="inteiro" id="c-stadv" hidden></div>
@@ -996,6 +1006,43 @@ $('#c-inss-ver').onclick = async () => {
   i.type = 'text'; $('#c-inss-ver').textContent = 'Ocultar';
 };
 
+
+/* ---------- documentos do cliente (vão para o Drive pelo robô) ---------- */
+let docsNovos = [];
+function desenharDocs(existentes) {
+  const ex = (existentes || []).map(d => `<span class="${d.drive_em ? 'ok' : ''}" title="${d.drive_em ? 'Já está no Drive' : 'Aguardando o robô levar para o Drive (até 10 min)'}">${d.drive_em ? '✅' : '⏳'} ${esc(d.nome)}</span>`).join('');
+  const nv = docsNovos.map((f, i) => `<span>📄 ${esc(f.name)} <button type="button" data-tira="${i}" title="Tirar">✕</button></span>`).join('');
+  $('#c-docs-lista').innerHTML = ex + nv;
+  $$('#c-docs-lista [data-tira]').forEach(b => b.onclick = () => { docsNovos.splice(+b.dataset.tira, 1); desenharDocs(existentes); });
+  $('#c-docs-lista').dataset.ex = JSON.stringify(existentes || []);
+}
+function addDocs(lista) { for (const f of lista) if (f.size <= 25 * 1024 * 1024) docsNovos.push(f); else toast(f.name + ' passa de 25 MB.', true); desenharDocs(JSON.parse($('#c-docs-lista').dataset.ex || '[]')); }
+$('#c-docs-mais').onclick = () => $('#c-docs-arq').click();
+$('#c-docs-arq').onchange = e => { addDocs(e.target.files); e.target.value = ''; };
+const dz = $('#c-docs-drop');
+['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('sobre'); }));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('sobre'); }));
+dz.addEventListener('drop', e => addDocs(e.dataTransfer.files));
+async function carregarDocsCliente(id) {
+  docsNovos = []; desenharDocs([]);
+  if (!id) return;
+  const { data } = await sb.from('cliente_docs').select('nome, drive_em').eq('cliente_id', id).order('id');
+  desenharDocs(data || []);
+}
+async function enviarDocs(id) {
+  let ok = 0;
+  for (const f of docsNovos) {
+    const nome = f.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.\-]+/g, '_');
+    const caminho = id + '/' + Date.now() + '-' + nome;
+    const up = await sb.storage.from('docs').upload(caminho, f, { contentType: f.type || 'application/octet-stream' });
+    if (up.error) { toast('Falhou ao enviar ' + f.name + ': ' + up.error.message, true); continue; }
+    const { error } = await sb.from('cliente_docs').insert({ cliente_id: id, caminho, nome: f.name, tamanho: f.size });
+    if (!error) ok++;
+  }
+  docsNovos = [];
+  return ok;
+}
+
 function abrirCliente(c) {
   editando = c; cpfConfirmado = null; inssMexeu = false;
   $('#m-titulo').textContent = c ? 'Editar cliente' : 'Novo cliente fechado';
@@ -1008,6 +1055,7 @@ function abrirCliente(c) {
   $('#c-banco').value = c?.banco || '';
   $('#c-adv').value = c?.advogado || '';
   $('#c-obs').value = c?.observacoes || '';
+  carregarDocsCliente(c?.id);
   $('#c-pasta-box').hidden = eu.papel !== 'admin'; $('#c-pasta').value = c?.pasta_url || '';
   $('#c-stadv').hidden = !c?.status_adv;
   if (c?.status_adv) $('#c-stadv').innerHTML = `<label>Status informado pelo advogado</label><div style="padding:8px 10px;border:1px solid var(--borda);border-radius:10px"><b>${esc(c.status_adv)}</b>${c.obs_adv ? ' — ' + esc(c.obs_adv) : ''} <small style="color:var(--suave)">${c.status_adv_em ? new Date(c.status_adv_em).toLocaleString('pt-BR') : ''}</small></div>`;
@@ -1056,9 +1104,10 @@ $('#form-cli').onsubmit = async e => {
       const { error } = await sb.rpc('salvar_senha_inss', { p_cliente: id, p_senha: $('#c-inss').value });
       if (error) throw error;
     }
+    const nDocs = docsNovos.length ? await enviarDocs(id) : 0;
     if (!editando) try { XYZPresenca.enviar('venda', { id: reg.atendente_id || eu.id }); } catch (e) {}
     fecharModal();
-    toast(editando ? 'Cliente atualizado.' : '🎉 Cliente fechado cadastrado!');
+    toast((editando ? 'Cliente atualizado.' : '🎉 Cliente fechado cadastrado!') + (nDocs ? ` ${nDocs} documento(s) enviado(s) — vão para o Drive em até 10 min.` : ''));
     carregarClientes(); atualizarFlutuante();
   } catch (err) { toast(traduz(err), true); }
   ocupado(b, false);
