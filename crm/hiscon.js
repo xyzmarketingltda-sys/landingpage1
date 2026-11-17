@@ -179,6 +179,15 @@
       if (c.cetM && c.jurosM && c.cetM - c.jurosM >= 0.25) add('medio', 'CET bem acima dos juros', 'CET muito maior que a taxa de juros sugere encargos embutidos (seguro, tarifa). Reforça a análise de seguro prestamista/venda casada.', [id(c)], `Juros ${c.jurosM}% a.m. x CET ${c.cetM}% a.m.`);
     });
 
+    // 3b. taxa implícita (calculada pela parcela x prazo x valor) maior que a declarada
+    U.forEach(c => {
+      if (!(c.emprestado > 0 && c.parcela > 0 && c.parcelas > 0) || c.tipo === 'excluido') return;
+      const dias = c.inclusao && c.primeiro ? Math.max(30, (new Date(c.primeiro) - new Date(c.inclusao)) / 864e5) : 30;
+      const r = taxaImplicita(c.emprestado - (c.iof || 0), c.parcela, c.parcelas, dias);
+      if (r != null && c.cetM && r - c.cetM > 0.15) add('alto', 'Parcela maior do que a taxa informada permite', 'Recalculando pela parcela, prazo e valor financiado, a taxa real fica acima da taxa/CET informados — indica encargo oculto (seguro, tarifa) ou cálculo irregular. Cabe revisão e devolução da diferença em dobro (CDC art. 42).', [id(c)], `Taxa real ≈ ${r.toFixed(2)}% a.m. x CET informado ${c.cetM}% a.m.`);
+      if (r != null && r > TETO_JUROS + 0.15 && c.inclusao >= '2025-01-01' && !(c.jurosM > TETO_JUROS)) add('alto', 'Taxa real acima do teto do INSS', `Pela parcela e prazo, a taxa efetiva passa do teto de ${TETO_JUROS}% a.m.`, [id(c)], `≈ ${r.toFixed(2)}% a.m.`);
+    });
+
     // 4. juros acima do teto
     U.forEach(c => { if (c.jurosM > TETO_JUROS + 0.001 && c.inclusao >= '2025-01-01') add('alto', 'Juros acima do teto do INSS', `Teto do CNPS para empréstimo consignado: ${TETO_JUROS}% a.m. Juros acima do teto: revisão/restituição do excedente.`, [id(c)], `${c.jurosM}% a.m. (incluído em ${dBR(c.inclusao)}).`); });
 
@@ -233,8 +242,73 @@
     const peso = { alto: 0, medio: 1, info: 2 };
     return A.sort((a, b) => peso[a.nivel] - peso[b.nivel]);
   }
+  function taxaImplicita(pv, pmt, n, dias) {     // taxa mensal (%) do fluxo: recebe PV hoje, paga n parcelas a partir de "dias"
+    if (pmt * n <= pv) return 0;
+    const ext = (dias || 30) / 30 - 1;
+    let lo = 0.00001, hi = 0.2;
+    for (let k = 0; k < 80; k++) { const i = (lo + hi) / 2, v = pmt * (1 - Math.pow(1 + i, -n)) / i / Math.pow(1 + i, ext); if (v > pv) lo = i; else hi = i; }
+    return (lo + hi) / 2 * 100;
+  }
   function addDias(iso, n) { if (!iso) return '9999'; const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
 
+  /* ===================== CONTRATO (PDF do banco) ===================== */
+  async function textoPdf(pdf) {
+    let t = '';
+    for (let p = 1; p <= pdf.numPages; p++) t += linhas(await itensDaPagina(await pdf.getPage(p))).map(l => l.txt).join('\n') + '\n';
+    return t;
+  }
+  function analisarContrato(t, nomeArq) {
+    const T = t.replace(/\s+/g, ' '), tem = re => re.test(T), ach = re => (T.match(re) || [])[1];
+    const R = { arquivo: nomeArq, imagem: T.replace(/\W/g, '').length < 300, itens: [], alertas: [] };
+    if (R.imagem) { R.alertas.push({ nivel: 'medio', titulo: 'PDF sem texto (escaneado/foto)', tese: 'Não dá para ler automaticamente. Abra e confira manualmente: assinatura, seguro, data/hora e testemunhas.' }); return R; }
+    R.banco = ach(/(BANCO [A-ZÀ-Ú0-9 .&]{3,40}?(S\.?\/?A\.?|LTDA))/i) || '';
+    R.contrato = ach(/(?:CCB|C[ée]dula|Contrato|Proposta|Opera[çc][ãa]o)\s*(?:n[ºo°.]*|n[úu]mero|:)?\s*[:\-]?\s*([A-Z]{0,4}\d[\d.\-\/]{5,})/i) || '';
+    R.cpf = ach(/(\d{3}\.?\d{3}\.?\d{3}-?\d{2})/) || '';
+    const ok = (nome, cond, obs, peso) => R.itens.push({ nome, ok: !!cond, obs: obs || '', peso: peso || 'medio' });
+    const valor = re => { const v = ach(re); return v ? Number(v.replace(/\./g, '').replace(',', '.')) : null; };
+    // 1-6: informações obrigatórias (CDC art. 52, Res. CMN 4.881/3.517 – CET, IN 138/2022)
+    ok('Identificação do cliente (nome e CPF)', R.cpf, R.cpf);
+    ok('Número do contrato/CCB', R.contrato, R.contrato);
+    ok('Valor total financiado', tem(/valor (total )?(do )?(empr[ée]stimo|financiado|da opera|do cr[ée]dito|total)/i));
+    ok('Valor líquido liberado ao cliente', tem(/valor (l[ií]quido|liberado|creditado|a ser creditado|do cr[ée]dito)/i));
+    ok('Taxa de juros mensal e anual', tem(/juros.{0,40}(mensal|a\.?\s?m)/i) && tem(/(anual|a\.?\s?a\.?)/i));
+    ok('CET (Custo Efetivo Total)', tem(/CET|custo efetivo total/i), '', 'alto');
+    ok('IOF discriminado', tem(/IOF/));
+    ok('Quantidade e valor das parcelas', tem(/parcela/i) && tem(/(quantidade|n[úu]mero|prazo).{0,30}parcela|parcelas?.{0,20}\d{2,3}/i));
+    ok('Conta de crédito do valor (banco/agência/conta)', tem(/ag[êe]ncia/i) && tem(/conta/i));
+    ok('Autorização expressa de desconto no benefício', tem(/autoriz.{0,80}(desconto|consigna).{0,80}benef/i) || tem(/desconto.{0,60}benef[ií]cio.{0,60}autoriz/i), '', 'alto');
+    // assinatura
+    const icp = tem(/ICP-?Brasil|certificado digital/i), bio = tem(/biometria|selfie|reconhecimento facial|liveness|prova de vida/i),
+      geo = tem(/geolocaliza|latitude|longitude/i), ip = tem(/\bIP\b|endere[çc]o IP|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/), hash = tem(/hash|SHA-?256|c[óo]digo de verifica/i),
+      dh = ach(/(\d{2}\/\d{2}\/\d{4}\s*(?:às|as|-|,)?\s*\d{2}:\d{2}(?::\d{2})?)/i), eletr = tem(/assinatura eletr[ôo]nica|assinado eletronicamente|assinado digitalmente|clicksign|docusign|zapsign|d4sign|unico|idwall/i);
+    R.assinatura = icp ? 'Eletrônica qualificada (ICP-Brasil)' : eletr || bio ? 'Eletrônica avançada' : 'Física/manuscrita (ou não identificada)';
+    ok('Tipo de assinatura identificado', icp || eletr || bio, R.assinatura, 'alto');
+    if (eletr || bio) {
+      ok('Biometria facial / selfie com prova de vida', bio);
+      ok('Geolocalização registrada', geo);
+      ok('IP registrado', ip);
+      ok('Data e hora da assinatura', dh, dh || '');
+      ok('Hash / código de integridade do documento', hash);
+    }
+    // seguro e encargos embutidos
+    const seguro = tem(/seguro prestamista|prestamista|seguro de prote[çc][ãa]o financeira|seguro de vida/i), pacote = tem(/pacote de benef[ií]cios|assist[êe]ncia (funeral|residencial|sa[úu]de)|clube de benef|capitaliza[çc][ãa]o/i), tarifa = tem(/tarifa de cadastro|TAC\b|tarifa de abertura/i);
+    const vSeg = valor(/(?:pr[êe]mio|seguro)[^R]{0,60}R\$\s?([\d.]+,\d{2})/i);
+    if (seguro) R.alertas.push({ nivel: 'alto', titulo: 'Seguro prestamista no contrato' + (vSeg ? ` (${vSeg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})` : ''), tese: 'Seguro embutido no empréstimo: conferir se havia termo de adesão separado, com opção clara de recusa e livre escolha da seguradora. Sem isso, venda casada (CDC art. 39, I; STJ Tema 972) — restituição em dobro e dano moral.' });
+    if (pacote) R.alertas.push({ nivel: 'alto', titulo: 'Pacote de benefícios / assistência / capitalização', tese: 'Produto adicional embutido no consignado: típico de venda casada (CDC art. 39, I). Pedir devolução em dobro.' });
+    if (tarifa) R.alertas.push({ nivel: 'medio', titulo: 'Tarifa de cadastro/abertura cobrada', tese: 'Verificar legalidade da tarifa (Res. CMN 3.919/2010; STJ Temas 618/620): só é válida no início do relacionamento e se prevista.' });
+    if (tem(/cart[ãa]o de cr[ée]dito consignado|reserva de margem consign[áa]vel|\bRMC\b|\bRCC\b|cart[ãa]o benef[ií]cio/i)) R.alertas.push({ nivel: 'alto', titulo: 'Contrato de cartão consignado (RMC/RCC)', tese: 'Verificar se o cliente foi informado de que contratava CARTÃO e não empréstimo (dever de informação, CDC arts. 6º, III, e 52). Tese de conversão em empréstimo consignado e devolução em dobro.' });
+    if (tem(/a rogo|testemunha/i)) R.alertas.push({ nivel: 'info', titulo: 'Contrato com assinatura a rogo / testemunhas', tese: 'Cliente possivelmente analfabeto: conferir se há assinatura a rogo E duas testemunhas identificadas (CC art. 595). Sem isso, o contrato é nulo.' });
+    else if (!(icp || eletr || bio)) R.alertas.push({ nivel: 'medio', titulo: 'Se o cliente for analfabeto: falta assinatura a rogo e testemunhas', tese: 'Contrato com analfabeto exige assinatura a rogo e duas testemunhas (CC art. 595 — STJ). Perguntar ao cliente se sabe ler e escrever.' });
+    if (tem(/curador|tutor|representante legal|guardi[ãa]o/i)) R.alertas.push({ nivel: 'alto', titulo: 'Contratado por representante legal', tese: 'Contrato assinado por curador/tutor/representante: exige alvará judicial (CC arts. 1.691, 1.748, 1.774; IN 190/2025). Sem alvará: nulidade.' });
+    if (tem(/procura[çd]/i) && tem(/procurador/i)) R.alertas.push({ nivel: 'medio', titulo: 'Contratação por procurador', tese: 'Desde 19/05/2026 é vedada a contratação de consignado mediante procuração de terceiros.' });
+    if ((eletr || bio) && !bio) R.alertas.push({ nivel: 'alto', titulo: 'Assinatura eletrônica sem biometria', tese: 'Contrato eletrônico sem prova de biometria/selfie e prova de vida: a jurisprudência só valida a contratação digital com mecanismos idôneos de identificação (IN 138/2022). Sem isso, tese de inexistência/fraude.' });
+    if ((eletr || bio) && !geo && !ip) R.alertas.push({ nivel: 'medio', titulo: 'Sem geolocalização/IP no registro da assinatura', tese: 'Falta de trilha de auditoria (IP, geolocalização, data/hora) enfraquece a prova do banco. Útil para pedir perícia/inversão do ônus (CDC art. 6º, VIII).' });
+    R.itens.filter(i => !i.ok && i.peso === 'alto').forEach(i => R.alertas.push({ nivel: 'alto', titulo: 'Falta no contrato: ' + i.nome, tese: 'Informação/requisito obrigatório ausente — falha no dever de informação (CDC arts. 6º, III, 31 e 52) e na forma exigida pela IN PRES/INSS 138/2022.' }));
+    const peso = { alto: 0, medio: 1, info: 2 }; R.alertas.sort((a, b) => peso[a.nivel] - peso[b.nivel]);
+    return R;
+  }
+
+  root.textoPdf = textoPdf; root.analisarContrato = analisarContrato;
   root.lerHiscon = lerHiscon; root.analisarHiscon = analisarHiscon;
   if (typeof module !== 'undefined') module.exports = { lerHiscon, analisarHiscon };
 })(typeof window !== 'undefined' ? window : globalThis);

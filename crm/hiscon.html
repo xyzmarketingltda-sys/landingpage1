@@ -52,6 +52,10 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 .acoes{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 .aviso{font-size:12px;color:var(--suave);margin-top:18px;line-height:1.6}
 .erro{color:#fca5a5;margin-top:12px}
+.chk{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;margin-top:10px;font-size:13px}
+.chk div{display:flex;gap:6px}.chk .s{color:#86efac}.chk .n{color:#fca5a5}.chk small{color:var(--suave)}
+.liga{font-size:12px;color:var(--ciano);margin-top:4px}
+@media(max-width:700px){.chk{grid-template-columns:1fr}}
 @media(max-width:700px){.marg{grid-template-columns:1fr 1fr}main{padding:14px}}
 @media print{header,#drop,.acoes,.aviso,.sub{display:none}body{background:#fff;color:#000}.vidro{background:#fff;border-color:#ccc}.al p,.al .det{color:#000}}
 </style>
@@ -59,10 +63,10 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 <body>
 <header><div class="marca">XYZ <span>CRM</span></div><a class="voltar" href="./">← Voltar ao CRM</a></header>
 <main>
-  <h1>🔎 Analisar HISCON</h1>
-  <p class="sub">Arraste o PDF do <b>Histórico de Empréstimo Consignado</b> (Meu INSS). A leitura é feita aqui no seu computador — o arquivo não é enviado para lugar nenhum.</p>
+  <h1>🔎 Analisar HISCON e contratos</h1>
+  <p class="sub">Arraste o <b>HISCON</b> (Histórico de Empréstimo Consignado do Meu INSS) e/ou os <b>contratos</b> baixados dos bancos — o sistema reconhece cada um sozinho. A leitura é feita aqui no seu computador — o arquivo não é enviado para lugar nenhum.</p>
   <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
-    <b>📄 Solte o(s) HISCON(s) aqui ou clique para escolher</b><small>Pode mandar vários de uma vez</small></label>
+    <b>📄 Solte HISCONs e contratos aqui ou clique para escolher</b><small>Pode mandar vários de uma vez (PDF)</small></label>
   <div id="erro" class="erro"></div>
   <div id="saida"></div>
   <p class="aviso">⚖️ Análise automática de <b>indícios</b> a partir do HISCON, para triagem. Cada alerta precisa ser confirmado com o contrato e analisado pelo advogado antes de qualquer ação. Parâmetros usados: teto de juros 1,85% a.m. (empréstimo) e 2,46% a.m. (cartão), prazo máximo de 96 parcelas (108 a partir de 19/05/2026).</p>
@@ -92,15 +96,52 @@ const drop = $('#drop');
 drop.addEventListener('drop', e => processar([...e.dataTransfer.files]));
 $('#arq').onchange = e => { processar([...e.target.files]); e.target.value = ''; };
 
+const HISCONS = [];
 async function processar(arqs) {
   $('#erro').textContent = '';
-  for (const f of arqs.filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name))) {
-    try {
-      const doc = await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
-      const h = await lerHiscon(doc), al = analisarHiscon(h);
-      $('#saida').prepend(cartao(h, al, f.name));
-    } catch (e) { $('#erro').textContent = `${f.name}: ${e.message}`; console.error(e); }
+  const pdfs = arqs.filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
+  // HISCONs primeiro, para os contratos poderem ser ligados ao cliente
+  const lidos = [];
+  for (const f of pdfs) {
+    try { lidos.push({ f, doc: await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise }); }
+    catch (e) { $('#erro').textContent = `${f.name}: não consegui abrir o PDF (${e.message})`; }
   }
+  const contratos = [];
+  for (const { f, doc } of lidos) {
+    try { const h = await lerHiscon(doc); HISCONS.push(h); $('#saida').prepend(cartao(h, analisarHiscon(h), f.name)); }
+    catch (e) { contratos.push({ f, doc }); }
+  }
+  for (const { f, doc } of contratos) {
+    try { $('#saida').prepend(cartaoContrato(analisarContrato(await textoPdf(doc), f.name))); }
+    catch (e) { $('#erro').textContent = `${f.name}: ${e.message}`; console.error(e); }
+  }
+}
+function ligar(R) {
+  const so = s => String(s || '').replace(/\W/g, '');
+  for (const h of HISCONS) for (const c of h.contratos) {
+    const n = so(c.contrato);
+    if (n.length >= 6 && (so(R.contrato).includes(n) || so(R.arquivo).includes(n) || n.includes(so(R.contrato)) && so(R.contrato).length >= 6)) return { h, c };
+  }
+  const cpf = String(R.cpf || '').replace(/\D/g, '');
+  return null;
+}
+function cartaoContrato(R) {
+  const div = document.createElement('section'); div.className = 'cli vidro';
+  const alto = R.alertas.filter(a => a.nivel === 'alto').length, medio = R.alertas.filter(a => a.nivel === 'medio').length;
+  const lig = ligar(R);
+  div.innerHTML = `<div class="cli-top"><div><h2>📑 Contrato ${esc(R.contrato || '')}</h2>
+      <div class="meta">${esc(R.banco || 'Banco não identificado')} · CPF ${esc(R.cpf || '—')} · Assinatura: <b>${esc(R.assinatura || '—')}</b><br>arquivo ${esc(R.arquivo)}</div>
+      ${lig ? `<div class="liga">🔗 Bate com o HISCON de <b>${esc(lig.h.nome)}</b> — ${esc(lig.c.banco)}, incluído em ${dBR(lig.c.inclusao)}, ${brl(lig.c.emprestado)}</div>` : ''}</div>
+      <div class="placar"><span class="alto">${alto} forte(s)</span><span class="medio">${medio} atenção</span></div></div>
+    ${R.itens.length ? `<div class="chk">${R.itens.map(i => `<div><span class="${i.ok ? 's' : 'n'}">${i.ok ? '✔' : '✘'}</span><span>${esc(i.nome)}${i.obs && i.ok ? ` <small>· ${esc(i.obs)}</small>` : ''}</span></div>`).join('')}</div>` : ''}
+    <div class="alertas" style="margin-top:12px">${R.alertas.map(a => `<div class="al ${a.nivel}"><h4><span class="tag">${a.nivel === 'alto' ? 'forte' : a.nivel === 'medio' ? 'atenção' : 'info'}</span>${esc(a.titulo)}</h4><p>${esc(a.tese)}</p></div>`).join('') || '<div class="al ok"><h4>Nenhum problema encontrado na leitura automática</h4></div>'}</div>
+    <div class="acoes"><button class="btn sec" data-copiar>📋 Copiar resumo (WhatsApp)</button></div>`;
+  div.querySelector('[data-copiar]').onclick = async e => {
+    const t = `*Análise de contrato ${R.contrato || ''}* — ${R.banco || ''}\nAssinatura: ${R.assinatura || '—'}\n` + R.alertas.filter(a => a.nivel !== 'info').map(a => '• ' + a.titulo).join('\n') +
+      '\nFaltando: ' + (R.itens.filter(i => !i.ok).map(i => i.nome).join('; ') || 'nada');
+    await navigator.clipboard.writeText(t); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar resumo (WhatsApp)', 2000);
+  };
+  return div;
 }
 
 function cartao(h, al, arquivo) {
