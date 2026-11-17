@@ -9,120 +9,181 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#07060d; --painel:#110f1c; --painel2:#181528; --borda:#2a2540;
-  --texto:#ecebf5; --suave:#9a96b3; --roxo:#8b5cf6; --roxo2:#a78bfa;
-  --verde:#22c55e; --vermelho:#ef4444; --amarelo:#eab308; --azul:#38bdf8;
-  --raio:12px;
+  --bg:#05040a; --painel:rgba(17,15,28,.78); --painel2:rgba(28,24,46,.85); --borda:rgba(139,92,246,.22);
+  --texto:#ecebf5; --suave:#a29ebd; --roxo:#8b5cf6; --roxo2:#c4b5fd; --ciano:#67e8f9;
+  --verde:#22c55e; --vermelho:#ef4444; --ouro:#fbbf24; --prata:#e5e7eb; --bronze:#d97706;
+  --raio:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px}
-body{min-height:100vh;background:radial-gradient(ellipse at top,#1a1233 0%,var(--bg) 60%) fixed}
+body{min-height:100vh;overflow-x:hidden}
 [hidden]{display:none!important}
+#fundo{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block}
+.vinheta{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse at 50% 40%,transparent 30%,rgba(5,4,10,.85) 100%)}
+#login,#app{position:relative;z-index:1}
 button,input,select,textarea{font:inherit;color:inherit}
-input,select,textarea{width:100%;background:var(--painel2);border:1px solid var(--borda);border-radius:10px;padding:11px 12px;outline:none}
-input:focus,select:focus,textarea:focus{border-color:var(--roxo)}
+input,select,textarea{width:100%;background:rgba(10,8,20,.75);border:1px solid var(--borda);border-radius:10px;padding:11px 12px;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--roxo);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
 textarea{min-height:80px;resize:vertical}
 label{display:block;font-size:12px;color:var(--suave);margin:0 0 5px;font-weight:500}
-.btn{background:var(--roxo);border:0;border-radius:10px;padding:11px 16px;font-weight:600;cursor:pointer;white-space:nowrap}
-.btn:hover{filter:brightness(1.1)}
-.btn:disabled{opacity:.5;cursor:wait}
-.btn.sec{background:var(--painel2);border:1px solid var(--borda)}
-.btn.perigo{background:transparent;border:1px solid var(--vermelho);color:var(--vermelho)}
+.btn{background:linear-gradient(135deg,#7c3aed,#8b5cf6 50%,#6366f1);border:0;border-radius:10px;padding:11px 16px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:0 4px 20px rgba(124,58,237,.35);transition:transform .15s,filter .15s}
+.btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.btn:disabled{opacity:.5;cursor:wait;transform:none}
+.btn.sec{background:var(--painel2);border:1px solid var(--borda);box-shadow:none}
+.btn.perigo{background:transparent;border:1px solid var(--vermelho);color:var(--vermelho);box-shadow:none}
 .btn.peq{padding:7px 11px;font-size:13px}
+.vidro{background:var(--painel);border:1px solid var(--borda);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 
 /* LOGIN */
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.cartao{background:var(--painel);border:1px solid var(--borda);border-radius:18px;padding:32px 26px;width:100%;max-width:380px}
+.cartao{border-radius:20px;padding:34px 28px;width:100%;max-width:390px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 60px rgba(139,92,246,.12)}
 .marca{font-weight:800;font-size:22px;letter-spacing:-.5px}
-.marca span{color:var(--roxo2)}
+.marca span{background:linear-gradient(90deg,var(--roxo2),var(--ciano));-webkit-background-clip:text;background-clip:text;color:transparent}
 .cartao p.sub{color:var(--suave);margin:4px 0 24px;font-size:14px}
 .campo{margin-bottom:14px}
-.erro{color:var(--vermelho);font-size:13px;margin-top:10px;min-height:18px}
-.aviso{background:#2a1f06;border:1px solid #5c4410;color:#fcd34d;padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:12px}
+.erro{color:#f87171;font-size:13px;margin-top:10px;min-height:18px}
+.aviso{background:rgba(66,48,8,.8);border:1px solid #6b5310;color:#fcd34d;padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:12px}
 
 /* APP */
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--borda);background:rgba(7,6,13,.8);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px;border-bottom:1px solid var(--borda);background:rgba(5,4,10,.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:sticky;top:0;z-index:5}
 header .quem{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--suave)}
 header .quem b{color:var(--texto)}
-nav{display:flex;gap:6px;padding:14px 20px 0;overflow-x:auto}
-nav button{background:none;border:0;padding:10px 14px;border-radius:10px;color:var(--suave);cursor:pointer;font-weight:600}
-nav button.ativa{background:var(--painel2);color:var(--texto)}
-main{padding:18px 20px 60px;max-width:1200px;margin:0 auto}
-.barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px}
+nav{display:flex;gap:6px;padding:14px 22px 0;overflow-x:auto}
+nav button{white-space:nowrap;background:none;border:1px solid transparent;padding:9px 14px;border-radius:10px;color:var(--suave);cursor:pointer;font-weight:600}
+nav button.ativa{background:var(--painel2);color:var(--texto);border-color:var(--borda)}
+main{padding:18px 22px 120px;max-width:1200px;margin:0 auto}
+.barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:14px}
 .resumo{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px 16px;min-width:150px}
+.kpi{border-radius:var(--raio);padding:12px 16px;min-width:150px}
 .kpi small{color:var(--suave);font-size:12px}
 .kpi div{font-size:20px;font-weight:700;margin-top:2px}
-.tabela{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);overflow:hidden}
+.tabela{border-radius:var(--raio);overflow:hidden}
 table{width:100%;border-collapse:collapse}
-th{text-align:left;font-size:12px;color:var(--suave);font-weight:600;padding:12px;border-bottom:1px solid var(--borda);background:var(--painel2)}
-td{padding:12px;border-bottom:1px solid var(--borda);font-size:14px}
-tbody tr{cursor:pointer}
-tbody tr:hover{background:var(--painel2)}
+th{text-align:left;font-size:12px;color:var(--suave);font-weight:600;padding:12px;border-bottom:1px solid var(--borda);background:rgba(28,24,46,.6)}
+td{padding:12px;border-bottom:1px solid rgba(139,92,246,.12);font-size:14px}
+tbody tr{cursor:pointer;transition:background .15s}
+tbody tr:hover{background:rgba(139,92,246,.08)}
 tbody tr:last-child td{border-bottom:0}
 .vazio{padding:30px;text-align:center;color:var(--suave)}
-.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:600;background:#222;white-space:nowrap}
-.st-Novo{background:#0c2a3a;color:var(--azul)}
-.st-Em{background:#2d2508;color:var(--amarelo)}
-.st-Digitado{background:#251a45;color:var(--roxo2)}
-.st-Pago{background:#0b2e18;color:var(--verde)}
-.st-Perdido{background:#2e0f0f;color:#f87171}
+.cadeado{font-size:12px;padding:3px 9px;border-radius:99px;background:rgba(34,197,94,.12);color:#4ade80;white-space:nowrap}
+.cadeado.nao{background:rgba(255,255,255,.05);color:var(--suave)}
 
-/* RANKING */
+/* AVATAR */
+.av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:linear-gradient(135deg,#6d28d9,#0891b2);color:#fff;border:2px solid rgba(255,255,255,.15);overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+
+/* RANKING (aba) */
 .periodos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:end}
-.periodos .btn.sel{background:var(--roxo)}
+.periodos .btn.sel{background:linear-gradient(135deg,#7c3aed,#6366f1)}
 .rank{display:flex;flex-direction:column;gap:10px}
-.rank-item{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center}
-.rank-item.eu{border-color:var(--roxo)}
-.pos{font-size:22px;font-weight:800;text-align:center;color:var(--suave)}
+.rank-item{border-radius:var(--raio);padding:14px 16px;display:grid;grid-template-columns:40px 48px 1fr auto;gap:12px;align-items:center}
+.rank-item.eu{border-color:var(--roxo);box-shadow:0 0 25px rgba(139,92,246,.25)}
+.rank-item .av{width:48px;height:48px}
+.pos{font-size:20px;font-weight:800;text-align:center;color:var(--suave)}
 .rank-item .nome{font-weight:600}
 .rank-item .det{font-size:13px;color:var(--suave);margin-top:2px}
-.barra-prog{height:6px;background:var(--painel2);border-radius:99px;margin-top:8px;overflow:hidden}
-.barra-prog i{display:block;height:100%;background:linear-gradient(90deg,var(--roxo),var(--roxo2));border-radius:99px}
-.rank-item .total{font-weight:700;font-size:17px;text-align:right}
+.barra-prog{height:6px;background:rgba(255,255,255,.06);border-radius:99px;margin-top:8px;overflow:hidden}
+.barra-prog i{display:block;height:100%;background:linear-gradient(90deg,var(--roxo),var(--ciano));border-radius:99px}
+.rank-item .total{font-weight:800;font-size:22px;text-align:right}
+.rank-item .total small{display:block;font-size:11px;color:var(--suave);font-weight:500}
+
+/* ===== RANKING FLUTUANTE 3D ===== */
+#flut{position:fixed;right:22px;bottom:22px;z-index:15;perspective:1000px}
+#flut-card{width:310px;border-radius:22px;padding:18px 18px 14px;position:relative;transform-style:preserve-3d;
+  background:linear-gradient(160deg,rgba(30,22,58,.92),rgba(10,8,22,.92));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 25px 60px rgba(0,0,0,.65),0 0 45px rgba(139,92,246,.35),inset 0 1px 0 rgba(255,255,255,.08);
+  animation:flutuar 6s ease-in-out infinite;transition:transform .12s ease-out}
+#flut-card::before{content:"";position:absolute;inset:-1.5px;border-radius:23px;padding:1.5px;z-index:-1;
+  background:conic-gradient(from var(--ang),#8b5cf6,#22d3ee,#f0abfc,#8b5cf6);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:girar 5s linear infinite}
+@property --ang{syntax:'<angle>';initial-value:0deg;inherits:false}
+@keyframes girar{to{--ang:360deg}}
+@keyframes flutuar{0%,100%{translate:0 0}50%{translate:0 -10px}}
+.flut-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;transform:translateZ(30px)}
+.flut-top h4{font-size:14px;letter-spacing:.3px;display:flex;align-items:center;gap:7px}
+.flut-top small{color:var(--suave);font-weight:500;font-size:11px;display:block;margin-top:1px}
+.flut-x{background:rgba(255,255,255,.06);border:0;border-radius:8px;width:28px;height:28px;cursor:pointer;color:var(--suave)}
+.podio{display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:6px;margin:14px 0 10px;transform:translateZ(55px);transform-style:preserve-3d}
+.lugar{text-align:center;position:relative}
+.lugar .av{width:54px;height:54px;font-size:17px;margin:0 auto}
+.lugar.p1 .av{width:70px;height:70px;font-size:22px}
+.lugar.p1 .av{border:3px solid var(--ouro);box-shadow:0 0 25px rgba(251,191,36,.6)}
+.lugar.p2 .av{border:3px solid var(--prata);box-shadow:0 0 18px rgba(229,231,235,.4)}
+.lugar.p3 .av{border:3px solid var(--bronze);box-shadow:0 0 18px rgba(217,119,6,.5)}
+.coroa{font-size:20px;display:block;margin-bottom:-4px;animation:pular 2.4s ease-in-out infinite}
+@keyframes pular{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-4px) rotate(6deg)}}
+.lugar .n{font-size:12px;font-weight:600;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lugar .q{font-size:11px;color:var(--suave)}
+.degrau{margin-top:6px;border-radius:8px 8px 3px 3px;font-weight:800;font-size:15px;padding:6px 0;
+  background:linear-gradient(180deg,rgba(139,92,246,.45),rgba(139,92,246,.08));border:1px solid rgba(139,92,246,.35)}
+.p1 .degrau{height:54px;background:linear-gradient(180deg,rgba(251,191,36,.45),rgba(251,191,36,.06));border-color:rgba(251,191,36,.4)}
+.p2 .degrau{height:40px}
+.p3 .degrau{height:30px}
+.flut-lista{transform:translateZ(25px)}
+.flut-lista div{display:flex;align-items:center;gap:9px;padding:6px 4px;font-size:13px;border-top:1px solid rgba(255,255,255,.05)}
+.flut-lista .av{width:26px;height:26px;font-size:10px;border-width:1px}
+.flut-lista b{margin-left:auto}
+.flut-lista .eu{color:var(--roxo2)}
+#flut-bola{width:62px;height:62px;border-radius:50%;border:0;cursor:pointer;font-size:28px;
+  background:radial-gradient(circle at 30% 30%,#a78bfa,#6d28d9 60%,#3b0764);box-shadow:0 10px 30px rgba(109,40,217,.6),0 0 30px rgba(139,92,246,.5);animation:flutuar 4s ease-in-out infinite}
 
 /* ATENDENTES */
 .grade2{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
-.bloco{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:18px}
+.bloco{border-radius:var(--raio);padding:18px}
 .bloco h3{font-size:15px;margin-bottom:14px}
-.linha-at{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--borda);flex-wrap:wrap}
+.linha-at{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(139,92,246,.12);flex-wrap:wrap}
 .linha-at:last-child{border-bottom:0}
+.linha-at .info{display:flex;align-items:center;gap:10px}
 .linha-at small{color:var(--suave);display:block}
 .linha-at .acoes{display:flex;gap:6px;align-items:center}
 .linha-at select{width:auto;padding:6px 8px;font-size:13px}
+.av.troca{cursor:pointer;position:relative}
+.av.troca::after{content:"📷";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);opacity:0;transition:.2s;font-size:14px}
+.av.troca:hover::after{opacity:1}
 .inativo{opacity:.5}
+.log{font-size:13px;color:var(--suave);padding:6px 0;border-bottom:1px solid rgba(139,92,246,.1)}
+.log b{color:var(--texto);font-weight:600}
 
 /* MODAL */
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow-y:auto;z-index:20}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow-y:auto;z-index:20}
 #modal .cartao{max-width:620px}
 .form-grade{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .form-grade .inteiro{grid-column:1/-1}
+.cofre{border:1px solid rgba(34,197,94,.35);background:rgba(5,30,15,.45);border-radius:12px;padding:12px}
+.cofre label{color:#86efac}
+.cofre .linha{display:flex;gap:8px}
+.cofre p{font-size:11px;color:var(--suave);margin-top:6px}
 .rodape-modal{display:flex;justify-content:space-between;gap:10px;margin-top:18px;flex-wrap:wrap}
 .rodape-modal div{display:flex;gap:8px}
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--painel2);border:1px solid var(--borda);padding:12px 18px;border-radius:10px;z-index:30;font-size:14px;max-width:90vw}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(28,24,46,.95);border:1px solid var(--borda);padding:12px 18px;border-radius:10px;z-index:30;font-size:14px;max-width:90vw}
 #toast.ruim{border-color:var(--vermelho)}
 
 @media (max-width:860px){
   .barra{grid-template-columns:1fr 1fr}
   .barra .busca{grid-column:1/-1}
   .grade2{grid-template-columns:1fr}
-  header{padding:12px 14px} nav{padding:12px 14px 0} main{padding:14px}
+  header{padding:12px 14px} nav{padding:12px 14px 0} main{padding:14px 14px 110px}
   header .quem .nomeu{display:none}
   thead{display:none}
   table,tbody,tr,td{display:block;width:100%}
-  tbody tr{padding:12px 14px;border-bottom:1px solid var(--borda)}
+  tbody tr{padding:12px 14px;border-bottom:1px solid rgba(139,92,246,.12)}
   td{border:0;padding:2px 0}
   td[data-r]::before{content:attr(data-r) ": ";color:var(--suave);font-size:12px}
   td.nm{font-weight:700;font-size:15px;margin-bottom:4px}
   .form-grade{grid-template-columns:1fr}
+  #flut{right:12px;bottom:12px}
+  #flut-card{width:min(310px,calc(100vw - 24px))}
+  .rank-item{grid-template-columns:30px 42px 1fr auto}
 }
+@media (prefers-reduced-motion:reduce){#flut-card,#flut-bola,.coroa,#flut-card::before{animation:none}}
 </style>
 </head>
 <body>
+<canvas id="fundo"></canvas><div class="vinheta"></div>
 
 <!-- ============ LOGIN ============ -->
 <section id="login" hidden>
-  <form class="cartao" id="form-login">
+  <form class="cartao vidro" id="form-login">
     <div class="marca">XYZ <span>CRM</span></div>
     <p class="sub">Acesso restrito à equipe</p>
     <div id="aviso-config" class="aviso" hidden>Falta configurar o Supabase no arquivo <b>config.js</b>.</div>
@@ -151,17 +212,16 @@ tbody tr:last-child td{border-bottom:0}
     <div id="aba-clientes">
       <div class="barra">
         <div class="busca"><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite e aguarde…"></div>
-        <div><label>Status</label><select id="f-status"><option value="">Todos</option></select></div>
-        <div><label>Contato de</label><input type="date" id="f-de"></div>
+        <div><label>Fechado de</label><input type="date" id="f-de"></div>
         <div><label>até</label><input type="date" id="f-ate"></div>
         <div id="f-at-box" hidden><label>Atendente</label><select id="f-at"><option value="">Todos</option></select></div>
-        <button class="btn sec" id="exportar" title="Baixar lista em planilha">Exportar</button>
+        <button class="btn sec" id="exportar" title="Baixar lista em planilha (sem senhas)">Exportar</button>
         <button class="btn" id="novo">+ Novo cliente</button>
       </div>
       <div class="resumo" id="resumo"></div>
-      <div class="tabela">
+      <div class="tabela vidro">
         <table>
-          <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Contato</th><th>Valor</th><th>Status</th><th class="col-at">Atendente</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Fechamento</th><th>Valor</th><th>Acesso INSS</th><th class="col-at">Atendente</th></tr></thead>
           <tbody id="lista"></tbody>
         </table>
       </div>
@@ -183,32 +243,39 @@ tbody tr:last-child td{border-bottom:0}
       </div>
       <div class="resumo" id="r-resumo"></div>
       <div class="rank" id="rank"></div>
-      <p style="color:var(--suave);font-size:12px;margin-top:12px">Conta como venda o cliente com status <b>Pago</b>, pela data da venda.</p>
+      <p style="color:var(--suave);font-size:12px;margin-top:12px">Conta cada cliente fechado, pela data do fechamento.</p>
     </div>
 
     <!-- ATENDENTES (admin) -->
     <div id="aba-atendentes" hidden>
       <div class="grade2">
-        <form class="bloco" id="form-at">
+        <form class="bloco vidro" id="form-at">
           <h3>Cadastrar atendente</h3>
           <div class="campo"><label>Nome</label><input id="a-nome" required></div>
-          <div class="campo"><label>E-mail (login)</label><input type="email" id="a-email" required></div>
-          <div class="campo"><label>Senha inicial (mín. 6 caracteres)</label><input id="a-senha" required minlength="6"></div>
+          <div class="campo"><label>E-mail (login)</label><input type="email" id="a-email" required autocomplete="off"></div>
+          <div class="campo"><label>Senha inicial (mín. 6 caracteres)</label><input id="a-senha" required minlength="6" autocomplete="off"></div>
           <div class="campo"><label>Tipo de acesso</label>
             <select id="a-papel"><option value="atendente">Atendente (vê só os próprios clientes)</option><option value="admin">Administrador (vê tudo)</option></select>
           </div>
           <button class="btn" style="width:100%" id="a-btn">Cadastrar</button>
         </form>
-        <div class="bloco">
-          <h3>Equipe</h3>
-          <div id="lista-at"></div>
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div class="bloco vidro">
+            <h3>Equipe <small style="color:var(--suave);font-weight:400">· clique na foto para trocar</small></h3>
+            <div id="lista-at"></div>
+          </div>
+          <div class="bloco vidro">
+            <h3>🔒 Quem mexeu nas senhas do INSS</h3>
+            <div id="logs"></div>
+          </div>
         </div>
       </div>
+      <input type="file" id="foto-input" accept="image/*" hidden>
     </div>
 
     <!-- MINHA CONTA -->
     <div id="aba-conta" hidden>
-      <form class="bloco" id="form-senha" style="max-width:380px">
+      <form class="bloco vidro" id="form-senha" style="max-width:380px">
         <h3>Trocar minha senha</h3>
         <div class="campo"><label>Nova senha</label><input type="password" id="s-nova" required minlength="6" autocomplete="new-password"></div>
         <div class="campo"><label>Repita a nova senha</label><input type="password" id="s-nova2" required minlength="6" autocomplete="new-password"></div>
@@ -216,23 +283,42 @@ tbody tr:last-child td{border-bottom:0}
       </form>
     </div>
   </main>
+
+  <!-- RANKING FLUTUANTE -->
+  <div id="flut">
+    <div id="flut-card">
+      <div class="flut-top">
+        <div><h4>🏆 Ranking do mês</h4><small id="flut-mes"></small></div>
+        <button class="flut-x" id="flut-min" title="Minimizar">–</button>
+      </div>
+      <div class="podio" id="flut-podio"></div>
+      <div class="flut-lista" id="flut-lista"></div>
+    </div>
+    <button id="flut-bola" hidden title="Ver ranking">🏆</button>
+  </div>
 </section>
 
 <!-- ============ MODAL CLIENTE ============ -->
 <div id="modal" hidden>
-  <form class="cartao" id="form-cli">
+  <form class="cartao vidro" id="form-cli" autocomplete="off">
     <h3 id="m-titulo" style="margin-bottom:16px">Novo cliente</h3>
     <div id="m-aviso" class="aviso" hidden></div>
     <div class="form-grade">
       <div class="inteiro"><label>Nome completo *</label><input id="c-nome" required></div>
-      <div><label>CPF</label><input id="c-cpf" inputmode="numeric" placeholder="000.000.000-00"></div>
+      <div><label>CPF *</label><input id="c-cpf" inputmode="numeric" placeholder="000.000.000-00" required></div>
       <div><label>Telefone / WhatsApp</label><input id="c-tel" inputmode="tel" placeholder="(12) 99999-9999"></div>
-      <div><label>Data do contato</label><input type="date" id="c-data"></div>
+      <div><label>Data do fechamento</label><input type="date" id="c-data"></div>
       <div><label>Valor (R$)</label><input id="c-valor" inputmode="decimal" placeholder="0,00"></div>
-      <div><label>Status</label><select id="c-status"></select></div>
-      <div id="c-venda-box"><label>Data da venda</label><input type="date" id="c-venda"></div>
-      <div><label>Banco</label><input id="c-banco" placeholder="Ex.: Quali"></div>
+      <div><label>Banco</label><input id="c-banco" placeholder="Ex.: Banco do contrato"></div>
       <div id="c-at-box" hidden><label>Atendente</label><select id="c-at"></select></div>
+      <div class="inteiro cofre">
+        <label>🔒 Acesso Meu INSS · senha do cliente</label>
+        <div class="linha">
+          <input type="password" id="c-inss" autocomplete="new-password" placeholder="Senha do Meu INSS" data-lpignore="true">
+          <button type="button" class="btn sec peq" id="c-inss-ver">Mostrar</button>
+        </div>
+        <p id="c-inss-info">Guardada com criptografia. Só você e o administrador podem ver, e cada visualização fica registrada.</p>
+      </div>
       <div class="inteiro"><label>Observações</label><textarea id="c-obs"></textarea></div>
     </div>
     <div class="rodape-modal">
@@ -247,11 +333,69 @@ tbody tr:last-child td{border-bottom:0}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
+/* ================= FUNDO 3D (galáxia de partículas conectadas) ================= */
+(() => {
+  const cv = document.getElementById('fundo'), ctx = cv.getContext('2d');
+  const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, H, DPR, pts = [], mx = 0, my = 0, rx = 0, ry = 0, t = 0;
+  const N = innerWidth < 700 ? 140 : 240;
+  function tamanho() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+  tamanho(); addEventListener('resize', tamanho);
+  for (let i = 0; i < N; i++) {
+    if (i < N * 0.72) { // braços da galáxia
+      const braco = i % 3, r = Math.pow(Math.random(), .7) * 520 + 30, a = r * 0.011 + braco * (Math.PI * 2 / 3) + (Math.random() - .5) * .5;
+      pts.push({ x: Math.cos(a) * r, y: (Math.random() - .5) * 40 * (1 - r / 600), z: Math.sin(a) * r, s: Math.random() * 1.4 + .4, c: Math.random() < .25 ? 1 : 0 });
+    } else { // halo
+      const r = 300 + Math.random() * 600, u = Math.random() * Math.PI * 2, v = Math.acos(2 * Math.random() - 1);
+      pts.push({ x: r * Math.sin(v) * Math.cos(u), y: r * Math.cos(v) * .6, z: r * Math.sin(v) * Math.sin(u), s: Math.random() * 1.2 + .3, c: Math.random() < .15 ? 2 : 0 });
+    }
+  }
+  addEventListener('pointermove', e => { mx = e.clientX / W - .5; my = e.clientY / H - .5; });
+  const cor = [[236, 235, 245], [167, 139, 250], [103, 232, 249]];
+  const proj = [];
+  function quadro() {
+    t += reduz ? 0 : .0016;
+    rx += ((.42 + my * .25) - rx) * .04; ry += (mx * .4 - ry) * .04;
+    ctx.clearRect(0, 0, W, H);
+    const g = ctx.createRadialGradient(W / 2, H * .45, 0, W / 2, H * .45, Math.max(W, H) * .5);
+    g.addColorStop(0, 'rgba(76,29,149,.28)'); g.addColorStop(.5, 'rgba(30,27,75,.10)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const cy = Math.cos(t + ry), sy = Math.sin(t + ry), cx = Math.cos(rx), sx = Math.sin(rx), F = 700, esc = Math.min(W, H) / 900;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      let x = p.x * cy - p.z * sy, z = p.x * sy + p.z * cy, y = p.y;
+      let y2 = y * cx - z * sx, z2 = y * sx + z * cx + 900;
+      const k = F / z2 * esc;
+      proj[i] = { x: W / 2 + x * k, y: H * .47 + y2 * k, k, z: z2, p };
+    }
+    ctx.lineWidth = .6;
+    for (let i = 0; i < proj.length; i++) {
+      const a = proj[i];
+      for (let j = i + 1; j < proj.length; j++) {
+        const b = proj[j], dx = a.x - b.x, dy = a.y - b.y, d = dx * dx + dy * dy;
+        if (d < 6400) {
+          const al = (1 - d / 6400) * .22 * Math.min(1, a.k * 1.3);
+          ctx.strokeStyle = `rgba(167,139,250,${al})`;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+    }
+    for (const a of proj) {
+      const c = cor[a.p.c], r = a.p.s * a.k * 1.6, brilho = .35 + .6 * Math.min(1, a.k);
+      ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${brilho})`;
+      ctx.beginPath(); ctx.arc(a.x, a.y, Math.max(.3, r), 0, 6.283); ctx.fill();
+      if (a.p.c && r > 1.2) { ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},.08)`; ctx.beginPath(); ctx.arc(a.x, a.y, r * 4, 0, 6.283); ctx.fill(); }
+    }
+    requestAnimationFrame(quadro);
+  }
+  quadro();
+})();
+
+/* ================= CRM ================= */
 const CFG = window.CRM_CONFIG || {};
 const CONFIGURADO = !!(CFG.SUPABASE_URL && !CFG.SUPABASE_URL.includes('COLE_AQUI'));
 const sb = CONFIGURADO ? supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
-const STATUS = ['Novo','Em negociação','Digitado','Pago','Perdido'];
-let eu = null, equipe = [], clientesAtuais = [], editando = null, cpfConfirmado = null;
+let eu = null, equipe = [], clientesAtuais = [], editando = null, cpfConfirmado = null, inssMexeu = false, timerFlut = null;
 
 /* ---------- utilidades ---------- */
 const $ = s => document.querySelector(s);
@@ -265,28 +409,34 @@ const fmtData = d => d ? d.split('-').reverse().join('/') : '';
 const iso = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
 const hoje = () => iso(new Date());
 const lerValor = v => { v = String(v || '').trim(); if (!v) return 0; if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.'); const n = parseFloat(v.replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
-const stClasse = s => 'st-' + String(s).split(' ')[0];
+const iniciais = n => String(n || '?').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+const avatar = (nome, foto, cls = '') => foto
+  ? `<span class="av ${cls}"><img src="${esc(foto)}" alt="" loading="lazy"></span>`
+  : `<span class="av ${cls}">${esc(iniciais(nome))}</span>`;
+const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const ler = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 let tt;
 function toast(msg, ruim) { const t = $('#toast'); t.textContent = msg; t.className = ruim ? 'ruim' : ''; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 4000); }
 function traduz(e) {
   const m = (e && e.message) || String(e);
   if (/Email logins are disabled|email provider/i.test(m)) return 'Login por e-mail desligado no Supabase. Ative o provedor Email (Authentication > Sign In / Providers > Email).';
   if (/Invalid login/i.test(m)) return 'E-mail ou senha incorretos.';
-  if (/already registered/i.test(m)) return 'Este e-mail já tem cadastro.';
+  if (/already registered/i.test(m)) return 'Este e-mail já tem cadastro. Use o botão Entrar.';
   if (/at least 6/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
   if (/Signups not allowed/i.test(m)) return 'Cadastro desativado no Supabase (Authentication > Sign In / Providers > Allow new users to sign up).';
   if (/Email not confirmed/i.test(m)) return 'E-mail ainda não confirmado. Desative "Confirm email" no Supabase.';
-  if (/row-level security|permission denied/i.test(m)) return 'Sem permissão para essa ação.';
+  if (/row-level security|permission denied|Sem permiss/i.test(m)) return 'Sem permissão para essa ação.';
   if (/rate limit/i.test(m)) return 'Muitas tentativas seguidas. Aguarde um minuto.';
   return m;
 }
-function ocupado(btn, sim) { btn.disabled = sim; }
+const ocupado = (btn, sim) => btn.disabled = sim;
 
 /* ---------- login ---------- */
 function mostrarLogin(msg) {
   $('#app').hidden = true; $('#login').hidden = false;
   $('#aviso-config').hidden = CONFIGURADO;
   $('#l-erro').textContent = msg || '';
+  clearInterval(timerFlut);
 }
 $('#form-login').onsubmit = async e => {
   e.preventDefault();
@@ -308,7 +458,7 @@ $('#l-primeiro').onclick = async () => {
   if (!data.session) return $('#l-erro').textContent = 'Senha criada. Confirme pelo link enviado ao seu e-mail e depois clique em Entrar.';
   iniciar();
 };
-$('#sair').onclick =async () => { await sb.auth.signOut(); eu = null; mostrarLogin(); };
+$('#sair').onclick = async () => { await sb.auth.signOut(); eu = null; mostrarLogin(); };
 
 async function iniciar() {
   if (!CONFIGURADO) return mostrarLogin();
@@ -328,6 +478,7 @@ async function iniciar() {
   $('#c-at-box').hidden = !admin;
   $$('.col-at').forEach(x => x.hidden = !admin);
   if (admin) await carregarEquipe();
+  iniciarFlutuante();
   abrirAba('clientes');
 }
 
@@ -338,72 +489,80 @@ function abrirAba(aba) {
   ['clientes', 'ranking', 'atendentes', 'conta'].forEach(a => $('#aba-' + a).hidden = a !== aba);
   if (aba === 'clientes') carregarClientes();
   if (aba === 'ranking') carregarRanking();
-  if (aba === 'atendentes') carregarEquipe();
+  if (aba === 'atendentes') { carregarEquipe(); carregarLogs(); }
 }
 
 /* ---------- clientes ---------- */
-STATUS.forEach(s => { $('#f-status').add(new Option(s, s)); $('#c-status').add(new Option(s, s)); });
 let tb;
 $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(carregarClientes, 350); };
-['#f-status', '#f-de', '#f-ate', '#f-at'].forEach(s => $(s).onchange = carregarClientes);
+['#f-de', '#f-ate', '#f-at'].forEach(s => $(s).onchange = carregarClientes);
 
 async function carregarClientes() {
   const admin = eu.papel === 'admin';
-  let q = sb.from('clientes').select('*, perfis(nome)')
+  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,observacoes,atendente_id,tem_senha_inss,perfis(nome)')
     .order('data_contato', { ascending: false }).order('id', { ascending: false }).limit(1000);
-  const termo = $('#f-busca').value.replace(/[,()*%\\]/g, ' ').trim();
+  const termo = $('#f-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
   if (termo) {
     const dig = so(termo), conds = [];
     if (/[a-zA-ZÀ-ú]/.test(termo) || dig.length < 3) conds.push(`nome.ilike.*${termo}*`);
     if (dig.length >= 3) conds.push(`cpf.ilike.*${dig}*`, `telefone.ilike.*${dig}*`);
     q = q.or(conds.join(','));
   }
-  if ($('#f-status').value) q = q.eq('status', $('#f-status').value);
   if ($('#f-de').value) q = q.gte('data_contato', $('#f-de').value);
   if ($('#f-ate').value) q = q.lte('data_contato', $('#f-ate').value);
   if (admin && $('#f-at').value) q = q.eq('atendente_id', $('#f-at').value);
   const { data, error } = await q;
   if (error) return toast(traduz(error), true);
   clientesAtuais = data;
-  const pagos = data.filter(c => c.status === 'Pago');
+  const mesIni = hoje().slice(0, 8) + '01';
   $('#resumo').innerHTML = `
-    <div class="kpi"><small>Clientes na lista</small><div>${data.length}</div></div>
-    <div class="kpi"><small>Pagos</small><div>${pagos.length}</div></div>
-    <div class="kpi"><small>Valor pago</small><div>${brl(pagos.reduce((s, c) => s + Number(c.valor), 0))}</div></div>
-    <div class="kpi"><small>Em andamento</small><div>${data.filter(c => ['Novo', 'Em negociação', 'Digitado'].includes(c.status)).length}</div></div>`;
+    <div class="kpi vidro"><small>Clientes na lista</small><div>${data.length}</div></div>
+    <div class="kpi vidro"><small>Fechados este mês</small><div>${data.filter(c => c.data_contato >= mesIni).length}</div></div>
+    <div class="kpi vidro"><small>Valor total</small><div>${brl(data.reduce((s, c) => s + Number(c.valor), 0))}</div></div>
+    <div class="kpi vidro"><small>Com acesso INSS</small><div>${data.filter(c => c.tem_senha_inss).length}</div></div>`;
   $('#lista').innerHTML = data.length ? data.map(c => `
     <tr data-id="${c.id}">
       <td class="nm">${esc(c.nome)}</td>
       <td data-r="CPF">${esc(fmtCPF(c.cpf))}</td>
       <td data-r="Telefone">${esc(fmtTel(c.telefone))}</td>
-      <td data-r="Contato">${fmtData(c.data_contato)}</td>
+      <td data-r="Fechamento">${fmtData(c.data_contato)}</td>
       <td data-r="Valor">${brl(c.valor)}</td>
-      <td><span class="tag ${stClasse(c.status)}">${esc(c.status)}</span></td>
+      <td><span class="cadeado ${c.tem_senha_inss ? '' : 'nao'}">${c.tem_senha_inss ? '🔒 Senha salva' : 'Sem senha'}</span></td>
       ${admin ? `<td data-r="Atendente">${esc(c.perfis?.nome)}</td>` : ''}
     </tr>`).join('') : `<tr><td colspan="7" class="vazio">Nenhum cliente encontrado.</td></tr>`;
   $$('#lista tr[data-id]').forEach(tr => tr.onclick = () => abrirCliente(clientesAtuais.find(c => c.id == tr.dataset.id)));
 }
 
 $('#novo').onclick = () => abrirCliente(null);
-$('#c-cancelar').onclick = () => $('#modal').hidden = true;
-$('#c-status').onchange = () => { $('#c-venda-box').hidden = $('#c-status').value !== 'Pago'; if ($('#c-status').value === 'Pago' && !$('#c-venda').value) $('#c-venda').value = hoje(); };
+$('#c-cancelar').onclick = fecharModal;
+function fecharModal() { $('#modal').hidden = true; $('#c-inss').value = ''; $('#c-inss').type = 'password'; }
 $('#c-cpf').oninput = e => { e.target.value = fmtCPF(e.target.value.slice(0, 14)); cpfConfirmado = null; $('#m-aviso').hidden = true; };
 $('#c-tel').onblur = e => e.target.value = fmtTel(e.target.value);
+$('#c-inss').oninput = () => inssMexeu = true;
+$('#c-inss-ver').onclick = async () => {
+  const i = $('#c-inss');
+  if (i.type === 'text') { i.type = 'password'; $('#c-inss-ver').textContent = 'Mostrar'; return; }
+  if (editando?.tem_senha_inss && !inssMexeu && !i.value) {
+    const { data, error } = await sb.rpc('revelar_senha_inss', { p_cliente: editando.id });
+    if (error) return toast(traduz(error), true);
+    i.value = data || '';
+  }
+  i.type = 'text'; $('#c-inss-ver').textContent = 'Ocultar';
+};
 
 function abrirCliente(c) {
-  editando = c; cpfConfirmado = null;
-  $('#m-titulo').textContent = c ? 'Editar cliente' : 'Novo cliente';
+  editando = c; cpfConfirmado = null; inssMexeu = false;
+  $('#m-titulo').textContent = c ? 'Editar cliente' : 'Novo cliente fechado';
   $('#m-aviso').hidden = true;
   $('#c-nome').value = c?.nome || '';
   $('#c-cpf').value = fmtCPF(c?.cpf);
   $('#c-tel').value = fmtTel(c?.telefone);
   $('#c-data').value = c?.data_contato || hoje();
-  $('#c-valor').value = c ? Number(c.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
-  $('#c-status').value = c?.status || 'Novo';
-  $('#c-venda').value = c?.data_venda || '';
-  $('#c-venda-box').hidden = $('#c-status').value !== 'Pago';
+  $('#c-valor').value = c && Number(c.valor) ? Number(c.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
   $('#c-banco').value = c?.banco || '';
   $('#c-obs').value = c?.observacoes || '';
+  $('#c-inss').value = ''; $('#c-inss').type = 'password'; $('#c-inss-ver').textContent = 'Mostrar';
+  $('#c-inss').placeholder = c?.tem_senha_inss ? '•••••••• (salva, clique em Mostrar)' : 'Senha do Meu INSS';
   if (eu.papel === 'admin') {
     $('#c-at').innerHTML = equipe.filter(p => p.ativo || p.id === c?.atendente_id).map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
     $('#c-at').value = c?.atendente_id || eu.id;
@@ -416,9 +575,8 @@ function abrirCliente(c) {
 $('#form-cli').onsubmit = async e => {
   e.preventDefault();
   const cpf = so($('#c-cpf').value);
-  if (cpf && cpf.length !== 11) return toast('CPF precisa ter 11 números.', true);
-  // aviso de CPF já atendido por outro atendente
-  if (cpf && cpf !== so(editando?.cpf) && cpfConfirmado !== cpf) {
+  if (cpf.length !== 11) return toast('CPF precisa ter 11 números.', true);
+  if (cpf !== so(editando?.cpf) && cpfConfirmado !== cpf) {
     const { data: dono } = await sb.rpc('cpf_dono', { p_cpf: cpf });
     if (dono) {
       cpfConfirmado = cpf;
@@ -430,33 +588,43 @@ $('#form-cli').onsubmit = async e => {
   const reg = {
     nome: $('#c-nome').value.trim(), cpf, telefone: so($('#c-tel').value),
     data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
-    status: $('#c-status').value, data_venda: $('#c-status').value === 'Pago' ? ($('#c-venda').value || null) : null,
     banco: $('#c-banco').value.trim() || null, observacoes: $('#c-obs').value.trim() || null
   };
   if (eu.papel === 'admin') reg.atendente_id = $('#c-at').value;
   const b = $('#c-salvar'); ocupado(b, true);
-  const { error } = editando
-    ? await sb.from('clientes').update(reg).eq('id', editando.id)
-    : await sb.from('clientes').insert(reg);
+  try {
+    let id = editando?.id;
+    if (editando) {
+      const { error } = await sb.from('clientes').update(reg).eq('id', id);
+      if (error) throw error;
+    } else {
+      const { data, error } = await sb.from('clientes').insert(reg).select('id').single();
+      if (error) throw error;
+      id = data.id;
+    }
+    if (inssMexeu) {
+      const { error } = await sb.rpc('salvar_senha_inss', { p_cliente: id, p_senha: $('#c-inss').value });
+      if (error) throw error;
+    }
+    fecharModal();
+    toast(editando ? 'Cliente atualizado.' : '🎉 Cliente fechado cadastrado!');
+    carregarClientes(); atualizarFlutuante();
+  } catch (err) { toast(traduz(err), true); }
   ocupado(b, false);
-  if (error) return toast(traduz(error), true);
-  $('#modal').hidden = true;
-  toast(editando ? 'Cliente atualizado.' : 'Cliente cadastrado.');
-  carregarClientes();
 };
 
 $('#c-apagar').onclick = async () => {
   if (!editando || !confirm(`Apagar o cliente ${editando.nome}? Não tem como desfazer.`)) return;
   const { error } = await sb.from('clientes').delete().eq('id', editando.id);
   if (error) return toast(traduz(error), true);
-  $('#modal').hidden = true; toast('Cliente apagado.'); carregarClientes();
+  fecharModal(); toast('Cliente apagado.'); carregarClientes(); atualizarFlutuante();
 };
 
 $('#exportar').onclick = () => {
   if (!clientesAtuais.length) return toast('Nada para exportar.', true);
-  const cab = ['Nome', 'CPF', 'Telefone', 'Data contato', 'Valor', 'Status', 'Data venda', 'Banco', 'Atendente', 'Observações'];
+  const cab = ['Nome', 'CPF', 'Telefone', 'Data fechamento', 'Valor', 'Banco', 'Atendente', 'Tem senha INSS', 'Observações'];
   const linhas = clientesAtuais.map(c => [c.nome, fmtCPF(c.cpf), fmtTel(c.telefone), fmtData(c.data_contato),
-    Number(c.valor).toFixed(2).replace('.', ','), c.status, fmtData(c.data_venda), c.banco, c.perfis?.nome || eu.nome, c.observacoes]);
+    Number(c.valor).toFixed(2).replace('.', ','), c.banco, c.perfis?.nome || eu.nome, c.tem_senha_inss ? 'Sim' : 'Não', c.observacoes]);
   const csv = [cab, ...linhas].map(l => l.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
@@ -476,6 +644,7 @@ function intervalo(p) {
 }
 $$('#periodos [data-p]').forEach(b => b.onclick = () => { periodo = b.dataset.p; carregarRanking(); });
 $('#r-ok').onclick = () => { if (!$('#r-de').value || !$('#r-ate').value) return toast('Escolha as duas datas.', true); periodo = 'custom'; carregarRanking(); };
+const plural = n => `${n} cliente${n == 1 ? '' : 's'}`;
 
 async function carregarRanking() {
   $$('#periodos [data-p]').forEach(b => b.classList.toggle('sel', b.dataset.p === periodo));
@@ -483,24 +652,60 @@ async function carregarRanking() {
   if (periodo !== 'custom') { $('#r-de').value = ini; $('#r-ate').value = fim; }
   const { data, error } = await sb.rpc('ranking', { inicio: ini, fim });
   if (error) return toast(traduz(error), true);
-  const max = Math.max(1, ...data.map(r => Number(r.total)));
-  const tot = data.reduce((s, r) => s + Number(r.total), 0), qtd = data.reduce((s, r) => s + Number(r.vendas), 0);
+  const max = Math.max(1, ...data.map(r => Number(r.clientes)));
+  const qtd = data.reduce((s, r) => s + Number(r.clientes), 0);
   $('#r-resumo').innerHTML = `
-    <div class="kpi"><small>Período</small><div style="font-size:15px">${fmtData(ini)} a ${fmtData(fim)}</div></div>
-    <div class="kpi"><small>Vendas da equipe</small><div>${qtd}</div></div>
-    <div class="kpi"><small>Total da equipe</small><div>${brl(tot)}</div></div>`;
+    <div class="kpi vidro"><small>Período</small><div style="font-size:15px">${fmtData(ini)} a ${fmtData(fim)}</div></div>
+    <div class="kpi vidro"><small>Clientes fechados pela equipe</small><div>${qtd}</div></div>`;
   const med = ['🥇', '🥈', '🥉'];
   $('#rank').innerHTML = data.length ? data.map((r, i) => `
-    <div class="rank-item ${r.atendente === eu.nome ? 'eu' : ''}">
-      <div class="pos">${Number(r.total) > 0 && i < 3 ? med[i] : i + 1 + 'º'}</div>
+    <div class="rank-item vidro ${r.id === eu.id ? 'eu' : ''}">
+      <div class="pos">${Number(r.clientes) > 0 && i < 3 ? med[i] : i + 1 + 'º'}</div>
+      ${avatar(r.atendente, r.foto_url)}
       <div><div class="nome">${esc(r.atendente)}</div>
-        <div class="det">${r.vendas} venda${r.vendas == 1 ? '' : 's'}</div>
-        <div class="barra-prog"><i style="width:${(Number(r.total) / max * 100).toFixed(1)}%"></i></div></div>
-      <div class="total">${brl(r.total)}</div>
-    </div>`).join('') : '<div class="vazio">Nenhum atendente ativo.</div>';
+        <div class="barra-prog"><i style="width:${(Number(r.clientes) / max * 100).toFixed(1)}%"></i></div></div>
+      <div class="total">${r.clientes}<small>clientes</small></div>
+    </div>`).join('') : '<div class="vazio">Nenhum atendente cadastrado ainda.</div>';
+}
+
+/* ---------- ranking flutuante 3D ---------- */
+function iniciarFlutuante() {
+  const min = ler('crm-flut') === 'min' || (ler('crm-flut') === null && innerWidth < 700);
+  $('#flut-card').hidden = min; $('#flut-bola').hidden = !min;
+  atualizarFlutuante();
+  clearInterval(timerFlut); timerFlut = setInterval(atualizarFlutuante, 60000);
+}
+$('#flut-min').onclick = () => { $('#flut-card').hidden = true; $('#flut-bola').hidden = false; guardar('crm-flut', 'min'); };
+$('#flut-bola').onclick = () => { $('#flut-card').hidden = false; $('#flut-bola').hidden = true; guardar('crm-flut', 'max'); };
+(() => { // inclinação 3D seguindo o mouse
+  const card = $('#flut-card');
+  card.addEventListener('pointermove', e => {
+    const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+    card.style.transform = `rotateY(${x * 22}deg) rotateX(${-y * 22}deg)`;
+  });
+  card.addEventListener('pointerleave', () => card.style.transform = 'rotateY(-8deg) rotateX(6deg)');
+  card.style.transform = 'rotateY(-8deg) rotateX(6deg)';
+})();
+async function atualizarFlutuante() {
+  if (!eu) return;
+  const [ini, fim] = intervalo('mes');
+  $('#flut-mes').textContent = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const { data, error } = await sb.rpc('ranking', { inicio: ini, fim });
+  if (error || !data) return;
+  const top = data.slice(0, 3), ordem = [1, 0, 2];
+  $('#flut-podio').innerHTML = top.length ? ordem.map(i => {
+    const r = top[i]; if (!r) return '<div></div>';
+    return `<div class="lugar p${i + 1}">${i === 0 ? '<span class="coroa">👑</span>' : ''}
+      ${avatar(r.atendente, r.foto_url)}
+      <div class="n">${esc(r.atendente.split(' ')[0])}</div><div class="q">${plural(r.clientes)}</div>
+      <div class="degrau">${i + 1}º</div></div>`;
+  }).join('') : '<div style="grid-column:1/-1;text-align:center;color:var(--suave);font-size:13px">Cadastre atendentes para ver o pódio</div>';
+  $('#flut-lista').innerHTML = data.slice(3, 7).map((r, i) => `
+    <div class="${r.id === eu.id ? 'eu' : ''}"><span style="width:18px;color:var(--suave)">${i + 4}º</span>${avatar(r.atendente, r.foto_url)}<span>${esc(r.atendente)}</span><b>${r.clientes}</b></div>`).join('');
 }
 
 /* ---------- atendentes (admin) ---------- */
+let fotoPara = null;
 async function carregarEquipe() {
   const [{ data: perfis, error }, { data: conv }] = await Promise.all([
     sb.from('perfis').select('*').order('nome'),
@@ -513,7 +718,8 @@ async function carregarEquipe() {
   sel.value = atual;
   $('#lista-at').innerHTML = equipe.map(p => `
     <div class="linha-at ${p.ativo ? '' : 'inativo'}">
-      <div><b>${esc(p.nome)}</b>${p.id === eu.id ? ' (você)' : ''}<small>${esc(p.email)}</small></div>
+      <div class="info"><span data-foto="${p.id}">${avatar(p.nome, p.foto_url, 'troca')}</span>
+        <div><b>${esc(p.nome)}</b>${p.id === eu.id ? ' (você)' : ''}<small>${esc(p.email)}</small></div></div>
       <div class="acoes">
         <select data-papel="${p.id}" ${p.id === eu.id ? 'disabled' : ''}>
           <option value="atendente" ${p.papel === 'atendente' ? 'selected' : ''}>Atendente</option>
@@ -525,20 +731,56 @@ async function carregarEquipe() {
     (conv?.length ? '<h3 style="margin:18px 0 6px;font-size:13px;color:var(--suave)">Aguardando primeiro login</h3>' +
       conv.map(c => `<div class="linha-at"><div><b>${esc(c.nome)}</b><small>${esc(c.email)}</small></div>
         <button class="btn sec peq" data-conv="${esc(c.email)}">Remover</button></div>`).join('') : '');
+  $$('[data-foto]').forEach(s => s.onclick = () => { fotoPara = s.dataset.foto; $('#foto-input').value = ''; $('#foto-input').click(); });
   $$('[data-papel]').forEach(s => s.onchange = async () => {
     const { error } = await sb.from('perfis').update({ papel: s.value }).eq('id', s.dataset.papel);
     error ? toast(traduz(error), true) : toast('Acesso atualizado.');
-    carregarEquipe();
+    carregarEquipe(); atualizarFlutuante();
   });
   $$('[data-ativo]').forEach(b => b.onclick = async () => {
     const p = equipe.find(x => x.id === b.dataset.ativo);
     const { error } = await sb.from('perfis').update({ ativo: !p.ativo }).eq('id', p.id);
     error ? toast(traduz(error), true) : toast(p.ativo ? `${p.nome} bloqueado.` : `${p.nome} liberado.`);
-    carregarEquipe();
+    carregarEquipe(); atualizarFlutuante();
   });
   $$('[data-conv]').forEach(b => b.onclick = async () => {
     await sb.from('convites').delete().eq('email', b.dataset.conv); carregarEquipe();
   });
+}
+
+function recortarFoto(arquivo) {
+  return new Promise((ok, falha) => {
+    const img = new Image();
+    img.onload = () => {
+      const L = 400, c = document.createElement('canvas'); c.width = c.height = L;
+      const lado = Math.min(img.width, img.height);
+      c.getContext('2d').drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, L, L);
+      c.toBlob(b => b ? ok(b) : falha(new Error('Não consegui ler a imagem.')), 'image/jpeg', .88);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => falha(new Error('Arquivo de imagem inválido.'));
+    img.src = URL.createObjectURL(arquivo);
+  });
+}
+$('#foto-input').onchange = async e => {
+  const f = e.target.files[0]; if (!f || !fotoPara) return;
+  try {
+    toast('Enviando foto…');
+    const blob = await recortarFoto(f), caminho = `${fotoPara}.jpg`;
+    const { error } = await sb.storage.from('fotos').upload(caminho, blob, { upsert: true, contentType: 'image/jpeg' });
+    if (error) throw error;
+    const url = sb.storage.from('fotos').getPublicUrl(caminho).data.publicUrl + '?v=' + Date.now();
+    const { error: e2 } = await sb.from('perfis').update({ foto_url: url }).eq('id', fotoPara);
+    if (e2) throw e2;
+    toast('Foto atualizada!'); carregarEquipe(); atualizarFlutuante();
+  } catch (err) { toast(traduz(err), true); }
+};
+
+async function carregarLogs() {
+  const { data, error } = await sb.from('log_acesso_inss').select('acao,em,clientes(nome),perfis(nome)').order('em', { ascending: false }).limit(30);
+  if (error) return;
+  $('#logs').innerHTML = data.length ? data.map(l => `<div class="log"><b>${esc(l.perfis?.nome || '?')}</b> ${esc(l.acao)} a senha de <b>${esc(l.clientes?.nome || 'cliente apagado')}</b> · ${new Date(l.em).toLocaleString('pt-BR')}</div>`).join('')
+    : '<div class="log">Nenhum acesso registrado ainda.</div>';
 }
 
 $('#form-at').onsubmit = async e => {
@@ -550,7 +792,6 @@ $('#form-at').onsubmit = async e => {
     const { data: tipo, error } = await sb.rpc('convidar', { p_email: email, p_nome: nome, p_papel: papel });
     if (error) throw error;
     if (tipo === 'novo') {
-      // cria o login sem derrubar a sessão do admin
       const temp = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY,
         { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'crm-temp' } });
       const { error: e2 } = await temp.auth.signUp({ email, password: senha });
@@ -562,7 +803,7 @@ $('#form-at').onsubmit = async e => {
     $('#form-at').reset();
   } catch (err) { toast(traduz(err), true); }
   ocupado(b, false);
-  carregarEquipe();
+  carregarEquipe(); atualizarFlutuante();
 };
 
 /* ---------- minha conta ---------- */
