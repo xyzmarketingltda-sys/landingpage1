@@ -356,6 +356,14 @@
       const v = mx ? Number(mx[1].replace(/\./g, '').replace(',', '.')) : 0;
       if (v > 0) r.seguro.push({ v, trecho: 'Quadro "Seguro Prestamista (X) SIM" · valor ' + mx[1] + ' (conferir)' });
     }
+    // PDFs que quebram palavras ("Prestam ista", "Seg uro"): tenta no texto sem espaços
+    if (!r.seguro.length) {
+      const C = T.replace(/\s+/g, '');
+      const mc = C.match(/(?:ValordoSeguro|Pr[êe]miodoSeguro|SeguroPrestamista|ValordoPr[êe]mio)R?\$?:?(\d{1,3}(?:\.\d{3})*,\d{2})(?!%)/i);
+      const naoMarcado = /\(\)SIM\(X\)N[ÃA]O/i.test(C);
+      const v = mc ? Number(mc[1].replace(/\./g, '').replace(',', '.')) : 0;
+      if (v > 0 && !naoMarcado) r.seguro.push({ v, trecho: 'Seguro ' + mc[1] + ' (texto quebrado no PDF — conferir)' });
+    }
     r.totalSeguro = r.seguro.reduce((a, x) => a + x.v, 0); r.totalPacote = r.pacote.reduce((a, x) => a + x.v, 0);
     r.tem = r.totalSeguro > 0 || r.totalPacote > 0;
     return r;
