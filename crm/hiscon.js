@@ -314,7 +314,7 @@
 
   /* ===================== LOTE: seguro prestamista / pacote de benefícios ===================== */
   // procura os rótulos e o valor em R$ logo depois; ignora IOF, taxas (%), valores zerados e cláusulas sem valor
-  const ROT_SEGURO = /(seguro\s+prestamista|prestamista|seguro\s+de\s+prote[çc][ãa]o\s+financeira|seguro\s+de\s+vida|pr[êe]mio\s+(?:do\s+)?seguro|valor\s+(?:do\s+)?seguro|seguro\s+(?:financiado|contratado)|\bseguro\b)/gi;
+  const ROT_SEGURO = /(seguro\s+prestamista|prestamista|seguro\s+de\s+prote[çc][ãa]o\s+financeira|seguro\s+de\s+vida|pr[êe]mio\s+(?:do\s+)?seguro|valor\s+(?:do\s+)?seguro|seguro\s+(?:financiado|contratado)|\bseguros?\b)/gi;
   const ROT_PACOTE = /(pacote\s+de\s+benef[ií]cios|cesta\s+de\s+(?:servi[çc]os|benef[ií]cios)|assist[êe]ncia\s+(?:funeral|residencial|sa[úu]de|odontol[óo]gica|farm[áa]cia|24h)|clube\s+de\s+(?:benef[ií]cios|vantagens)|t[íi]tulo\s+de\s+capitaliza[çc][ãa]o|capitaliza[çc][ãa]o|plano\s+de\s+benef[ií]cios|benef[ií]cios?\s+adicionais)/gi;
   const NUM = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2})(?!\s*%)/g;
   function acharValores(T, rot) {
@@ -323,7 +323,7 @@
     while ((m = rot.exec(T))) {
       const ini = m.index, janela = T.slice(ini, ini + 170);
       // corta a janela no próximo rótulo de outra coisa (IOF, juros, CET, liberado, parcela, total)
-      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|total\s+(?:financiado|do\s+empr)|tarifa|TAC|l[íi]quido|creditad|quita[çc]|valor\s+(?:da|das|do)\s+(?:opera|parcel|princip))/i);
+      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|total\s+(?:financiado|do\s+empr)|tarifa|TAC|l[íi]quido|creditad|quita[çc]|saldo|refinanci|retido|portado|devedor|\d{2}\/\d{2}\/\d{4}|valor\s+(?:da|das|do)\s+(?:opera|parcel|princip))/i);
       const trecho = corte >= 0 ? janela.slice(0, m[0].length + corte) : janela;
       if (/\bIOF\s*(?:do|da|de|sobre|s\/)?\s*(?:o\s+)?$/i.test(T.slice(Math.max(0, ini - 25), ini))) continue;
       const depois = T.slice(ini + m[0].length, ini + m[0].length + 60), antes2 = T.slice(Math.max(0, ini - 30), ini);
@@ -333,7 +333,7 @@
       while ((n = NUM.exec(trecho))) {
         const v = Number(n[1].replace(/\./g, '').replace(',', '.'));
         const antes = trecho.slice(Math.max(0, n.index - 18), n.index);
-        if (/IOF|%|CET|juros/i.test(antes)) continue;
+        if (/IOF|CET|juros/i.test(antes)) continue;
         const meio = trecho.slice(m[0].length, n.index);
         if (/\.\s+[A-ZÀ-Ú]|\b(declar|autoriz|poder|ser[áa]|caso|cl[áa]usula|termo)/i.test(meio) || meio.split(/\s+/).length > 9) break; // texto de cláusula, não valor
         if (v === 0) break;                                        // valor zerado = não contratado
