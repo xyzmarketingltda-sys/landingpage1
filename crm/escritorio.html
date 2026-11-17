@@ -191,7 +191,23 @@ function brilhoTopo(gx, gy, sx, sy, z) { // filete de luz na quina da frente (ac
 function bloco(gx, gy, sx, sy, h, cores, z = 0) { caixa(gx, gy, sx, sy, h, cores, z); brilhoTopo(gx, gy, sx, sy, z + h); }
 function pontoNaFrente(gx, gy, z) { const [x, y] = iso(gx, gy); return [x, y - z]; }
 
-function mesa(gx, gy, chefe) {
+const FAIXAS = { clt: [90, 110, 140, 200], estagiario: [60, 74, 94, 134] };
+let nivelMesa = {}, mesaDe = {};
+function dinheiro(gx, gy, nivel) {
+  const pos = [[1.1, .42], [1.38, .42], [1.1, .68], [1.38, .68]];
+  for (let k = 0; k < Math.min(nivel, 4); k++) {
+    const [a, b] = pos[k], h = 5 + k * 2;
+    bloco(gx + a - .05, gy + b - .04, .32, .22, h, ['#bbf7d0', '#22c55e', '#166534'], 16);
+    for (let L = 2; L < h; L += 2) { const q = pontoNaFrente(gx + a - .05, gy + b + .18, 16 + L); ctx.fillStyle = 'rgba(20,83,45,.6)'; ctx.fillRect(Math.round(q[0]) + 1, Math.round(q[1]), 8, 1); }
+    const p = pontoNaFrente(gx + a + .12, gy + b + .16, 16 + h / 2); R(p[0] - 1, p[1] - 1, 3, 1, '#fde68a'); // cinta
+  }
+  if (nivel >= 4) { for (let k = 0; k < 5; k++) bloco(gx + .1 + k * .07, gy + .78 - k * .04, .14, .14, 1 + k % 3, OURO, 16 + Math.floor(k / 2)); }
+  { const p0 = pontoNaFrente(gx + 1.25, gy + .55, 34 + Math.sin(T / 300) * 2); ctx.font = 'bold 9px "Press Start 2P", monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#14532d'; ctx.fillText('$', p0[0] + 1, p0[1] + 1); ctx.fillStyle = nivel >= 4 ? '#fde047' : '#4ade80'; ctx.fillText('$', p0[0], p0[1]); ctx.textAlign = 'start'; }
+  const brilho = Math.floor(T / 220) % 4; const p = pontoNaFrente(gx + 1.3 + (brilho % 2) * .2, gy + .5, 24 + brilho * 2);
+  ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.fillRect(Math.round(p[0]), Math.round(p[1]) - 2, 1, 5); ctx.fillRect(Math.round(p[0]) - 2, Math.round(p[1]), 5, 1);
+}
+function mesa(gx, gy, chefe, idx) {
   const tampo = chefe ? ['#3a2a1f', '#2a1d15', '#1c130d'] : MADEIRA;
   // gaveteiro à esquerda e pé à direita
   bloco(gx + .05, gy + .1, .7, .8, 13, chefe ? MADEIRA_ESC : ['#d9dee8', '#b9c1cf', '#9aa4b5']);
@@ -206,9 +222,10 @@ function mesa(gx, gy, chefe) {
     ctx.fillStyle = 'rgba(220,240,255,.8)'; for (let k = 0; k < 4; k++) ctx.fillRect(Math.round(sx + 3), Math.round(sy - 27 + k * 2.4 + k * .6), 3 + (k * 5 % 6), 1); }
   bloco(gx + .25, gy + .55, .5, .25, 1, ['#f1f5f9', '#cbd5e1', '#94a3b8'], 16); // teclado
   bloco(gx + .85, gy + .62, .12, .16, 1, ['#e2e8f0', '#94a3b8', '#64748b'], 16); // mouse
-  bloco(gx + 1.15, gy + .5, .4, .32, 1, ['#ffffff', '#e5e7eb', '#d1d5db'], 16); bloco(gx + 1.18, gy + .48, .4, .32, 1, ['#fefce8', '#e5e7eb', '#d1d5db'], 17); // papéis
+  if (!nivelMesa[idx]) { bloco(gx + 1.15, gy + .5, .4, .32, 1, ['#ffffff', '#e5e7eb', '#d1d5db'], 16); bloco(gx + 1.18, gy + .48, .4, .32, 1, ['#fefce8', '#e5e7eb', '#d1d5db'], 17); } // papéis
   if (chefe) { bloco(gx + 1.62, gy + .2, .25, .25, 3, OURO, 16); bloco(gx + 1.66, gy + .24, .17, .17, 6, OURO, 19); bloco(gx + .05, gy + .7, .45, .15, 3, ['#111', '#b08d3c', '#7a5f1f'], 16); }
   else { bloco(gx + 1.65, gy + .25, .16, .16, 4, ['#ffffff', '#e5e7eb', '#9ca3af'], 16); vasinho(gx + .12, gy + .15, 16); }
+  if (!chefe && nivelMesa[idx]) dinheiro(gx, gy, nivelMesa[idx]);
 }
 function vasinho(gx, gy, z) { bloco(gx, gy, .22, .22, 4, ['#d97706', '#b45309', '#92400e'], z); const [x, y] = iso(gx + .11, gy + .11);
   for (const [dx, dy, c] of [[0, -8, '#22c55e'], [-2, -6, '#16a34a'], [2, -6, '#15803d']]) { ctx.fillStyle = c; ctx.fillRect(Math.round(x + dx - 1), Math.round(y - z + dy), 3, 3); } }
@@ -328,7 +345,7 @@ const MOVEIS = [
   { d: 24.6, f: () => plantaGrande(13.2, 11.3, PLAT.h) }, { d: 20.5, f: () => luminaria(11.2, 11.2, PLAT.h) },
 ];
 DESKS.forEach(([x, y], i) => {
-  MOVEIS.push({ d: x + y + 2.9, f: () => mesa(x, y, i === DESKS.length - 1) });
+  MOVEIS.push({ d: x + y + 2.9, f: () => mesa(x, y, i === DESKS.length - 1, i) });
   MOVEIS.push({ d: x + y - .2, f: () => cadeira(x + .65, y - .75) });
 });
 
@@ -444,6 +461,7 @@ function estadoDe(p) {
 }
 function assentoDe(p, i) {
   const idx = p.papel === 'admin' ? DESKS.length - 1 : i % (DESKS.length - 1);
+  mesaDe[p.id] = idx;
   const [x, y] = DESKS[idx]; return [x + 1, y - .45];
 }
 function rota(a, alvo) {
@@ -471,6 +489,8 @@ function atualizarAtores() {
       else rota(a, PORTA);
     }
   });
+  equipe.forEach((p, k) => { if (p.papel !== 'admin') assentoDe(p, equipe.filter(q => q.papel !== 'admin').indexOf(p)); });
+  aplicarMetas();
   if (equipe.length && syncOk) jaCarregou = true;
   desenharLista();
 }
@@ -603,6 +623,21 @@ $('#hor-salvar').onclick = async () => {
   b.disabled = false;
 };
 
+/* ---------- metas na mesa ---------- */
+let vendasMes = [];
+function aplicarMetas() {
+  nivelMesa = {};
+  vendasMes.forEach(r => { const f = FAIXAS[r.tipo] || FAIXAS.estagiario, nv = f.filter(x => Number(r.vendas) >= x).length; if (mesaDe[r.id] != null) nivelMesa[mesaDe[r.id]] = nv; });
+}
+async function carregarMetas() {
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const [y, m] = hoje.split('-').map(Number), ini = `${y}-${String(m).padStart(2, '0')}-01`;
+  const fim = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const { data } = await sb.rpc('metas_mes', { inicio: ini, fim });
+  if (data) { vendasMes = data; aplicarMetas(); }
+}
+setInterval(carregarMetas, 60000);
+
 /* ---------- início ---------- */
 async function carregarEquipe() {
   const { data, error } = await sb.rpc('equipe_escritorio');
@@ -619,9 +654,9 @@ async function carregarEquipe() {
   XYZPresenca.entrar(sb, eu, {
     sync: st => { online = new Set(Object.keys(st)); syncOk = true; atualizarAtores(); },
     acao: executar,
-    venda: m => { balao(m.id, '🎉 Fechei mais um!', 4000); particulas(m.id, '🎉', 6); particulas(m.id, '💰', 4); const a = atores.get(m.id); if (a) a.danca = T + 3000; },
+    venda: m => { setTimeout(carregarMetas, 800); balao(m.id, '🎉 Fechei mais um!', 4000); particulas(m.id, '🎉', 6); particulas(m.id, '💰', 4); const a = atores.get(m.id); if (a) a.danca = T + 3000; },
   });
-  await carregarEquipe();
+  await carregarEquipe(); await carregarMetas();
   requestAnimationFrame(quadro);
 })();
 </script>
