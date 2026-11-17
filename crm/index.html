@@ -199,6 +199,7 @@ tbody tr:last-child td{border-bottom:0}
 
 /* ATENDENTES */
 .is-admin [data-filtra]{cursor:pointer}.cm.filtro{outline:2px solid var(--ciano);box-shadow:0 0 18px rgba(0,229,255,.35)}
+.nav-link{color:var(--suave);text-decoration:none;padding:9px 14px;border-radius:10px;font-weight:500;margin-left:auto;border:1px solid var(--borda)}.nav-link:hover{color:var(--ciano);border-color:var(--ciano)}
 .grade2{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
 #gestao{border-radius:var(--raio);padding:16px 18px;margin-bottom:16px}
 .g-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -307,6 +308,7 @@ tbody tr:last-child td{border-bottom:0}
   <nav>
     <button data-aba="clientes" class="ativa">Clientes</button>
     <button data-aba="ranking">Ranking</button>
+    <a class="nav-link" href="hiscon.html">🔎 Analisar HISCON</a>
   </nav>
   <main>
     <!-- CLIENTES -->
@@ -337,7 +339,9 @@ tbody tr:last-child td{border-bottom:0}
           <button class="btn sec peq" data-g="hist">📈 Histórico mensal</button>
         </div>
         <div class="g-painel" id="gp-proc" hidden>
-          <div class="g-linha"><input id="gp-busca" placeholder="Buscar nome, nº do processo ou advogado"><button class="btn peq" id="gp-novo">+ Processo</button></div>
+          <form class="g-linha" id="gp-form"><input id="gpn-nome" placeholder="Cliente" required><input id="gpn-adv" list="lista-adv" placeholder="Advogado(a)" required style="max-width:170px"><input id="gpn-num" placeholder="Nº do processo" style="max-width:240px"><input id="gpn-pct" placeholder="% comissão" style="max-width:110px" inputmode="decimal"><button class="btn peq">+ Adicionar</button></form>
+          <div class="g-linha"><input id="gp-busca" placeholder="Buscar nome, nº do processo ou advogado"></div>
+          <div class="g-cats" id="gp-advs"></div>
           <div class="g-tab"><table><thead><tr><th>Cliente</th><th>Advogado</th><th>Nº do processo</th><th>Comissão</th><th>Status</th><th></th></tr></thead><tbody id="gp-lista"></tbody></table></div>
         </div>
         <div class="g-painel" id="gp-desp" hidden>
@@ -345,7 +349,7 @@ tbody tr:last-child td{border-bottom:0}
           <div class="g-tab"><table><thead><tr><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody id="gd-lista"></tbody></table></div>
         </div>
         <div class="g-painel" id="gp-com" hidden>
-          <div class="g-linha"><input id="gc-busca" placeholder="Buscar cliente ou CPF (todo o histórico)"><select id="gc-vend"><option value="">Todos os vendedores</option></select><select id="gc-escopo"><option value="mes">Só o mês</option><option value="tudo">Todo o histórico</option></select></div>
+          <div class="g-linha"><input id="gc-busca" placeholder="Buscar cliente ou CPF (todo o histórico)"><select id="gc-vend"><option value="">Todos os vendedores</option></select><select id="gc-mes"></select></div>
           <div class="g-cats" id="gc-resumo"></div>
           <div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Vendedor</th><th>Tipo</th><th>Banco</th><th>Advogado</th><th style="text-align:right">Valor</th><th style="text-align:right">Comissão</th><th>Situação</th></tr></thead><tbody id="gc-lista"></tbody></table></div>
         </div>
@@ -766,7 +770,12 @@ async function carregarProcessos() {
   let q = sb.from('processos').select('*').order('nome');
   const t = $('#gp-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
   if (t) q = q.or(`nome.ilike.*${t}*,numero.ilike.*${t}*,advogado.ilike.*${t}*`);
-  const { data } = await q;
+  const { data: todos } = await q;
+  const contAdv = {}; (todos || []).forEach(p => { const a = p.advogado || 'Sem advogado'; contAdv[a] = (contAdv[a] || 0) + 1; });
+  $('#gp-advs').innerHTML = `<span data-adv="" style="cursor:pointer;${gpAdv ? '' : 'border-color:var(--ciano);color:var(--ciano)'}">Todos: <b>${(todos || []).length}</b></span>` +
+    Object.entries(contAdv).sort((a, b) => b[1] - a[1]).map(([a, n]) => `<span data-adv="${esc(a)}" style="cursor:pointer;${gpAdv === a ? 'border-color:var(--ciano);color:var(--ciano)' : ''}">${esc(a)}: <b>${n}</b></span>`).join('');
+  $$('#gp-advs [data-adv]').forEach(x => x.onclick = () => { gpAdv = x.dataset.adv; carregarProcessos(); });
+  const data = (todos || []).filter(p => !gpAdv || (p.advogado || 'Sem advogado') === gpAdv);
   const st = ['Em andamento', 'Ganho', 'Acordo', 'Pago', 'Perdido', 'Arquivado'];
   $('#gp-lista').innerHTML = (data || []).map(p => `<tr data-id="${p.id}">
     <td><input class="ed" data-f="nome" value="${esc(p.nome)}"></td>
@@ -788,33 +797,46 @@ async function carregarProcessos() {
     if (error) return alert(traduz(error)); carregarGestao();
   });
 }
-$('#gp-novo').onclick = async () => {
-  const nome = prompt('Nome do cliente do processo:'); if (!nome) return;
-  const numero = prompt('Número do processo:') || null;
-  const advogado = prompt('Advogado(a):') || null;
-  const pct = prompt('Comissão (%):', '5');
-  const { error } = await sb.from('processos').insert({ nome: nome.trim(), numero, advogado, comissao_pct: pct ? numBR(pct) : null });
-  if (error) return alert(traduz(error)); carregarGestao();
+$('#gp-form').onsubmit = async e => {
+  e.preventDefault();
+  const pct = $('#gpn-pct').value.trim();
+  const { error } = await sb.from('processos').insert({ nome: $('#gpn-nome').value.trim(), advogado: $('#gpn-adv').value.trim(), numero: $('#gpn-num').value.trim() || null, comissao_pct: pct ? numBR(pct) : null });
+  if (error) return alert(traduz(error));
+  ['#gpn-nome', '#gpn-num', '#gpn-pct'].forEach(s => $(s).value = ''); carregarGestao();
 };
+let gpAdv = '';
 let tgc; $('#gc-busca').oninput = () => { clearTimeout(tgc); tgc = setTimeout(carregarComissoes, 350); };
-$('#gc-vend').onchange = $('#gc-escopo').onchange = () => carregarComissoes();
+$('#gc-vend').onchange = $('#gc-mes').onchange = () => carregarComissoes();
 async function carregarComissoes() {
   if ($('#gc-vend').options.length < 2) {
     ['RINA', 'JULIA', 'NAIRA', 'KAUANY', 'MATHEUS', 'ARLETE', 'ANGELA', 'LUCAS'].forEach(v => $('#gc-vend').add(new Option(v[0] + v.slice(1).toLowerCase(), v)));
     $('#gc-vend').add(new Option('Sem vendedor', '-'));
   }
-  let q = sb.from('comissoes').select('*').order('data_fechamento', { ascending: false, nullsFirst: false }).order('id').limit(1000);
-  const t = $('#gc-busca').value.replace(/[,()*%\\"]/g, ' ').trim(), dig = so(t);
-  if (t) q = q.or([/[a-zA-ZÀ-ú]/.test(t) ? `cliente.ilike.*${t}*` : null, dig.length >= 3 ? `cpf.ilike.*${dig}*` : null].filter(Boolean).join(','));
-  if ($('#gc-escopo').value === 'mes' && !t) q = q.eq('mes_ref', G.mes);
-  const v = $('#gc-vend').value; if (v === '-') q = q.is('vendedor', null); else if (v) q = q.eq('vendedor', v);
-  const { data } = await q;
+  const selMes = $('#gc-mes');
+  if (selMes.dataset.feito !== '1') {
+    selMes.innerHTML = '<option value="">Todos os meses</option>' + G.resumo.filter(r => Number(r.qtd_com)).map(r => `<option value="${r.mes}">${mesNome(r.mes)} (${r.qtd_com})</option>`).join('');
+    selMes.value = G.resumo.some(r => r.mes === G.mes && Number(r.qtd_com)) ? G.mes : (G.resumo.find(r => Number(r.qtd_com)) || {}).mes || '';
+    selMes.dataset.feito = '1';
+  }
+  const t = $('#gc-busca').value.replace(/[,()*%\\"]/g, ' ').trim(), dig = so(t), v = $('#gc-vend').value;
+  const montar = () => {
+    let q = sb.from('comissoes').select('*').order('mes_ref', { ascending: false }).order('data_fechamento', { ascending: false, nullsFirst: false }).order('id');
+    if (t) q = q.or([/[a-zA-ZÀ-ú]/.test(t) ? `cliente.ilike.*${t}*` : null, dig.length >= 3 ? `cpf.ilike.*${dig}*` : null].filter(Boolean).join(','));
+    if (selMes.value) q = q.eq('mes_ref', selMes.value);
+    if (v === '-') q = q.is('vendedor', null); else if (v) q = q.eq('vendedor', v);
+    return q;
+  };
+  let data = [];
+  for (let de = 0; de < 20000; de += 1000) {               // busca em páginas de 1000 até trazer tudo
+    const { data: pg, error } = await montar().range(de, de + 999);
+    if (error || !pg) break; data = data.concat(pg); if (pg.length < 1000) break;
+  }
   const porV = {};
   (data || []).forEach(c => { const k = c.vendedor || 'Sem vendedor'; porV[k] = porV[k] || { n: 0, s: 0, cpf: new Set() }; porV[k].n++; porV[k].s += Number(c.comissao || 0); if (c.cpf) porV[k].cpf.add(c.cpf); });
   $('#gc-resumo').innerHTML = Object.entries(porV).sort((a, b) => b[1].s - a[1].s)
     .map(([k, o]) => `<span>${esc(k)}: <b>${brl(o.s)}</b> · ${o.cpf.size} clientes</span>`).join('') +
-    `<span>Total: <b>${brl((data || []).reduce((a, c) => a + Number(c.comissao || 0), 0))}</b>${(data || []).length >= 1000 ? ' (primeiros 1000)' : ''}</span>`;
-  $('#gc-lista').innerHTML = (data || []).map(c => `<tr><td>${esc(c.cliente)}${c.cliente_id ? ' <span class="pill" title="Está no CRM">CRM</span>' : ''}</td>
+    `<span>Total: <b>${brl(data.reduce((a, c) => a + Number(c.comissao || 0), 0))}</b> · ${data.length} lançamentos</span>`;
+  $('#gc-lista').innerHTML = data.slice(0, 1500).map(c => `<tr><td>${esc(c.cliente)}${c.cliente_id ? ' <span class="pill" title="Está no CRM">CRM</span>' : ''}</td>
     <td>${esc(fmtCPF(c.cpf))}</td><td>${esc(c.vendedor || '–')}</td><td>${esc(c.tipo || '')}</td><td>${esc(c.banco || '')}</td><td>${esc(c.advogado || '')}</td>
     <td class="num">${c.valor != null ? brl(c.valor) : ''}</td><td class="num">${c.comissao != null ? brl(c.comissao) : ''}</td><td>${pillSit(c.situacao)}</td></tr>`).join('')
     || '<tr><td colspan="9" style="color:var(--suave)">Nada encontrado.</td></tr>';

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analisar HISCON · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#02060f;--painel:rgba(5,13,32,.82);--painel2:rgba(9,24,56,.85);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--azul2:#8cc8ff;--ciano:#00e5ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--borda)}
+.marca{font-weight:800;font-size:22px}.marca span{color:var(--ciano)}
+a.voltar{color:var(--azul2);text-decoration:none;font-size:14px}
+main{max-width:1180px;margin:0 auto;padding:22px}
+h1{font-size:22px;margin-bottom:6px}.sub{color:var(--suave);font-size:14px;margin-bottom:18px}
+.vidro{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);backdrop-filter:blur(14px)}
+#drop{display:block;padding:34px;text-align:center;border:2px dashed rgba(0,229,255,.4);cursor:pointer;transition:.2s}
+#drop.sobre{background:rgba(0,229,255,.08);border-color:var(--ciano)}
+#drop b{font-size:17px;display:block;margin-bottom:6px}#drop small{color:var(--suave)}
+.btn{background:linear-gradient(135deg,#0052ff,#1e90ff 55%,#00b8ff);border:0;border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer}
+.btn.sec{background:var(--painel2);border:1px solid var(--borda)}
+.cli{margin-top:20px;padding:18px}
+.cli-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.cli h2{font-size:19px}.cli .meta{color:var(--suave);font-size:13px;margin-top:4px;line-height:1.6}
+.placar{display:flex;gap:8px;flex-wrap:wrap}
+.placar span{border-radius:99px;padding:5px 12px;font-size:13px;font-weight:700}
+.alto{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}
+.medio{background:rgba(251,191,36,.12);color:#fde68a;border:1px solid rgba(251,191,36,.45)}
+.info{background:rgba(30,144,255,.12);color:var(--azul2);border:1px solid var(--borda)}
+.ok{background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.45)}
+.veredito{margin:14px 0;padding:12px 14px;border-radius:12px;font-weight:600}
+.alertas{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.al{border-radius:12px;padding:11px 13px}
+.al h4{font-size:14px;margin-bottom:4px;display:flex;gap:8px;align-items:center}
+.al p{font-size:13px;color:#dbe7f7;line-height:1.5}
+.al .det{color:#fff;font-weight:600;margin-top:4px}
+.al .ct{font-size:12px;color:var(--suave);margin-top:4px}
+.tag{font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:99px;background:rgba(255,255,255,.1)}
+details{margin-top:14px}summary{cursor:pointer;color:var(--azul2);font-size:14px;font-weight:600}
+.tab{overflow:auto;margin-top:10px;border:1px solid var(--borda);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:#071430;text-align:left;padding:7px;color:var(--suave);font-weight:600;white-space:nowrap}
+td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}
+td.n{text-align:right}tr.exc td{color:#8ba0bf}
+.marg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.marg div{background:var(--painel2);border:1px solid var(--borda);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--suave)}
+.marg b{display:block;color:var(--texto);font-size:15px}
+.acoes{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.aviso{font-size:12px;color:var(--suave);margin-top:18px;line-height:1.6}
+.erro{color:#fca5a5;margin-top:12px}
+@media(max-width:700px){.marg{grid-template-columns:1fr 1fr}main{padding:14px}}
+@media print{header,#drop,.acoes,.aviso,.sub{display:none}body{background:#fff;color:#000}.vidro{background:#fff;border-color:#ccc}.al p,.al .det{color:#000}}
+</style>
+</head>
+<body>
+<header><div class="marca">XYZ <span>CRM</span></div><a class="voltar" href="./">← Voltar ao CRM</a></header>
+<main>
+  <h1>🔎 Analisar HISCON</h1>
+  <p class="sub">Arraste o PDF do <b>Histórico de Empréstimo Consignado</b> (Meu INSS). A leitura é feita aqui no seu computador — o arquivo não é enviado para lugar nenhum.</p>
+  <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
+    <b>📄 Solte o(s) HISCON(s) aqui ou clique para escolher</b><small>Pode mandar vários de uma vez</small></label>
+  <div id="erro" class="erro"></div>
+  <div id="saida"></div>
+  <p class="aviso">⚖️ Análise automática de <b>indícios</b> a partir do HISCON, para triagem. Cada alerta precisa ser confirmado com o contrato e analisado pelo advogado antes de qualquer ação. Parâmetros usados: teto de juros 1,85% a.m. (empréstimo) e 2,46% a.m. (cartão), prazo máximo de 96 parcelas (108 a partir de 19/05/2026).</p>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="hiscon.js"></script>
+<script type="module">
+import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
+pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const brl = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dBR = s => s ? s.split('-').reverse().join('/') : '—';
+
+// só para quem está logado no CRM
+try {
+  const C = window.CRM_CONFIG || {};
+  const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) location.href = './';
+} catch (e) { location.href = './'; }
+
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('sobre'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('sobre'); }));
+drop.addEventListener('drop', e => processar([...e.dataTransfer.files]));
+$('#arq').onchange = e => { processar([...e.target.files]); e.target.value = ''; };
+
+async function processar(arqs) {
+  $('#erro').textContent = '';
+  for (const f of arqs.filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name))) {
+    try {
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
+      const h = await lerHiscon(doc), al = analisarHiscon(h);
+      $('#saida').prepend(cartao(h, al, f.name));
+    } catch (e) { $('#erro').textContent = `${f.name}: ${e.message}`; console.error(e); }
+  }
+}
+
+function cartao(h, al, arquivo) {
+  const n = k => al.filter(a => a.nivel === k).length, alto = n('alto'), medio = n('medio');
+  const div = document.createElement('section'); div.className = 'cli vidro';
+  const ver = alto ? ['alto', `🚨 ${alto} indício(s) forte(s) de irregularidade — encaminhar para análise do advogado.`]
+    : medio ? ['medio', `⚠️ Pontos de atenção encontrados — vale pedir os contratos e revisar.`]
+    : ['ok', '✅ Nenhum indício relevante encontrado neste HISCON.'];
+  const linhas = h.contratos.map(c => `<tr class="${c.tipo === 'excluido' ? 'exc' : ''}">
+    <td>${esc(c.contrato)}</td><td>${esc(c.banco)}</td><td>${esc(c.situacao)}</td><td>${esc(c.origem)}</td><td>${dBR(c.inclusao)}</td>
+    <td class="n">${c.parcelas ?? ''}</td><td class="n">${brl(c.parcela)}</td><td class="n">${brl(c.emprestado)}</td><td class="n">${brl(c.liberado)}</td>
+    <td class="n">${brl(c.iof)}</td><td class="n">${brl(c.pago)}</td><td class="n">${c.jurosM ?? ''}%</td><td class="n">${c.cetM ?? ''}%</td><td>${c.exclusao ? dBR(c.exclusao) + ' · ' + esc(c.motivoExcl) : ''}</td></tr>`).join('');
+  const cart = [...h.cartoes.RMC, ...h.cartoes.RCC].map(c => `<tr><td>${c.t}</td><td>${esc(c.contrato)}</td><td>${esc(c.banco)}</td><td>${dBR(c.inclusao)}</td><td class="n">${brl(c.limite)}</td><td class="n">${brl(c.reservado)}</td></tr>`).join('');
+  div.innerHTML = `
+    <div class="cli-top"><div><h2>${esc(h.nome)}</h2>
+      <div class="meta">NB ${esc(h.nb)} · ${esc(h.beneficio)}${h.bpc ? ' <b>(BPC/LOAS)</b>' : ''}<br>
+      Pago em ${esc(h.pagoEm)} · ${h.representante ? '<b style="color:#fca5a5">POSSUI representante legal</b>' : 'sem representante legal'} · ${h.procurador ? '<b>possui procurador</b>' : 'sem procurador'} · ${h.bloqueado ? 'bloqueado para empréstimo' : 'liberado para empréstimo'}<br>
+      HISCON emitido em ${dBR(h.emissao)} · arquivo ${esc(arquivo)}</div></div>
+      <div class="placar"><span class="alto">${alto} forte(s)</span><span class="medio">${medio} atenção</span><span class="info">${h.contratos.filter(c => c.tipo === 'ativo').length} ativos · ${h.contratos.filter(c => c.tipo !== 'ativo').length} excluídos</span></div></div>
+    <div class="marg"><div>Base de cálculo<b>${brl(h.margem.base)}</b></div><div>Máximo permitido<b>${brl(h.margem.maximo)}</b></div><div>Total comprometido<b>${brl(h.margem.comprometido)}</b></div><div>Margem extrapolada<b style="color:${h.margem.extrapolada > 0 ? '#fca5a5' : 'inherit'}">${brl(h.margem.extrapolada)}</b></div></div>
+    <div class="veredito ${ver[0]}">${ver[1]}</div>
+    <div class="alertas">${al.map(a => `<div class="al ${a.nivel}"><h4><span class="tag">${a.nivel === 'alto' ? 'forte' : a.nivel === 'medio' ? 'atenção' : 'info'}</span>${esc(a.titulo)}</h4>
+      <p>${esc(a.tese)}</p>${a.detalhe ? `<p class="det">${esc(a.detalhe)}</p>` : ''}${a.contratos.length ? `<p class="ct">${a.contratos.map(esc).join(' · ')}</p>` : ''}</div>`).join('')}</div>
+    <details><summary>Ver contratos lidos (${h.contratos.length}) ${cart ? '+ cartões' : ''}</summary>
+      <div class="tab"><table><thead><tr><th>Contrato</th><th>Banco</th><th>Situação</th><th>Origem</th><th>Inclusão</th><th>Parc.</th><th>Parcela</th><th>Emprestado</th><th>Liberado</th><th>IOF</th><th>Dívida paga</th><th>Juros</th><th>CET</th><th>Exclusão</th></tr></thead><tbody>${linhas}</tbody></table></div>
+      ${cart ? `<div class="tab"><table><thead><tr><th>Tipo</th><th>Contrato</th><th>Banco</th><th>Inclusão</th><th>Limite</th><th>Reservado</th></tr></thead><tbody>${cart}</tbody></table></div>` : ''}
+    </details>
+    <div class="acoes"><button class="btn sec" data-copiar>📋 Copiar resumo (WhatsApp)</button><button class="btn sec" onclick="window.print()">🖨️ Imprimir / PDF</button></div>`;
+  div.querySelector('[data-copiar]').onclick = async e => {
+    const t = `*Análise HISCON — ${h.nome}*\nNB ${h.nb} · ${h.beneficio}\n${ver[1]}\n\n` + al.filter(a => a.nivel !== 'info').map(a => `• ${a.titulo}${a.detalhe ? ' — ' + a.detalhe : ''}${a.contratos.length ? '\n   ' + a.contratos.join('; ') : ''}`).join('\n');
+    await navigator.clipboard.writeText(t); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar resumo (WhatsApp)', 2000);
+  };
+  return div;
+}
+</script>
+</body>
+</html>
