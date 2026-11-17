@@ -115,7 +115,7 @@ function quadEsq(a, b, z0, z1, c, contorno) { poly([naParedeEsq(a, z0), naParede
 function pontoNaFrente(gx, gy, z) { const [x, y] = iso(gx, gy); return [x, y - z]; }
 
 /* ---------- sprites dos móveis ---------- */
-const ANC = {"floorFull_SE":[151,110,74.5,109],"desk_NW":[85,88,54.0,87],"desk_SW":[85,88,54.0,87],"deskCorner_SW":[103,132,28.5,131],"deskCorner_NW":[103,132,72.5,131],"chairDesk_SE":[44,71,17.0,70],"chairDesk_SW":[45,70,27.0,69],"computerScreen_NW":[34,40,25.0,39],"computerScreen_NE":[34,40,0.5,39],"computerKeyboard_NW":[30,22,20.0,21],"laptop_SW":[37,38,18.5,37],"loungeSofa_SE":[104,103,28.5,102],"loungeSofa_SW":[103,103,72.5,102],"loungeSofaCorner_SE":[148,108,73.5,107],"loungeSofaCorner_SW":[103,135,28.5,134],"loungeChair_SE":[67,77,28.5,76],"loungeChair_SW":[66,77,35.5,76],"tableCoffeeGlass_SE":[80,74,29.0,73],"tableCoffeeGlass_SW":[80,74,48.5,73],"rugRound_SE":[99,71,48.5,70],"rugRectangle_SE":[188,134,68.5,133],"rugRectangle_SW":[188,134,118.0,133],"lampRoundFloor_SE":[19,76,8.5,75],"lampSquareFloor_SE":[19,78,8.5,77],"pottedPlant_SE":[21,60,9.5,59],"plantSmall1_SE":[11,14,4.0,13],"plantSmall2_SE":[11,14,4.0,13],"plantSmall3_SE":[10,15,4.0,14],"bookcaseOpen_SW":[49,101,29.0,100],"bookcaseOpen_SE":[50,101,18.5,100],"bookcaseClosedWide_SW":[80,116,60.0,115],"books_SE":[19,19,5.5,18],"kitchenFridge_SE":[52,105,17.5,104],"kitchenFridge_SW":[52,105,32.5,104],"kitchenCabinet_SE":[67,79,30.5,78],"kitchenCabinet_SW":[67,79,34.5,78],"kitchenSink_SE":[67,79,30.5,78],"kitchenSink_SW":[67,79,34.5,78],"kitchenStove_SE":[67,79,30.5,78],"kitchenStove_SW":[67,79,34.5,78],"kitchenCoffeeMachine_SE":[26,32,16.5,31],"kitchenCoffeeMachine_SW":[25,32,7.5,31],"kitchenMicrowave_SE":[37,40,14.5,39],"kitchenMicrowave_SW":[37,39,21.5,38],"kitchenBar_SE":[49,64,12.5,63],"kitchenBar_SW":[49,64,34.5,63],"kitchenBarEnd_SE":[19,42,10.0,41],"stoolBar_SE":[27,49,12.0,48],"stoolBarSquare_SE":[23,46,10.0,45],"tableRound_SE":[83,69,40.5,68],"chair_SE":[31,57,14.5,56],"chair_SW":[31,57,14.0,56],"chairRounded_SE":[31,52,14.5,51],"chairRounded_SW":[31,52,14.0,51],"televisionModern_SW":[55,68,51.0,67],"televisionModern_SE":[54,68,1.5,67],"cabinetTelevision_SW":[80,80,60.0,79],"cabinetTelevision_SE":[80,79,18.5,78],"speaker_SE":[23,64,10.5,63],"speaker_SW":[23,64,10.5,63],"speakerSmall_SE":[22,37,9.5,36],"trashcan_SE":[25,46,16.5,45],"coatRackStanding_SE":[24,73,13.0,72],"sideTable_SE":[58,68,16.5,67],"lampRoundTable_SE":[19,35,8.5,34],"radio_SE":[31,36,7.5,35],"cardboardBoxClosed_SE":[32,39,15.5,38]};
+const ANC = {"floorFull_SE":[151,110,74.5,109],"desk_NW":[85,88,54.0,87],"desk_SW":[85,88,54.0,87],"deskCorner_SW":[103,132,28.5,131],"deskCorner_NW":[103,132,72.5,131],"chairDesk_SE":[44,71,17.0,70],"chairDesk_SW":[45,70,27.0,69],"computerScreen_NW":[34,40,25.0,39],"computerScreen_NE":[34,40,0.5,39],"computerKeyboard_NW":[30,22,20.0,21],"laptop_SW":[37,38,18.5,37],"loungeSofa_SE":[104,103,28.5,102],"loungeSofa_SW":[103,103,72.5,102],"loungeSofaCorner_SE":[148,108,73.5,107],"loungeSofaCorner_SW":[103,135,28.5,134],"loungeChair_SE":[67,77,28.5,76],"loungeChair_SW":[66,77,35.5,76],"tableCoffeeGlass_SE":[80,74,29.0,73],"tableCoffeeGlass_SW":[80,74,48.5,73],"rugRound_SE":[99,71,48.5,70],"rugRectangle_SE":[188,134,68.5,133],"rugRectangle_SW":[188,134,118.0,133],"lampRoundFloor_SE":[19,76,8.5,75],"lampSquareFloor_SE":[19,78,8.5,77],"pottedPlant_SE":[21,60,9.5,59],"plantSmall1_SE":[11,14,4.0,13],"plantSmall2_SE":[11,14,4.0,13],"plantSmall3_SE":[10,15,4.0,14],"bookcaseOpen_SW":[49,101,29.0,100],"bookcaseOpen_SE":[50,101,18.5,100],"bookcaseClosedWide_SW":[80,116,60.0,115],"books_SE":[19,19,5.5,18],"kitchenFridge_SE":[52,105,17.5,104],"kitchenFridge_SW":[52,105,32.5,104],"kitchenCabinet_SE":[67,79,30.5,78],"kitchenCabinet_SW":[67,79,34.5,78],"kitchenSink_SE":[67,79,30.5,78],"kitchenSink_SW":[67,79,34.5,78],"kitchenStove_SE":[67,79,30.5,78],"kitchenStove_SW":[67,79,34.5,78],"kitchenCoffeeMachine_SE":[26,32,16.5,31],"kitchenCoffeeMachine_SW":[25,32,7.5,31],"kitchenMicrowave_SE":[37,40,14.5,39],"kitchenMicrowave_SW":[37,39,21.5,38],"kitchenBar_SE":[49,64,12.5,63],"kitchenBar_SW":[49,64,34.5,63],"kitchenBarEnd_SE":[19,42,10.0,41],"stoolBar_SE":[27,49,12.0,48],"stoolBarSquare_SE":[23,46,10.0,45],"tableRound_SE":[83,69,40.5,68],"chair_SE":[31,57,14.5,56],"chair_SW":[31,57,14.0,56],"chairRounded_SE":[31,52,14.5,51],"chairRounded_SW":[31,52,14.0,51],"televisionModern_SW":[55,68,51.0,67],"televisionModern_SE":[54,68,1.5,67],"cabinetTelevision_SW":[80,80,60.0,79],"cabinetTelevision_SE":[80,79,18.5,78],"speaker_SE":[23,64,10.5,63],"speaker_SW":[23,64,10.5,63],"speakerSmall_SE":[22,37,9.5,36],"trashcan_SE":[25,46,16.5,45],"coatRackStanding_SE":[24,73,13.0,72],"sideTable_SE":[58,68,16.5,67],"lampRoundTable_SE":[19,35,8.5,34],"radio_SE":[31,36,7.5,35],"cardboardBoxClosed_SE":[32,39,15.5,38],"chairDesk_SE_preto":[44,71,17.0,70],"chairDesk_SW_preto":[45,70,27.0,69]};
 const IMG = {};
 for (const n in ANC) { const im = new Image(); im.src = 'mobilia/' + n + '.png'; IMG[n] = im; }
 function spr(n, fx, fy, z = 0) { // fx,fy = quina da frente do móvel no chão
@@ -230,9 +230,13 @@ function dinheiro(fx, fy, nivel) {
 
 /* ---------- layout do escritório ---------- */
 // mesas: quina da frente (fx, fy); a pessoa senta atrás, de frente para quem olha
-const DESKS = [[2.45, 1.75], [3.45, 1.75], [4.45, 1.75], [3.45, 3.55], [4.45, 3.55], [5.75, 3.0]]; // último = chefe
+const DESKS = [[2.45, 1.75], [3.45, 1.75], [4.45, 1.75], [3.45, 3.55], [4.45, 3.55], [5.9, 4.55]]; // último = chefe (sala de vidro)
 function mesa(fx, fy, chefe, idx) {
-  if (chefe) { spr('deskCorner_NW', fx, fy); spr('computerScreen_NW', fx - .3, fy - .35, 30); spr('lampRoundTable_SE', fx - .62, fy - .18, 30); }
+  if (chefe) {
+    spr('deskCorner_NW', fx, fy); spr('computerScreen_NW', fx - .32, fy - .38, 30); spr('laptop_SW', fx - .62, fy - .2, 30);
+    spr('lampRoundTable_SE', fx - .05, fy - .55, 30);
+    caixa(fx - .2, fy - .18, .07, .07, 6, ['#ffe08a', '#e0a72e', '#b07a12'], 30); caixa(fx - .19, fy - .17, .05, .05, 9, ['#fff1b8', '#f5c542', '#c58f1a'], 36); // troféu
+  }
   else {
     spr('desk_NW', fx, fy);
     spr('computerScreen_NW', fx - .22, fy - .2, 30);
@@ -240,7 +244,33 @@ function mesa(fx, fy, chefe, idx) {
     else dinheiro(fx, fy, nivelMesa[idx]);
   }
 }
+function vidro(pts, cor) { poly(pts, cor); }
+function paredeVidro(eixo, fixo, a, b, h) { // eixo 'x': parede ao longo de x em y=fixo; 'y': ao longo de y em x=fixo
+  const P = (t, z) => eixo === 'x' ? pontoNaFrente(t, fixo, z) : pontoNaFrente(fixo, t, z);
+  poly([P(a, 0), P(b, 0), P(b, h), P(a, h)], 'rgba(160,215,255,.16)');
+  poly([P(a, h * .55), P(b, h * .55), P(b, h * .7), P(a, h * .7)], 'rgba(220,240,255,.22)'); // faixa jateada
+  ctx.strokeStyle = 'rgba(200,235,255,.85)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(...P(a, h)); ctx.lineTo(...P(b, h)); ctx.moveTo(...P(a, 1)); ctx.lineTo(...P(b, 1)); ctx.stroke();
+  ctx.lineWidth = 1.5; for (let t = a; t <= b + .001; t += (b - a) / Math.max(1, Math.round((b - a) / .4))) { ctx.beginPath(); ctx.moveTo(...P(t, 0)); ctx.lineTo(...P(t, h)); ctx.stroke(); }
+  const r1 = P(a + (b - a) * .25, h * .9), r2 = P(a + (b - a) * .4, h * .2); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(...r1); ctx.lineTo(...r2); ctx.stroke();
+}
+const SALA = { x: 4.85, y: 3.3, porta: [4.95, 5.4] };
+function salaDiretoria() {
+  // piso escuro da sala
+  poly([iso(SALA.x, SALA.y), iso(GX, SALA.y), iso(GX, GY), iso(SALA.x, GY)], 'rgba(20,30,55,.55)');
+  poly([iso(SALA.x + .12, SALA.y + .12), iso(GX - .12, SALA.y + .12), iso(GX - .12, GY - .12), iso(SALA.x + .12, GY - .12)], 'rgba(30,144,255,.12)', 'rgba(0,229,255,.5)');
+}
+function vidrosFundo() {
+  paredeVidro('x', SALA.y, SALA.porta[1], GX, 96);
+  paredeVidro('x', SALA.y, SALA.x, SALA.porta[0], 96);
+  // placa DIRETORIA
+  const p = pontoNaFrente(SALA.porta[1] + .1, SALA.y, 76); ctx.save(); ctx.translate(p[0], p[1]); ctx.transform(1, TH / TW, 0, 1, 0, 0);
+  ctx.font = '800 10px Inter, sans-serif'; ctx.fillStyle = '#bfe3ff'; ctx.shadowColor = '#1e90ff'; ctx.shadowBlur = 8; ctx.fillText('DIRETORIA', 0, 0); ctx.restore();
+}
+function vidroLateral() { paredeVidro('y', SALA.x, SALA.y, GY, 96); }
 const MOVEIS = [
+  { d: 7.6, f: salaDiretoria }, { d: 8.05, f: vidrosFundo }, { d: 8.15, f: vidroLateral },
+  { d: 9.3, f: () => spr('rugRectangle_SW', 5.85, 4.75) },
   // cozinha (canto do fundo à esquerda)
   { d: .6, f: () => spr('kitchenFridge_SE', .42, .38) },
   { d: 1.0, f: () => spr('kitchenCabinet_SE', .82, .38) }, { d: 1.4, f: () => spr('kitchenSink_SE', 1.22, .38) },
@@ -248,24 +278,23 @@ const MOVEIS = [
   { d: 2.8, f: () => spr('kitchenBar_SE', 1.55, 1.25) }, { d: 3.2, f: () => spr('stoolBarSquare_SE', 1.35, 1.6) }, { d: 3.4, f: () => spr('stoolBarSquare_SE', 1.0, 1.6) },
   // aquário futurista e estantes na parede do fundo
   { d: 3.1, f: () => aquario(2.05, .08, 1.35, .32) },
-  { d: 3.8, f: () => spr('bookcaseClosedWide_SW', 3.95, .35) },
   { d: 5.4, f: () => portal(5.1, .1) },
   { d: 5.2, f: () => spr('pottedPlant_SE', 4.95, .4) },
   // área de descanso (frente à esquerda, junto aos janelões)
-  { d: 3.0, f: () => spr('rugRound_SE', 1.55, 4.15) },
-  { d: 3.5, f: () => spr('loungeSofaCorner_SE', 1.0, 4.4) },
-  { d: 4.6, f: () => spr('tableCoffeeGlass_SE', 1.55, 3.85) },
+  { d: 3.0, f: () => spr('rugRound_SE', 1.2, 4.95) },
+  { d: 3.5, f: () => spr('loungeSofaCorner_SE', 1.05, 4.35) },
+  { d: 4.6, f: () => spr('tableCoffeeGlass_SE', 1.05, 4.75) },
   { d: 4.2, f: () => spr('lampRoundFloor_SE', .3, 2.75) },
   { d: 3.1, f: () => spr('pottedPlant_SE', .3, 4.85) },
-  { d: 6.0, f: () => spr('loungeChair_SW', 2.35, 3.95) },
+  { d: 6.4, f: () => spr('loungeChair_SW', 2.0, 4.95) },
   // decoração
   { d: 5.9, f: () => spr('speaker_SE', 5.9, .45) }, { d: 9.6, f: () => spr('pottedPlant_SE', 5.9, 4.85) },
   { d: 4.9, f: () => spr('coatRackStanding_SE', 2.0, 2.4) },
 ];
 DESKS.forEach(([x, y], i) => {
   MOVEIS.push({ d: x + y, f: () => mesa(x, y, i === DESKS.length - 1, i) });
-  if (i !== DESKS.length - 1) MOVEIS.push({ d: x + y - 1.35, f: () => spr('chairDesk_SE', x - .3, y - .52) });
-  else MOVEIS.push({ d: x + y - 1.65, f: () => spr('chairDesk_SE', x - .55, y - .62) });
+  if (i !== DESKS.length - 1) MOVEIS.push({ d: x + y - 1.35, f: () => spr('chairDesk_SE_preto', x - .3, y - .52) });
+  else MOVEIS.push({ d: x + y - 1.55, f: () => spr('chairDesk_SE_preto', x - .6, y - .5) });
 });
 
 /* ---------- bonequinhos ---------- */
@@ -384,7 +413,7 @@ function estadoDe(p) {
 function assentoDe(p, i) {
   const idx = p.papel === 'admin' ? DESKS.length - 1 : i % (DESKS.length - 1);
   mesaDe[p.id] = idx;
-  const [x, y] = DESKS[idx]; return p.papel === 'admin' ? [x - .7, y - .76] : [x - .45, y - .66];
+  const [x, y] = DESKS[idx]; return p.papel === 'admin' ? [x - .75, y - .65] : [x - .45, y - .66];
 }
 function rota(a, alvo) {
   const pts = [];
