@@ -216,6 +216,7 @@ tbody tr:last-child td{border-bottom:0}
   .grade2{grid-template-columns:1fr}
   header{padding:12px 14px} nav{padding:12px 14px 0} main{padding:14px 14px 110px}
   header .quem .nomeu{display:none}
+  #btn-esc{padding:7px 9px;font-size:12px}
   thead{display:none}
   table,tbody,tr,td{display:block;width:100%}
   tbody tr{padding:12px 14px;border-bottom:1px solid rgba(30,144,255,.12)}
@@ -251,7 +252,7 @@ tbody tr:last-child td{border-bottom:0}
 <section id="app" hidden>
   <header>
     <div class="marca">XYZ <span>CRM</span></div>
-    <div class="quem"><span class="nomeu">Olá, <b id="eu-nome"></b></span><button class="btn sec peq" id="sair">Sair</button></div>
+    <div class="quem"><a class="btn peq" href="escritorio.html" id="btn-esc">🏢 Escritório virtual</a><span class="nomeu">Olá, <b id="eu-nome"></b></span><button class="btn sec peq" id="sair">Sair</button></div>
   </header>
   <nav>
     <button data-aba="clientes" class="ativa">Clientes</button>
@@ -387,6 +388,7 @@ tbody tr:last-child td{border-bottom:0}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="presenca.js"></script>
 <script>
 /* ================= FUNDO 3D (galáxia de partículas conectadas) ================= */
 (() => {
@@ -559,7 +561,7 @@ $('#l-primeiro').onclick = async () => {
   if (!data.session) return $('#l-erro').textContent = 'Senha criada. Confirme pelo link enviado ao seu e-mail e depois clique em Entrar.';
   iniciar();
 };
-$('#sair').onclick = async () => { await sb.auth.signOut(); eu = null; mostrarLogin(); };
+$('#sair').onclick = async () => { try { XYZPresenca.sair(); } catch (e) {} await sb.auth.signOut(); eu = null; mostrarLogin(); };
 
 async function iniciar() {
   if (!CONFIGURADO) return mostrarLogin();
@@ -580,6 +582,7 @@ async function iniciar() {
   $$('.col-at').forEach(x => x.hidden = !admin);
   if (admin) await carregarEquipe();
   iniciarFlutuante();
+  try { XYZPresenca.entrar(sb, eu); } catch (e) {}
   abrirAba('clientes');
 }
 
@@ -702,6 +705,7 @@ $('#form-cli').onsubmit = async e => {
       const { error } = await sb.rpc('salvar_senha_inss', { p_cliente: id, p_senha: $('#c-inss').value });
       if (error) throw error;
     }
+    if (!editando) try { XYZPresenca.enviar('venda', { id: reg.atendente_id || eu.id }); } catch (e) {}
     fecharModal();
     toast(editando ? 'Cliente atualizado.' : '🎉 Cliente fechado cadastrado!');
     carregarClientes(); atualizarFlutuante();

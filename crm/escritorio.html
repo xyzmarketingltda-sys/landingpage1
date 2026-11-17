@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Escritório virtual | XYZ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#02060f;--borda:rgba(30,144,255,.28);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--azul2:#8cc8ff}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--texto);font-family:Inter,system-ui,sans-serif;overflow:hidden}
+[hidden]{display:none!important}
+header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(2,6,15,.75);backdrop-filter:blur(10px);border-bottom:1px solid var(--borda)}
+header h1{font-family:'Press Start 2P',monospace;font-size:13px;letter-spacing:1px;color:var(--azul2);text-shadow:0 0 12px rgba(30,144,255,.8)}
+header .esp{flex:1}
+.btn{background:linear-gradient(135deg,#0052ff,#1e90ff 55%,#00b8ff);border:0;border-radius:10px;padding:9px 14px;font-weight:700;color:#fff;cursor:pointer;font:inherit;font-size:13px;text-decoration:none;white-space:nowrap}
+.btn.sec{background:rgba(9,24,56,.85);border:1px solid var(--borda)}
+#relogio{font-family:'Press Start 2P',monospace;font-size:11px;color:var(--suave)}
+#palco{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 45%,#0a2350,#02060f 70%)}
+canvas{image-rendering:pixelated;display:block}
+#lado{position:fixed;left:14px;bottom:14px;z-index:4;width:230px;background:rgba(3,10,26,.82);border:1px solid var(--borda);border-radius:14px;padding:12px;backdrop-filter:blur(10px)}
+#lado h3{font-size:12px;color:var(--suave);margin-bottom:8px;font-weight:600}
+.pessoa{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px}
+.pessoa i{width:9px;height:9px;border-radius:50%;background:#475569;flex:none}
+.pessoa i.on{background:#22c55e;box-shadow:0 0 8px #22c55e}
+.pessoa i.alm{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
+.pessoa small{margin-left:auto;color:var(--suave);font-size:11px}
+#menu{position:fixed;z-index:8;background:rgba(3,10,26,.95);border:1px solid var(--borda);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:4px;min-width:170px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#menu b{font-size:12px;color:var(--azul2);padding:2px 6px 6px}
+#menu button{background:none;border:0;color:var(--texto);text-align:left;padding:7px 8px;border-radius:8px;cursor:pointer;font:inherit;font-size:13px}
+#menu button:hover{background:rgba(30,144,255,.15)}
+#menu form{display:flex;gap:4px;padding:4px 2px 0}
+#menu input{flex:1;min-width:0;background:rgba(9,24,56,.85);border:1px solid var(--borda);border-radius:8px;padding:6px 8px;color:var(--texto);font:inherit;font-size:13px}
+#modal{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px}
+#modal .caixa{background:rgba(3,10,26,.97);border:1px solid var(--borda);border-radius:16px;padding:20px;width:100%;max-width:640px;max-height:90vh;overflow:auto}
+#modal h3{margin-bottom:4px}
+#modal p{color:var(--suave);font-size:13px;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--suave);font-weight:600;font-size:11px;padding:6px 4px}
+td{padding:5px 4px}
+td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);border-radius:8px;padding:6px;color:var(--texto);font:inherit;font-size:13px;color-scheme:dark}
+#dica{position:fixed;right:14px;bottom:14px;z-index:4;font-size:12px;color:var(--suave);background:rgba(3,10,26,.8);border:1px solid var(--borda);border-radius:10px;padding:8px 12px}
+@media (max-width:760px){#lado{width:auto;right:14px;bottom:10px;max-height:28vh;overflow:auto}#dica{display:none}header h1{font-size:10px}#relogio{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <a class="btn sec" href="./">← CRM</a>
+  <h1>ESCRITÓRIO XYZ</h1>
+  <div class="esp"></div>
+  <span id="relogio"></span>
+  <button class="btn sec" id="btn-horarios" hidden>⏰ Horários</button>
+</header>
+<div id="palco"><canvas id="cv"></canvas></div>
+<div id="lado"><h3>Equipe agora</h3><div id="lista"></div></div>
+<div id="dica">Clique em alguém para interagir 👋</div>
+<div id="menu" hidden></div>
+<div id="modal" hidden>
+  <div class="caixa">
+    <h3>⏰ Horários da equipe</h3>
+    <p>No horário de almoço o bonequinho vai para a cozinha; depois da saída, vai embora pela porta.</p>
+    <table><thead><tr><th>Nome</th><th>Entrada</th><th>Almoço início</th><th>Almoço fim</th><th>Saída</th></tr></thead><tbody id="tb-hor"></tbody></table>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn sec" id="hor-fechar">Fechar</button><button class="btn" id="hor-salvar">Salvar horários</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="presenca.js"></script>
+<script>
+const CFG = window.CRM_CONFIG;
+const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let eu = null, equipe = [], online = new Set();
+
+/* ================== CENA ISOMÉTRICA (pixel art) ================== */
+const cv = $('#cv'), ctx = cv.getContext('2d');
+const IW = 470, IH = 340, GX = 14, GY = 12, TW = 32, TH = 16, WH = 78;
+const OX = GY * TW / 2 + 18, OY = WH + 22;
+let S = 2;
+const iso = (x, y) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2];
+function ajustar() {
+  const w = innerWidth, h = innerHeight - 56;
+  S = Math.max(1, Math.min(w / IW, h / IH));
+  cv.width = Math.floor(IW * S); cv.height = Math.floor(IH * S);
+  cv.style.marginTop = '56px';
+}
+addEventListener('resize', ajustar); ajustar();
+
+const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+function poly(pts, c, contorno) {
+  ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+  ctx.fillStyle = c; ctx.fill();
+  if (contorno) { ctx.strokeStyle = contorno; ctx.lineWidth = 1 / S * 1.2; ctx.stroke(); }
+}
+// caixa isométrica (gx,gy) tamanho (sx,sy), altura h, elevada em z
+function caixa(gx, gy, sx, sy, h, [topo, esq, dir], z = 0) {
+  const up = ([x, y], k) => [x, y - k];
+  const A = iso(gx, gy), B = iso(gx + sx, gy), C = iso(gx + sx, gy + sy), D = iso(gx, gy + sy);
+  poly([up(D, z), up(C, z), up(C, z + h), up(D, z + h)], esq, 'rgba(0,0,0,.25)');
+  poly([up(B, z), up(C, z), up(C, z + h), up(B, z + h)], dir, 'rgba(0,0,0,.25)');
+  poly([up(A, z + h), up(B, z + h), up(C, z + h), up(D, z + h)], topo, 'rgba(0,0,0,.2)');
+}
+// plano da parede do fundo (ao longo de x) e da esquerda (ao longo de y)
+function naParedeFundo(gx, z) { const [x, y] = iso(gx, 0); return [x, y - z]; }
+function naParedeEsq(gy, z) { const [x, y] = iso(0, gy); return [x, y - z]; }
+function quadFundo(a, b, z0, z1, c, contorno) { poly([naParedeFundo(a, z0), naParedeFundo(b, z0), naParedeFundo(b, z1), naParedeFundo(a, z1)], c, contorno); }
+function quadEsq(a, b, z0, z1, c, contorno) { poly([naParedeEsq(a, z0), naParedeEsq(b, z0), naParedeEsq(b, z1), naParedeEsq(a, z1)], c, contorno); }
+
+let t0 = performance.now(), T = 0;
+function cenario() {
+  // chão
+  for (let x = 0; x < GX; x++) for (let y = 0; y < GY; y++) {
+    const c = (x + y) % 2 ? '#c9d2e3' : '#d5ddec';
+    poly([iso(x, y), iso(x + 1, y), iso(x + 1, y + 1), iso(x, y + 1)], c, 'rgba(90,110,150,.18)');
+  }
+  // tapete da área de descanso
+  poly([iso(9.6, 6.6), iso(13.6, 6.6), iso(13.6, 10.6), iso(9.6, 10.6)], '#1f6f4a', 'rgba(0,0,0,.2)');
+  poly([iso(10, 7), iso(13.2, 7), iso(13.2, 10.2), iso(10, 10.2)], '#2a8a5c');
+  // piso da cozinha
+  for (let x = 0; x < 5; x++) for (let y = 0; y < 4; y++)
+    poly([iso(x, y), iso(x + 1, y), iso(x + 1, y + 1), iso(x, y + 1)], (x + y) % 2 ? '#f1f1f1' : '#2b3446', 'rgba(0,0,0,.15)');
+  // paredes
+  quadFundo(0, GX, 0, WH, '#21407a'); quadEsq(0, GY, 0, WH, '#183263');
+  quadFundo(0, GX, WH - 6, WH, '#0e2149'); quadEsq(0, GY, WH - 6, WH, '#0b1b3d');
+  quadFundo(0, GX, 0, 6, '#132a57'); quadEsq(0, GY, 0, 6, '#0f2249');
+  // janelas com a cidade lá fora (parede do fundo)
+  for (const [a, b] of [[5.3, 7.3], [8.3, 10.3]]) {
+    quadFundo(a, b, 26, 64, '#0a1a3d', '#9cc9ff');
+    for (let k = 0; k < 10; k++) {
+      const gx = a + .15 + (k % 5) * .38, z = 30 + Math.floor(k / 5) * 12 + (k * 7 % 5);
+      const p = naParedeFundo(gx, z); R(p[0], p[1] - 3, 2, 3, (k + Math.floor(T / 900)) % 3 ? '#ffe9a8' : '#3b5b9a');
+    }
+    quadFundo(a + (b - a) / 2 - .03, a + (b - a) / 2 + .03, 26, 64, '#9cc9ff');
+  }
+  // letreiro neon XYZ
+  ctx.save();
+  const [lx, ly] = naParedeFundo(1.4, 56);
+  ctx.translate(lx, ly); ctx.transform(1, .5, 0, 1, 0, 0);
+  ctx.font = 'bold 22px Inter, sans-serif'; ctx.fillStyle = '#bfe3ff';
+  ctx.shadowColor = '#1e90ff'; ctx.shadowBlur = 10 + Math.sin(T / 400) * 3;
+  ctx.fillText('XYZ', 0, 0); ctx.shadowBlur = 4; ctx.fillText('XYZ', 0, 0);
+  ctx.font = '7px "Press Start 2P", monospace'; ctx.fillStyle = '#8cc8ff'; ctx.fillText('PROMOTORA', 1, 11);
+  ctx.restore();
+  // porta (parede do fundo, direita)
+  quadFundo(11.6, 12.8, 0, 46, '#5b3a22', '#2c1a0d'); quadFundo(11.75, 12.65, 4, 42, '#7a4d2c');
+  { const p = naParedeFundo(12.5, 22); R(p[0], p[1], 2, 2, '#ffd166'); }
+  quadFundo(11.75, 12.65, 49, 56, '#0f5132'); { const p = naParedeFundo(11.82, 51); ctx.save(); ctx.translate(p[0], p[1]); ctx.transform(1, .5, 0, 1, 0, 0); ctx.font = '5px "Press Start 2P", monospace'; ctx.fillStyle = '#86efac'; ctx.fillText('SAÍDA', 0, 3); ctx.restore(); }
+  // quadro de metas (parede esquerda)
+  quadEsq(4.6, 7.4, 24, 58, '#f8fafc', '#475569');
+  for (let k = 0; k < 4; k++) quadEsq(4.9, 4.9 + .5 + k * .5, 32 + k * 6, 35 + k * 6, ['#22c55e', '#1e90ff', '#f59e0b', '#ef4444'][k]);
+  // janela parede esquerda
+  quadEsq(8.6, 10.6, 26, 64, '#0a1a3d', '#9cc9ff');
+}
+
+/* ---------- móveis ---------- */
+const MADEIRA = ['#e9cf9f', '#b88a55', '#93693d'], BRANCO = ['#ffffff', '#d7dde8', '#b8c1d1'];
+const VERDE = ['#3fbf7f', '#23885a', '#1a6b46'], ESCURO = ['#2f3a4f', '#1e2738', '#151c29'];
+const DESKS = [[2.6, 5], [5.6, 5], [8.6, 5], [5.6, 8.6], [8.6, 8.6], [2.4, 8.6]]; // último = chefe
+function mesa(gx, gy, chefe) {
+  caixa(gx, gy, 2, 1, 2, ESCURO, 0); caixa(gx + .1, gy + .1, .2, .8, 12, ESCURO); caixa(gx + 1.7, gy + .1, .2, .8, 12, ESCURO);
+  caixa(gx, gy, 2, 1, 3, chefe ? ['#2b2b2b', '#1a1a1a', '#111'] : MADEIRA, 12);
+  // monitor
+  caixa(gx + .7, gy + .35, .7, .12, 11, ['#2a2f3a', '#1a1f28', '#11151c'], 17);
+  const [sx, sy] = iso(gx + .72, gy + .47);
+  ctx.fillStyle = `rgba(80,170,255,${.75 + Math.sin(T / 300 + gx) * .1})`;
+  ctx.beginPath(); ctx.moveTo(sx, sy - 19); ctx.lineTo(sx + 10, sy - 19 + 5); ctx.lineTo(sx + 10, sy - 26 + 5); ctx.lineTo(sx, sy - 26); ctx.fill();
+  caixa(gx + .2, gy + .55, .4, .25, 1, ['#f1f5f9', '#cbd5e1', '#94a3b8'], 15); // teclado
+  if (chefe) caixa(gx + 1.5, gy + .2, .25, .25, 5, ['#fbbf24', '#d97706', '#b45309'], 15); // troféu
+  else caixa(gx + 1.5, gy + .25, .18, .18, 4, ['#fff', '#e5e7eb', '#9ca3af'], 15); // caneca
+}
+function cadeira(gx, gy) { caixa(gx, gy, .7, .7, 3, ['#1e90ff', '#0b5ed7', '#0847a8'], 8); caixa(gx + .05, gy - .02, .6, .15, 14, ['#1e90ff', '#0b5ed7', '#0847a8'], 8); caixa(gx + .3, gy + .3, .1, .1, 8, ESCURO); }
+function sofa(gx, gy, sx, sy, encosto) {
+  caixa(gx, gy, sx, sy, 7, VERDE);
+  if (encosto === 'n') caixa(gx, gy, sx, .3, 15, VERDE); else caixa(gx, gy, .3, sy, 15, VERDE);
+  if (encosto === 'n') { caixa(gx, gy, .3, sy, 11, VERDE); caixa(gx + sx - .3, gy, .3, sy, 11, VERDE); }
+  else { caixa(gx, gy, sx, .3, 11, VERDE); caixa(gx, gy + sy - .3, sx, .3, 11, VERDE); }
+}
+function planta(gx, gy) {
+  caixa(gx, gy, .6, .6, 9, ['#a16207', '#854d0e', '#713f12']);
+  const [x, y] = iso(gx + .3, gy + .3);
+  for (const [dx, dy, r, c] of [[0, -20, 7, '#16a34a'], [-5, -15, 6, '#22c55e'], [5, -14, 6, '#15803d'], [0, -27, 5, '#4ade80']]) {
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x + dx, y + dy, r, 0, 7); ctx.fill();
+  }
+}
+const MOVEIS = [
+  { d: 1.5, f: () => { caixa(0.15, 0.15, 4.6, .9, 18, BRANCO); caixa(0.15, 0.15, 4.6, .9, 2, ['#334155', '#1e293b', '#0f172a'], 18); caixa(1.2, .3, .6, .4, 6, ['#111', '#0a0a0a', '#000'], 20); caixa(3.2, .3, .5, .35, 9, ['#dc2626', '#b91c1c', '#7f1d1d'], 20); } },
+  { d: 1.2, f: () => { caixa(0.15, 1.2, .9, .9, 38, ['#e2e8f0', '#cbd5e1', '#94a3b8']); caixa(.2, 1.25, .8, .02, 1, ['#94a3b8', '#94a3b8', '#94a3b8'], 22); } },
+  { d: 5.6, f: () => { caixa(1.9, 2.1, 1.4, 1.1, 2, ESCURO); caixa(2.5, 2.55, .2, .2, 11, ESCURO); caixa(1.9, 2.1, 1.4, 1.1, 2, ['#fff', '#e5e7eb', '#cbd5e1'], 12); caixa(2.2, 2.4, .2, .2, 3, ['#f97316', '#ea580c', '#c2410c'], 14); } },
+  { d: 17.6, f: () => sofa(10.2, 7.1, 2.6, 1, 'n') },
+  { d: 19.4, f: () => sofa(12.6, 8, 1, 2.4, 'w') },
+  { d: 19.6, f: () => { caixa(10.7, 8.6, 1.2, .8, 7, ['#e9cf9f', '#b88a55', '#93693d']); caixa(11.1, 8.85, .2, .2, 4, ['#fff', '#ddd', '#bbb'], 7); } },
+  { d: 2.4, f: () => planta(13.1, .5) }, { d: 12, f: () => planta(.4, 11.1) }, { d: 21, f: () => planta(9.4, 11.2) },
+  { d: 9.5, f: () => { caixa(13.1, 3.2, .6, .6, 22, ['#e0f2fe', '#7dd3fc', '#38bdf8']); caixa(13.15, 3.25, .5, .5, 6, ['#0ea5e9', '#0284c7', '#0369a1'], 22); } }, // bebedouro
+];
+DESKS.forEach(([x, y], i) => {
+  MOVEIS.push({ d: x + y + 2.9, f: () => mesa(x, y, i === DESKS.length - 1) });
+  MOVEIS.push({ d: x + y - .2, f: () => cadeira(x + .65, y - .75) });
+});
+
+/* ---------- bonequinhos ---------- */
+const VISUAL = {
+  luis: { cab: '#141414', est: 'bagunca', rou: '#161616', pele: '#f0c8a8' },
+  julia: { cab: '#e0263f', est: 'longo', rou: '#1e3a8a', pele: '#f1c3a1' },
+  rina: { cab: '#3b2a20', est: 'longo', rou: '#1e3a8a', pele: '#f3cdb0' },
+  naira: { cab: '#0f0f12', est: 'franja', rou: '#1e3a8a', pele: '#f2c9b5' },
+  barbara: { cab: '#24160f', est: 'cacho', rou: '#1e3a8a', pele: '#b07a55' },
+};
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(' ')[0];
+function visualDe(p) {
+  if (p.papel === 'admin') return { cab: '#2b2b2b', est: 'curto', rou: '#0b5ed7', pele: '#e8b894', gravata: true };
+  return VISUAL[norm(p.nome)] || { cab: ['#3b2a20', '#111', '#7c4a1e', '#c084fc'][p.nome.length % 4], est: 'curto', rou: '#1e3a8a', pele: '#e9b996' };
+}
+function boneco(a) {
+  const [x0, y0] = iso(a.x, a.y), v = a.vis;
+  const andando = a.andando, danca = a.danca > T;
+  const passo = andando ? Math.sin(T / 90) : 0, pulo = danca ? Math.abs(Math.sin(T / 140)) * 4 : 0;
+  const sent = a.sentado && !andando;
+  const x = x0, y = y0 - pulo - (sent ? 6 : 0);
+  ctx.globalAlpha = a.alpha;
+  ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(x0, y0, 7, 3, 0, 0, 7); ctx.fill();
+  if (!sent) { R(x - 4, y - 9 + Math.max(0, passo) * 2, 3, 9 - Math.max(0, passo) * 2, '#253043'); R(x + 1, y - 9 + Math.max(0, -passo) * 2, 3, 9 - Math.max(0, -passo) * 2, '#253043'); R(x - 4, y - 1, 3, 1, '#111'); R(x + 1, y - 1, 3, 1, '#111'); }
+  else { R(x - 4, y - 9, 8, 3, '#253043'); }
+  R(x - 5, y - 20, 10, 11, v.rou); R(x - 5, y - 20, 10, 2, 'rgba(255,255,255,.15)');
+  if (v.rou === '#1e3a8a') R(x - .5, y - 20, 1, 11, '#0f1d4a');
+  if (v.gravata) { R(x - 1, y - 19, 2, 7, '#ef4444'); }
+  const bracoE = (danca && Math.sin(T / 140) > 0) || a.acena > T ? -9 : 0, bracoD = danca && Math.sin(T / 140) <= 0 ? -9 : 0;
+  R(x - 7, y - 19 + bracoE, 2, 8, v.rou); R(x - 7, y - 12 + bracoE, 2, 2, v.pele);
+  R(x + 5, y - 19 + bracoD, 2, 8, v.rou); R(x + 5, y - 12 + bracoD, 2, 2, v.pele);
+  if (a.acena > T) R(x - 8, y - 31 + Math.sin(T / 70) * 1.5, 4, 4, v.pele);
+  R(x - 2, y - 22, 4, 2, v.pele);
+  R(x - 5, y - 31, 10, 10, v.pele);
+  R(x - 3, y - 26, 1, 2, '#1b1b1b'); R(x + 2, y - 26, 1, 2, '#1b1b1b'); R(x - 1, y - 23, 3, 1, '#c2410c');
+  const c = v.cab;
+  if (v.est === 'curto') { R(x - 5, y - 33, 10, 4, c); R(x - 5, y - 30, 1, 3, c); R(x + 4, y - 30, 1, 3, c); }
+  else if (v.est === 'bagunca') { R(x - 6, y - 34, 12, 5, c); R(x - 6, y - 30, 2, 6, c); R(x + 4, y - 30, 2, 6, c); R(x - 3, y - 35, 3, 2, c); R(x + 1, y - 36, 3, 2, c); R(x - 4, y - 30, 4, 2, c); }
+  else if (v.est === 'longo') { R(x - 6, y - 34, 12, 5, c); R(x - 6, y - 30, 2, 14, c); R(x + 4, y - 30, 2, 14, c); }
+  else if (v.est === 'franja') { R(x - 6, y - 34, 12, 4, c); R(x - 5, y - 30, 10, 2, c); R(x - 6, y - 30, 2, 15, c); R(x + 4, y - 30, 2, 15, c); }
+  else if (v.est === 'cacho') { for (let k = 0; k < 4; k++) R(x - 8 + k * 4, y - 37 + (k % 2), 5, 5, c); R(x - 6, y - 33, 12, 3, c); for (let k = 0; k < 4; k++) { R(x - 9 + (k % 2), y - 32 + k * 4, 4, 4, c); R(x + 5 - (k % 2), y - 32 + k * 4, 4, 4, c); } }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- lógica de lugares ---------- */
+const COZINHA = [[1.5, 2.6], [3.6, 2.6], [2.6, 3.6], [1.4, 3.5], [3.7, 3.5], [2.6, 1.6]];
+const PORTA = [12.2, .6], CORREDOR = 7;
+const atores = new Map();
+const hm = t => { if (!t) return null; const [h, m] = t.split(':'); return +h * 60 + +m; };
+function agoraMin() { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function estadoDe(p) {
+  const n = agoraMin(), ai = hm(p.almoco_ini), af = hm(p.almoco_fim), sa = hm(p.saida), en = hm(p.entrada);
+  const trabalhou = en == null || n >= en;
+  if (ai != null && af != null && n >= ai && n < af && trabalhou && (online.has(p.id) || en != null)) return 'almoco';
+  if (sa != null && n >= sa) return 'fora';
+  return online.has(p.id) ? 'mesa' : 'fora';
+}
+function assentoDe(p, i) {
+  const idx = p.papel === 'admin' ? DESKS.length - 1 : i % (DESKS.length - 1);
+  const [x, y] = DESKS[idx]; return [x + 1, y - .45];
+}
+function rota(a, alvo) {
+  const pts = [];
+  if (Math.abs(a.y - CORREDOR) > .3) pts.push([a.x, CORREDOR]);
+  pts.push([alvo[0], CORREDOR]); pts.push(alvo);
+  a.rota = pts;
+}
+function atualizarAtores() {
+  let iAt = 0;
+  equipe.forEach(p => {
+    const est = estadoDe(p), i = p.papel === 'admin' ? 0 : iAt++;
+    let a = atores.get(p.id);
+    if (!a) {
+      if (est === 'fora') return;
+      a = { id: p.id, p, vis: visualDe(p), x: PORTA[0], y: PORTA[1], rota: [], alpha: 0, danca: 0, acena: 0, balao: null, est: null };
+      if (!jaCarregou) { const alvo = est === 'mesa' ? assentoDe(p, i) : COZINHA[i % COZINHA.length]; a.x = alvo[0]; a.y = alvo[1]; a.alpha = 1; }
+      atores.set(p.id, a);
+    }
+    a.p = p;
+    if (a.est !== est) {
+      a.est = est;
+      if (est === 'mesa') rota(a, assentoDe(p, i));
+      else if (est === 'almoco') rota(a, COZINHA[i % COZINHA.length]);
+      else rota(a, PORTA);
+    }
+  });
+  if (equipe.length && syncOk) jaCarregou = true;
+  desenharLista();
+}
+let jaCarregou = false, syncOk = false;
+function mover(dt) {
+  atores.forEach(a => {
+    if (a.alpha < 1 && a.est !== 'fora') a.alpha = Math.min(1, a.alpha + dt * 2);
+    const alvo = a.rota[0];
+    a.andando = !!alvo;
+    if (!alvo) { a.sentado = a.est === 'mesa'; if (a.est === 'fora') { a.alpha -= dt * 2; if (a.alpha <= 0) atores.delete(a.id); } return; }
+    a.sentado = false;
+    const dx = alvo[0] - a.x, dy = alvo[1] - a.y, d = Math.hypot(dx, dy), v = 2.6 * dt;
+    if (d <= v) { a.x = alvo[0]; a.y = alvo[1]; a.rota.shift(); } else { a.x += dx / d * v; a.y += dy / d * v; }
+  });
+}
+
+/* ---------- balões e efeitos ---------- */
+const efeitos = [];
+function balao(id, txt, dur = 3500) { const a = atores.get(id); if (a) a.balao = { txt, ate: T + dur }; }
+function particulas(id, emoji, n = 6) { const a = atores.get(id); if (!a) return; for (let k = 0; k < n; k++) efeitos.push({ x: a.x, y: a.y, dx: (Math.random() - .5) * 30, z: 30 + Math.random() * 10, v: 25 + Math.random() * 25, emoji, ate: T + 1600 + Math.random() * 600 }); }
+
+function textos() {
+  // nomes, balões e efeitos em resolução cheia
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const lista = [...atores.values()].sort((a, b) => a.x + a.y - b.x - b.y);
+  for (const a of lista) {
+    const [sx, sy] = iso(a.x, a.y), X = sx * S, Y = (sy - (a.sentado && !a.andando ? 6 : 0) - 42) * S;
+    ctx.globalAlpha = Math.max(0, a.alpha);
+    ctx.font = `700 ${Math.max(10, 5.5 * S)}px Inter, sans-serif`; ctx.textAlign = 'center';
+    const nome = a.p.nome.split(' ')[0] + (a.est === 'almoco' ? ' 🍽️' : '');
+    const w = ctx.measureText(nome).width + 12;
+    ctx.fillStyle = a.id === eu.id ? 'rgba(30,144,255,.9)' : 'rgba(3,10,26,.78)';
+    ctx.beginPath(); ctx.roundRect(X - w / 2, Y - 8 * S / 2 - 6, w, Math.max(16, 8 * S), 6); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(nome, X, Y - 6 + Math.max(16, 8 * S) / 2 - 8 * S / 2 + 0);
+    if (a.balao && a.balao.ate > T) {
+      ctx.font = `600 ${Math.max(12, 6 * S)}px Inter, sans-serif`;
+      const bw = Math.min(260, ctx.measureText(a.balao.txt).width + 18), bh = Math.max(24, 11 * S), by = Y - bh - 14;
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(X - bw / 2, by, bw, bh, 10); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(X - 6, by + bh); ctx.lineTo(X + 6, by + bh); ctx.lineTo(X, by + bh + 7); ctx.fill();
+      ctx.fillStyle = '#0b1530'; ctx.fillText(a.balao.txt.length > 34 ? a.balao.txt.slice(0, 33) + '…' : a.balao.txt, X, by + bh / 2);
+    }
+  }
+  ctx.globalAlpha = 1;
+  for (let k = efeitos.length - 1; k >= 0; k--) {
+    const e = efeitos[k]; if (e.ate < T) { efeitos.splice(k, 1); continue; }
+    const vida = 1 - (e.ate - T) / 2000, [sx, sy] = iso(e.x, e.y);
+    ctx.globalAlpha = Math.min(1, (e.ate - T) / 500);
+    ctx.font = `${Math.max(14, 8 * S)}px serif`; ctx.textAlign = 'center';
+    ctx.fillText(e.emoji, (sx + e.dx * vida) * S, (sy - e.z - e.v * vida * 1.6) * S);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function quadro(agora) {
+  const dt = Math.min(.05, (agora - t0) / 1000); t0 = agora; T = agora;
+  mover(dt);
+  ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, IW, IH);
+  cenario();
+  const itens = MOVEIS.map(m => ({ d: m.d, f: m.f }));
+  atores.forEach(a => itens.push({ d: a.x + a.y + (a.sentado && !a.andando ? .2 : .6), f: () => boneco(a) }));
+  itens.sort((a, b) => a.d - b.d).forEach(i => i.f());
+  textos();
+  requestAnimationFrame(quadro);
+}
+
+/* ---------- lista lateral, relógio ---------- */
+function desenharLista() {
+  $('#lista').innerHTML = equipe.map(p => {
+    const e = estadoDe(p), cls = e === 'mesa' ? 'on' : e === 'almoco' ? 'alm' : '';
+    const txt = e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
+    return `<div class="pessoa"><i class="${cls}"></i>${esc(p.nome)}${p.papel === 'admin' ? ' 👑' : ''}<small>${txt}</small></div>`;
+  }).join('');
+}
+setInterval(() => { $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); atualizarAtores(); }, 15000);
+
+/* ---------- interações ---------- */
+const ACOES = {
+  acenar: { emoji: '👋', txt: n => n ? `Oi, ${n}!` : 'Oi, pessoal!' },
+  dancar: { emoji: '🎵' }, coracao: { emoji: '❤️' }, highfive: { emoji: '✋' }, cafe: { emoji: '☕', txt: () => 'Bora um café?' }, palmas: { emoji: '👏' },
+};
+function executar(m) {
+  const de = atores.get(m.de), para = m.para ? atores.get(m.para) : null;
+  if (!de) return;
+  const nomePara = para ? para.p.nome.split(' ')[0] : '';
+  if (m.tipo === 'falar') return balao(m.de, m.texto, 5000);
+  const a = ACOES[m.tipo]; if (!a) return;
+  if (m.tipo === 'acenar') de.acena = T + 2500;
+  if (m.tipo === 'dancar') { de.danca = T + 6000; particulas(m.de, '🎵', 5); return; }
+  if (m.tipo === 'highfive' && para) { de.acena = T + 2000; para.acena = T + 2000; particulas(m.para, '✋', 3); }
+  if (a.txt) balao(m.de, a.txt(nomePara));
+  particulas(para && m.tipo !== 'acenar' ? m.para : m.de, a.emoji, m.tipo === 'coracao' ? 8 : 4);
+}
+function enviar(tipo, para, texto) { XYZPresenca.enviar('acao', { de: eu.id, para: para || null, tipo, texto: texto ? String(texto).slice(0, 80) : undefined }); }
+
+cv.addEventListener('click', e => {
+  const r = cv.getBoundingClientRect(), mx = (e.clientX - r.left) / S, my = (e.clientY - r.top) / S;
+  let melhor = null, dmin = 1e9;
+  atores.forEach(a => { const [x, y] = iso(a.x, a.y), d = Math.hypot(mx - x, my - (y - 18)); if (d < dmin) { dmin = d; melhor = a; } });
+  const m = $('#menu');
+  if (!melhor || dmin > 22) { m.hidden = true; return; }
+  const eh = melhor.id === eu.id, nome = melhor.p.nome.split(' ')[0];
+  const ops = eh ? [['acenar', '👋 Acenar para todos'], ['dancar', '💃 Dançar'], ['cafe', '☕ Chamar pro café'], ['palmas', '👏 Bater palmas']]
+                 : [['acenar', `👋 Acenar para ${nome}`], ['highfive', '✋ Toca aqui!'], ['coracao', '❤️ Mandar coração'], ['palmas', '👏 Aplaudir']];
+  m.innerHTML = `<b>${esc(melhor.p.nome)}${eh ? ' (você)' : ''}</b>` + ops.map(([k, t]) => `<button data-a="${k}">${t}</button>`).join('') +
+    `<form id="f-falar"><input id="i-falar" maxlength="80" placeholder="Dizer algo…"><button class="btn" style="padding:6px 10px">➤</button></form>`;
+  m.style.left = Math.min(innerWidth - 190, e.clientX + 8) + 'px'; m.style.top = Math.min(innerHeight - 260, e.clientY + 8) + 'px'; m.hidden = false;
+  m.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { enviar(b.dataset.a, eh ? null : melhor.id); m.hidden = true; });
+  $('#f-falar').onsubmit = ev => { ev.preventDefault(); const t = $('#i-falar').value.trim(); if (t) enviar('falar', null, t); m.hidden = true; };
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#menu').hidden = true; });
+
+/* ---------- horários (admin) ---------- */
+$('#btn-horarios').onclick = () => {
+  $('#tb-hor').innerHTML = equipe.map(p => `<tr data-id="${p.id}"><td>${esc(p.nome)}</td>${['entrada', 'almoco_ini', 'almoco_fim', 'saida'].map(c =>
+    `<td><input type="time" data-c="${c}" value="${(p[c] || '').slice(0, 5)}"></td>`).join('')}</tr>`).join('');
+  $('#modal').hidden = false;
+};
+$('#hor-fechar').onclick = () => $('#modal').hidden = true;
+$('#hor-salvar').onclick = async () => {
+  const b = $('#hor-salvar'); b.disabled = true;
+  try {
+    for (const tr of document.querySelectorAll('#tb-hor tr')) {
+      const up = {}; tr.querySelectorAll('input').forEach(i => up[i.dataset.c] = i.value || null);
+      const { error } = await sb.from('perfis').update(up).eq('id', tr.dataset.id); if (error) throw error;
+    }
+    await carregarEquipe(); $('#modal').hidden = true;
+  } catch (err) { alert('Não consegui salvar: ' + (err.message || err)); }
+  b.disabled = false;
+};
+
+/* ---------- início ---------- */
+async function carregarEquipe() {
+  const { data, error } = await sb.rpc('equipe_escritorio');
+  if (!error && data) { equipe = data; atualizarAtores(); }
+}
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return location.href = './';
+  const { data: perfil } = await sb.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
+  if (!perfil || !perfil.ativo) return location.href = './';
+  eu = perfil;
+  $('#btn-horarios').hidden = eu.papel !== 'admin';
+  $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  XYZPresenca.entrar(sb, eu, {
+    sync: st => { online = new Set(Object.keys(st)); syncOk = true; atualizarAtores(); },
+    acao: executar,
+    venda: m => { balao(m.id, '🎉 Fechei mais um!', 4000); particulas(m.id, '🎉', 6); particulas(m.id, '💰', 4); const a = atores.get(m.id); if (a) a.danca = T + 3000; },
+  });
+  await carregarEquipe();
+  requestAnimationFrame(quadro);
+})();
+</script>
+</body>
+</html>
