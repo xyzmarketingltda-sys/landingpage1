@@ -134,6 +134,10 @@ tbody tr:last-child td{border-bottom:0}
 #card-esc .avs .av{width:20px;height:20px;margin-left:-7px;border:2px solid #02060f;font-size:10px}
 #card-esc .avs .av:first-child{margin-left:0}
 #card-esc .entrar{display:inline-block;margin-top:3px;font-size:11px;font-weight:800;color:#00e5ff;letter-spacing:.5px}
+#eu-box{position:relative;cursor:default}
+#eu-foto{position:absolute;right:0;top:calc(100% + 12px);z-index:30;display:none;background:rgba(3,10,26,.96);border:1px solid rgba(0,229,255,.5);border-radius:16px;padding:10px;box-shadow:0 0 30px rgba(30,144,255,.45)}
+#eu-foto img{width:160px;height:160px;border-radius:50%;object-fit:cover;display:block}
+#eu-box:hover #eu-foto:not(:empty){display:block}
 /* AVATAR */
 .av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:linear-gradient(135deg,#0047b3,#00a6ff);color:#fff;border:2px solid rgba(255,255,255,.15);overflow:hidden}
 .av img{display:block;width:100%;height:100%;object-fit:cover;aspect-ratio:1/1}
@@ -269,7 +273,7 @@ tbody tr:last-child td{border-bottom:0}
 <section id="app" hidden>
   <header>
     <div class="marca">XYZ <span>CRM</span></div>
-    <div class="quem"><span class="nomeu">Olá, <b id="eu-nome"></b></span><button class="btn sec peq" id="sair">Sair</button></div>
+    <div class="quem"><span class="nomeu" id="eu-box">Olá, <b id="eu-nome"></b><span id="eu-foto"></span></span><button class="btn sec peq" id="sair">Sair</button></div>
   </header>
   <nav>
     <button data-aba="clientes" class="ativa">Clientes</button>
@@ -600,6 +604,7 @@ async function iniciar() {
   eu = perfil;
   $('#login').hidden = true; $('#app').hidden = false;
   $('#eu-nome').textContent = eu.nome;
+  $('#eu-foto').innerHTML = eu.foto_url ? `<img src="${esc(eu.foto_url)}" alt="">` : '';
   const admin = eu.papel === 'admin';
   $('#nav-atendentes').hidden = !admin;
   $('#f-at-box').hidden = !admin;
