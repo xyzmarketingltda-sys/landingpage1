@@ -1229,9 +1229,9 @@ $('#gdz-form').onsubmit = async e => {
   const partes = [seg && seg + ' seguro(s) prestamista', rev && rev + ' revisão(ões)', mar && mar + ' aumento(s) de margem'].filter(Boolean);
   const conta = [seg && 'seguro prestamista', rev && 'revisão', mar && 'aumento de margem'].filter(Boolean);
   const para = $('#gdz-para').value || null;
-  const desc = comp ? '🏆 Competição: quem fechar mais' + (conta.length ? ' (' + conta.join(' + ') + ')' : '') + ' até ' + $('#gdz-fim').value + ' leva o prêmio!' : 'Feche ' + partes.join(' + ') + ' até ' + $('#gdz-fim').value + '.';
+  const desc = comp ? '🏆 Competição: quem tiver mais procurações assinadas no ZapSign' + (conta.length ? ' (' + conta.join(' + ') + ')' : '') + ' até ' + $('#gdz-fim').value + ' leva o prêmio! Empate divide.' : 'Feche ' + partes.join(' + ') + ' até ' + $('#gdz-fim').value + ' — vale a procuração assinada no ZapSign dentro do horário.';
   const dS = comp ? null : cltVal('#gdz-seg-clt'), dR = comp ? null : cltVal('#gdz-rev-clt'), dM = comp ? null : cltVal('#gdz-mar-clt');
-  const descF = (dS != null || dR != null || dM != null) ? 'Bata a sua meta até ' + $('#gdz-fim').value + ' — veja os objetivos abaixo.' : desc;
+  const descF = (dS != null || dR != null || dM != null) ? 'Bata a sua meta até ' + $('#gdz-fim').value + ' — veja os seus objetivos abaixo. Vale a procuração assinada no ZapSign dentro do horário.' : desc;
   const reg = { atendente_id: para, meta_seguro_clt: dS, meta_revisional_clt: dR, meta_margem_clt: dM, modo: comp ? 'competicao' : 'meta', titulo: $('#gdz-tit').value.trim(), descricao: descF, meta_seguro: comp ? Math.min(seg, 1) : seg, meta_revisional: comp ? Math.min(rev, 1) : rev, meta_margem: comp ? Math.min(mar, 1) : mar, premio: numBR($('#gdz-pre').value) || 0, fim: fim.toISOString() };
   const { data, error } = await sb.from('desafios').insert(reg).select('id').single();
   if (error) return alert(traduz(error));
