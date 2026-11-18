@@ -318,6 +318,8 @@ tbody tr:last-child td{border-bottom:0}
 #missao-aviso button{font:700 12px Inter,sans-serif;letter-spacing:1px;text-transform:uppercase;padding:10px 18px;border-radius:4px;cursor:pointer;border:1px solid #fbbf24;background:linear-gradient(180deg,#b45309,#78350f);color:#fff7d6}
 #missao-aviso .ma-dep{background:transparent;border-color:rgba(125,211,252,.4);color:#cfe3ff}
 @keyframes maEntra{from{transform:translate(-50%,-40%) scale(.9);opacity:0}to{transform:translate(-50%,-50%);opacity:1}}
+body.embed #app>header,body.embed #app>nav,body.embed #gestao,body.embed #card-esc,body.embed #quest,body.embed #missao-aviso,body.embed .flutuante,body.embed #flutuante{display:none!important}
+body.embed{background:transparent}
 </style>
 </head>
 <body>
@@ -766,6 +768,9 @@ $('#l-primeiro').onclick = async () => {
 };
 $('#sair').onclick = async () => { try { XYZPresenca.sair(); } catch (e) {} await sb.auth.signOut(); eu = null; mostrarLogin(); };
 
+const EMBED = /[?&]embed=1/.test(location.search);
+if (EMBED) document.addEventListener('DOMContentLoaded', () => document.body.classList.add('embed'));
+const avisarPai = m => { try { if (EMBED && parent !== window) parent.postMessage(Object.assign({ xyz: 1 }, m), location.origin); } catch (e) {} };
 async function iniciar() {
   if (!CONFIGURADO) return mostrarLogin();
   const { data: { session } } = await sb.auth.getSession();
@@ -788,11 +793,15 @@ async function iniciar() {
   $('#gestao').hidden = !admin;
   document.body.classList.toggle('is-admin', admin);
   if (admin) { await carregarEquipe(); iniciarGestao(); }
-  iniciarFlutuante();
-  try { iniciarCardEsc(); } catch (e) {}
-  try { iniciarMissoes(); avisarDesafioAtivo(); } catch (e) {}
-  carregarAdvogados();
+  if (!EMBED) {
+    iniciarFlutuante();
+    try { iniciarCardEsc(); } catch (e) {}
+    try { iniciarMissoes(); avisarDesafioAtivo(); } catch (e) {}
+  }
+  await carregarAdvogados();
   abrirAba('clientes');
+  if (EMBED) document.body.classList.add('embed');
+  if (/[?&]novo=1/.test(location.search)) setTimeout(() => abrirCliente(null), 300);
 }
 
 /* ---------- gestão (admin) ---------- */
@@ -1211,7 +1220,7 @@ async function carregarClientes() {
 
 $('#novo').onclick = () => abrirCliente(null);
 $('#c-cancelar').onclick = fecharModal;
-function fecharModal() { $('#modal').hidden = true; $('#c-inss').value = ''; $('#c-inss').type = 'password'; }
+function fecharModal() { if (EMBED && /[?&]novo=1/.test(location.search)) avisarPai({ tipo: 'modal-fechado' }); $('#modal').hidden = true; $('#c-inss').value = ''; $('#c-inss').type = 'password'; }
 $('#c-cpf').oninput = e => { e.target.value = fmtCPF(e.target.value.slice(0, 14)); cpfConfirmado = null; $('#m-aviso').hidden = true; };
 $('#c-tel').onblur = e => e.target.value = fmtTel(e.target.value);
 $('#c-inss').oninput = () => inssMexeu = true;
@@ -1367,7 +1376,7 @@ $('#form-cli').onsubmit = async e => {
       if (error) throw error;
     }
     const nDocs = docsNovos.length ? await enviarDocs(id) : 0;
-    if (!editando) try { XYZPresenca.enviar('venda', { id: reg.atendente_id || eu.id }); } catch (e) {}
+    if (!editando) { if (EMBED) avisarPai({ tipo: 'venda', id: reg.atendente_id || eu.id, cliente: reg.nome }); else try { XYZPresenca.enviar('venda', { id: reg.atendente_id || eu.id }); } catch (e) {} }
     fecharModal();
     toast((editando ? 'Cliente atualizado.' : '🎉 Cliente fechado cadastrado!') + (nDocs ? ` ${nDocs} documento(s) enviado(s) — vão para o Drive em até 10 min.` : ''));
     carregarClientes(); atualizarFlutuante();

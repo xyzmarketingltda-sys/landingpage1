@@ -85,6 +85,28 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
 #quest .acoes button.sec{background:transparent;border-color:rgba(125,211,252,.4);color:#cfe3ff;box-shadow:none}
 #quest .completa{text-align:center;font:800 14px Inter,sans-serif;letter-spacing:2px;color:#4ade80;text-shadow:0 0 12px #22c55e;margin-top:12px}
 @keyframes questEntra{from{transform:scale(.85) translateY(20px);opacity:0}to{transform:none;opacity:1}}
+
+#pc{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(1,4,12,.55);backdrop-filter:blur(3px);animation:pcFundo .25s ease}
+@keyframes pcFundo{from{opacity:0}to{opacity:1}}
+#pc .mon{width:min(1180px,94vw);height:min(800px,90vh);display:flex;flex-direction:column;border-radius:18px;padding:12px;background:linear-gradient(160deg,#1b2333,#0a0f19 60%);box-shadow:0 0 0 1px rgba(125,211,252,.35),0 0 60px rgba(30,144,255,.35),0 30px 80px rgba(0,0,0,.6);animation:pcLiga .35s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pcLiga{0%{transform:scale(.6) translateY(80px);opacity:0;filter:brightness(3)}60%{opacity:1}100%{transform:none;filter:none}}
+#pc .barra{display:flex;align-items:center;gap:6px;padding:4px 4px 10px;flex-wrap:wrap}
+#pc .barra .os{font-weight:800;color:#7dd3fc;letter-spacing:.08em;font-size:12px;margin-right:8px}
+#pc .barra .os i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;margin-right:6px}
+#pc .barra button.app{background:rgba(30,144,255,.12);border:1px solid rgba(125,211,252,.25);color:#e2e8f0;border-radius:10px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
+#pc .barra button.app.on{background:linear-gradient(180deg,#1e90ff,#1565c0);border-color:#7dd3fc;color:#fff}
+#pc .barra .x{margin-left:auto;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.45);color:#fecaca;border-radius:10px;padding:7px 12px;cursor:pointer;font:inherit;font-size:13px}
+#pc .tela{flex:1;position:relative;border-radius:10px;overflow:hidden;background:#06101f;box-shadow:inset 0 0 0 1px rgba(125,211,252,.18)}
+#pc .tela::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+#pc iframe{width:100%;height:100%;border:0;background:#06101f}
+#pc .inicio{position:absolute;inset:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:28px;align-content:center;overflow:auto}
+#pc .inicio button{background:linear-gradient(160deg,rgba(30,144,255,.16),rgba(9,24,56,.6));border:1px solid rgba(125,211,252,.3);border-radius:16px;padding:22px 16px;color:#e2e8f0;cursor:pointer;font:inherit;text-align:left;transition:transform .15s,box-shadow .15s}
+#pc .inicio button:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(30,144,255,.3);border-color:#7dd3fc}
+#pc .inicio button .ic{font-size:30px;display:block;margin-bottom:10px}
+#pc .inicio button b{display:block;font-size:16px;margin-bottom:4px}
+#pc .inicio button small{color:#94a3b8;font-size:12px}
+#pc .carregando{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7dd3fc;font-size:14px;letter-spacing:.1em}
+#pc-dica{position:fixed;z-index:7;pointer-events:none;background:rgba(3,10,26,.92);border:1px solid #7dd3fc;color:#e0f2fe;border-radius:9px;padding:5px 10px;font-size:12px;font-weight:700;box-shadow:0 0 18px rgba(30,144,255,.45)}
 </style>
 </head>
 <body>
@@ -98,7 +120,13 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
 <div id="palco"><canvas id="cv"></canvas><canvas id="hud"></canvas></div>
 <div id="lado"><h3>Equipe agora</h3><div id="lista"></div></div>
 <div id="dica">Clique em alguém para interagir 👋 · role para dar zoom <span style="opacity:.5;margin-left:8px">móveis: Kenney.nl (CC0)</span></div>
-<div id="menu" hidden></div>
+<div id="pc" hidden><div class="mon">
+  <div class="barra"><span class="os"><i></i>XYZ·OS</span>
+    <button class="app" data-pc="inicio">🏠 Início</button><button class="app" data-pc="novo">➕ Lançar cliente</button><button class="app" data-pc="hiscon">🔎 Verificar seguro / HISCON</button><button class="app" data-pc="clientes">📋 Meus clientes</button>
+    <button class="x" data-pc="fechar">⏻ Sair do PC</button></div>
+  <div class="tela" id="pc-tela"></div>
+</div></div>
+<div id="menu" hidden></div><div id="pc-dica" hidden>💻 Usar meu computador</div>
 <div id="foto-hover" hidden><img alt=""><b></b><small></small></div>
 <div id="modal" hidden>
   <div class="caixa">
@@ -702,11 +730,59 @@ function executar(m) {
 }
 function enviar(tipo, para, texto) { XYZPresenca.enviar('acao', { de: eu.id, para: para || null, tipo, texto: texto ? String(texto).slice(0, 80) : undefined }); }
 
+
+/* ---------- computador da mesa: menu do PC ---------- */
+const PC_APPS = {
+  novo: { url: './?embed=1&novo=1', bal: '💻 Lançando cliente…' },
+  hiscon: { url: 'hiscon.html?embed=1', bal: '🔎 Verificando contratos…' },
+  clientes: { url: './?embed=1', bal: '💻 Vendo meus clientes…' },
+};
+function pcDe(idx) { const [x, z] = DESKS[idx]; return [x * U, 5.2, z * U]; }
+function abrirPC(app) {
+  const pc = $('#pc'); pc.hidden = false; $('#menu').hidden = true;
+  const a = atores.get(eu.id); if (a && a.livre) enviar('sentar');
+  pcApp(app || 'inicio');
+}
+function pcApp(app) {
+  const tela = $('#pc-tela');
+  document.querySelectorAll('#pc [data-pc]').forEach(b => b.classList.toggle('on', b.dataset.pc === app));
+  if (app === 'inicio') {
+    tela.innerHTML = `<div class="inicio">
+      <button data-pc="novo"><span class="ic">➕</span><b>Lançar cliente</b><small>cadastrar o cliente que fechou agora</small></button>
+      <button data-pc="hiscon"><span class="ic">🔎</span><b>Verificar seguro</b><small>HISCON e contratos: acha seguro prestamista e irregularidades</small></button>
+      <button data-pc="clientes"><span class="ic">📋</span><b>Meus clientes</b><small>lista, busca e edição</small></button>
+      <button data-pc="missao"><span class="ic">📜</span><b>Missão do dia</b><small>ver objetivos e recompensa</small></button>
+      ${desafio ? '<button data-pc="desafio"><span class="ic">⚡</span><b>Desafio relâmpago</b><small>' + esc(desafio.titulo) + '</small></button>' : ''}
+    </div>`;
+    return;
+  }
+  if (app === 'missao') { fecharPC(); return abrirMissao(); }
+  if (app === 'desafio') { fecharPC(); return abrirDesafio(); }
+  const ap = PC_APPS[app]; if (!ap) return;
+  tela.innerHTML = '<div class="carregando">INICIANDO…</div><iframe src="' + ap.url + '" allow="clipboard-write"></iframe>';
+  const fr = tela.querySelector('iframe'); fr.style.opacity = 0; fr.onload = () => { fr.style.transition = 'opacity .2s'; fr.style.opacity = 1; };
+  enviar('falar', null, ap.bal);
+}
+function fecharPC() { $('#pc').hidden = true; $('#pc-tela').innerHTML = ''; }
+document.getElementById('pc').addEventListener('click', e => {
+  const b = e.target.closest('[data-pc]'); if (b) { b.dataset.pc === 'fechar' ? fecharPC() : pcApp(b.dataset.pc); return; }
+  if (e.target.id === 'pc') fecharPC();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#pc').hidden) fecharPC(); });
+addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || !e.data.xyz) return;
+  if (e.data.tipo === 'venda') { try { XYZPresenca.enviar('venda', { id: e.data.id }); } catch (_) {} setTimeout(fecharPC, 900); }
+  if (e.data.tipo === 'modal-fechado') setTimeout(() => { if (!$('#pc').hidden) pcApp('inicio'); }, 200);
+});
+
 gl.addEventListener('click', e => {
   const r = gl.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
   let melhor = null, dmin = 1e9;
   atores.forEach(a => { const [x, y] = telaDe(a.x * U, (a.sentado && !a.andando ? SENTA : 0) + AV_ALT / 2, a.y * U), d = Math.hypot(mx - x, my - y); if (d < dmin) { dmin = d; melhor = a; } });
   const m = $('#menu');
+  const minha = mesaDe[eu.id];
+  if (minha != null) { const [px, py] = telaDe(...pcDe(minha)), dpc = Math.hypot(mx - px, my - py);
+    if (dpc < 48 * ZOOM && (!melhor || melhor.id === eu.id || dpc < dmin)) { abrirPC(); return; } }
   if (!melhor || dmin > 55 * ZOOM) {
     if (!m.hidden) { m.hidden = true; return; }
     // clicar no chão: anda até lá
@@ -720,17 +796,21 @@ gl.addEventListener('click', e => {
     return;
   }
   const eh = melhor.id === eu.id, nome = nomeExib(melhor.p);
-  const ops = eh ? [...(atores.get(eu.id)?.livre ? [['sentar', '🪑 Voltar pra minha mesa']] : []), ['acenar', '👋 Acenar para todos'], ['dancar', '💃 Dançar'], ['cafe', '☕ Chamar pro café'], ['palmas', '👏 Bater palmas']]
+  const ops = eh ? [['pc', '💻 Usar meu computador'], ...(atores.get(eu.id)?.livre ? [['sentar', '🪑 Voltar pra minha mesa']] : []), ['acenar', '👋 Acenar para todos'], ['dancar', '💃 Dançar'], ['cafe', '☕ Chamar pro café'], ['palmas', '👏 Bater palmas']]
                  : [['acenar', `👋 Acenar para ${nome}`], ['highfive', '✋ Toca aqui!'], ['coracao', '❤️ Mandar coração'], ['palmas', '👏 Aplaudir']];
   m.innerHTML = `<b>${esc(melhor.p.papel === 'advogado' ? nomeExib(melhor.p) : melhor.p.nome)}${eh ? ' (você)' : ''}</b>` + ops.map(([k, t]) => `<button data-a="${k}">${t}</button>`).join('') +
     `<form id="f-falar"><input id="i-falar" maxlength="80" placeholder="Dizer algo…"><button class="btn" style="padding:6px 10px">➤</button></form>`;
   m.style.left = Math.min(innerWidth - 190, e.clientX + 8) + 'px'; m.style.top = Math.min(innerHeight - 260, e.clientY + 8) + 'px'; m.hidden = false;
-  m.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { enviar(b.dataset.a, eh ? null : melhor.id); m.hidden = true; });
+  m.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { m.hidden = true; if (b.dataset.a === 'pc') return abrirPC(); enviar(b.dataset.a, eh ? null : melhor.id); });
   $('#f-falar').onsubmit = ev => { ev.preventDefault(); const t = $('#i-falar').value.trim(); if (t) enviar('falar', null, t); m.hidden = true; };
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#menu').hidden = true; });
 gl.addEventListener('mousemove', e => {
   const r = gl.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, card = $('#foto-hover');
+  const minha = mesaDe[eu?.id], dica = $('#pc-dica');
+  if (minha != null) { const [px, py] = telaDe(...pcDe(minha));
+    if (Math.hypot(mx - px, my - py) < 48 * ZOOM) { dica.hidden = false; dica.style.left = (e.clientX + 14) + 'px'; dica.style.top = (e.clientY - 10) + 'px'; card.hidden = true; gl.style.cursor = 'pointer'; return; } }
+  dica.hidden = true;
   let alvo = null;
   atores.forEach(a => { const [X, Y] = cabecaDe(a); if (Math.abs(mx - X) < 45 && my > Y - 26 && my < Y + 4) alvo = a; });
   if (!alvo || !alvo.p.foto_url) { card.hidden = true; gl.style.cursor = alvo ? 'pointer' : ''; return; }

@@ -103,9 +103,10 @@ try {
   const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
   const { data: { session } } = await sb.auth.getSession();
   if (!session) location.href = './';
-  else sb.from('perfis').select('id,nome').eq('id', session.user.id).single().then(({ data }) => { if (data && window.XYZPresenca) XYZPresenca.entrar(sb, data, {}); });
+  else if (!/[?&]embed=1/.test(location.search)) sb.from('perfis').select('id,nome').eq('id', session.user.id).single().then(({ data }) => { if (data && window.XYZPresenca) XYZPresenca.entrar(sb, data, {}); });
 } catch (e) { location.href = './'; }
 
+if (/[?&]embed=1/.test(location.search)) { document.body.classList.add('embed'); const h = document.querySelector('body>header'); if (h) h.style.display = 'none'; }
 if (/de=controle/.test(location.search)) { const v = $('#voltar'); v.href = '../controle/'; v.textContent = '← Voltar ao Controle'; }
 const drop = $('#drop');
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('sobre'); }));
