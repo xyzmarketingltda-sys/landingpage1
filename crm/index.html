@@ -590,6 +590,11 @@ body.embed{background:transparent}
         <button type="button" data-p="margem">📈 Aumento de margem</button></div><small id="c-prod-info" style="color:var(--suave);font-size:11px"></small></div>
       <div><label>Banco *</label><input id="c-banco" placeholder="Ex.: Facta, Banrisul…" required></div>
       <div><label>Advogado (escritório) *</label><input id="c-adv" list="lista-adv" placeholder="Ex.: IGOR" required autocomplete="off"><datalist id="lista-adv"></datalist></div>
+      <div class="inteiro" id="c-multi" hidden>
+        <div id="c-multi-lista"></div>
+        <button type="button" class="btn sec peq" id="c-multi-add">+ Adicionar outro banco deste cliente</button>
+        <small style="color:var(--suave);font-size:11px;margin-left:8px">Mesmo cliente com seguro em mais de um banco: cadastre tudo de uma vez (1 lançamento por banco).</small>
+      </div>
       <div id="c-at-box" hidden><label>Atendente</label><select id="c-at"></select></div>
       <div class="inteiro cofre">
         <label>🔒 Acesso Meu INSS · senha do cliente</label>
@@ -1515,7 +1520,7 @@ async function enviarDocs(id) {
 
 /* ---------- produto (revisão travada pela missão do dia) ---------- */
 let produtoSel = 'seguro';
-function marcarProduto(p) { produtoSel = p; $$('#c-prod button').forEach(b => b.classList.toggle('sel', b.dataset.p === p)); }
+function marcarProduto(p) { produtoSel = p; $$('#c-prod button').forEach(b => b.classList.toggle('sel', b.dataset.p === p)); const m = $('#c-multi'); if (m) m.hidden = !!editando || p !== 'seguro'; }
 $$('#c-prod button').forEach(b => b.onclick = () => { if (!b.disabled) marcarProduto(b.dataset.p); });
 async function prepararProduto(c) {
   marcarProduto(c?.produto || 'seguro');
@@ -1527,8 +1532,18 @@ async function prepararProduto(c) {
   else { rev.textContent = `🔓 Revisão de juros (${l.feitos}/${l.permitido})`; $('#c-prod-info').textContent = `Liberada pela missão de hoje: pode cadastrar mais ${l.permitido - l.feitos}.`; }
 }
 
+/* vários bancos do mesmo cliente num cadastro só (cada banco vira um lançamento) */
+function linhaBancoExtra() {
+  const d = document.createElement('div'); d.className = 'c-multi-linha'; d.style.cssText = 'display:flex;gap:8px;align-items:flex-end;margin-bottom:8px';
+  d.innerHTML = '<div style="flex:2"><label>Outro banco</label><input class="cm-banco" placeholder="Ex.: Paraná, QI…"></div><div style="flex:1"><label>Valor (R$)</label><input class="cm-valor" inputmode="decimal" placeholder="0,00"></div><button type="button" class="btn sec peq" title="Tirar este banco" style="margin-bottom:4px">✕</button>';
+  d.querySelector('button').onclick = () => d.remove();
+  $('#c-multi-lista').appendChild(d); d.querySelector('.cm-banco').focus();
+}
+function bancosExtras() { return $$('#c-multi-lista .c-multi-linha').map(d => ({ banco: d.querySelector('.cm-banco').value.trim(), valor: lerValor(d.querySelector('.cm-valor').value) })).filter(x => x.banco); }
+document.addEventListener('DOMContentLoaded', () => { const b = document.getElementById('c-multi-add'); if (b) b.onclick = linhaBancoExtra; });
 function abrirCliente(c) {
   editando = c; cpfConfirmado = null; inssMexeu = false;
+  $('#c-multi-lista').innerHTML = ''; $('#c-multi').hidden = !!c;
   $('#m-titulo').textContent = c ? 'Editar cliente' : 'Novo cliente fechado';
   $('#m-aviso').hidden = true;
   $('#c-nome').value = c?.nome || '';
@@ -1601,10 +1616,21 @@ $('#form-cli').onsubmit = async e => {
       const { error } = await sb.rpc('salvar_senha_inss', { p_cliente: id, p_senha: $('#c-inss').value });
       if (error) throw error;
     }
+    let nExtras = 0;
+    if (!editando) {
+      const mesmo = v => String(v || '').trim().toUpperCase();
+      for (const x of bancosExtras()) {
+        if (mesmo(x.banco) === mesmo(reg.banco)) continue;
+        const { data: ex, error: e2 } = await sb.from('clientes').insert({ ...reg, banco: x.banco, valor: x.valor }).select('id').single();
+        if (e2) throw new Error('O 1º banco foi salvo, mas deu erro no banco ' + x.banco + ': ' + traduz(e2));
+        if (inssMexeu && $('#c-inss').value) await sb.rpc('salvar_senha_inss', { p_cliente: ex.id, p_senha: $('#c-inss').value });
+        nExtras++;
+      }
+    }
     const nDocs = docsNovos.length ? await enviarDocs(id) : 0;
     if (!editando) { if (EMBED) avisarPai({ tipo: 'venda', id: reg.atendente_id || eu.id, cliente: reg.nome }); else try { XYZPresenca.enviar('venda', { id: reg.atendente_id || eu.id }); } catch (e) {} }
     fecharModal();
-    toast((editando ? 'Cliente atualizado.' : '🎉 Cliente fechado cadastrado!') + (nDocs ? ` ${nDocs} documento(s) enviado(s) — vão para o Drive em até 10 min.` : ''));
+    toast((editando ? 'Cliente atualizado.' : nExtras ? `🎉 Cliente cadastrado em ${nExtras + 1} bancos!` : '🎉 Cliente fechado cadastrado!') + (nDocs ? ` ${nDocs} documento(s) enviado(s) — vão para o Drive em até 10 min.` : ''));
     carregarClientes(); atualizarFlutuante(); carregarPendZap();
   } catch (err) { toast(traduz(err), true); }
   ocupado(b, false);
