@@ -996,7 +996,7 @@ const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Da
 const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
 async function clientesDoMes(ini, fim) {
   let tudo = [], de = 0;
-  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,seguro_det,seguro_det_fonte,seguro_det_em').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,atendente_id,criado_em,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,pasta_lida_em,seguro_det,seguro_det_fonte,seguro_det_em').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
 function aplicarRegra(regra, linhas) { return XYZComissao.aplicarRegra(regra, linhas); }
@@ -1088,9 +1088,29 @@ function desenharReceber() {
     const { error } = await sb.from('cobrancas').upsert({ advogado: a.adv, mes: G.mes, valor_previsto: a.total, valor_pago: numBR(v) || a.total, status: 'pago', pago_em: new Date().toISOString(), atualizado_em: new Date().toISOString() }, { onConflict: 'advogado,mes' });
     if (error) return alert(traduz(error)); toast('Recebimento registrado ✔'); await carregarCobrancas(); desenharReceber(); });
   $$('#ga-lista [data-gdet]').forEach(b => b.onclick = () => { const a = RECEBER[+b.dataset.gdet];
-    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px">${esc(a.adv)} — ${a.itens.length} cliente(s)</h4><div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th style="text-align:right">Processos</th><th>Base</th><th style="text-align:right">A receber</th></tr></thead><tbody>${a.itens.sort((x, y) => y.v - x.v).map(i => `<tr><td>${esc(i.cliente)}</td><td>${esc(i.cpf || '')}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num">${brl(i.v)}</td></tr>`).join('')}</tbody></table></div>`;
+    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px">${esc(a.adv)} — ${a.itens.length} cliente(s)</h4><div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th style="text-align:right">Processos</th><th>Base</th><th style="text-align:right">A receber</th></tr></thead><tbody>${a.itens.sort((x, y) => y.v - x.v).map((i, k) => `<tr data-gcli="${k}" style="cursor:pointer" title="Clique para ver data, atendente, pasta e contrato"><td>▸ ${esc(i.cliente)}</td><td>${esc(i.cpf || '')}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num">${brl(i.v)}</td></tr>`).join('')}</tbody></table></div>`;
+    $$('#ga-det [data-gcli]').forEach(tr => tr.onclick = () => detalheClienteAdv(tr, a.itens[+tr.dataset.gcli], a.adv));
     $('#ga-det').scrollIntoView({ behavior: 'smooth' }); });
   $$('#ga-lista [data-gcsv]').forEach(b => b.onclick = () => baixarReceber([RECEBER[+b.dataset.gcsv]]));
+}
+/* clique no cliente da lista do advogado: mostra o dia, quem lançou, pasta e o que o robô leu */
+let _nomesEq = null;
+async function detalheClienteAdv(tr, item, adv) {
+  const prox = tr.nextElementSibling;
+  if (prox && prox.classList.contains('gcli-det')) { prox.remove(); return; }
+  if (!_nomesEq) { const { data } = await sb.from('perfis').select('id,nome'); _nomesEq = Object.fromEntries((data || []).map(p => [p.id, p.nome])); }
+  const so_ = v => String(v || '').replace(/\D/g, ''), nm = v => String(v || '').trim().toUpperCase();
+  const regs = (window.__cliMes || []).filter(c => nm(c.advogado) === nm(adv) && ((so_(item.cpf) && so_(c.cpf) === so_(item.cpf)) || nm(c.nome) === nm(item.cliente)));
+  const dh = v => v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  const linhas = regs.map(c => {
+    const importado = c.criado_em && /T1[5-6]:00:00(\.0+)?(\+00:00|Z)$/.test(c.criado_em);
+    const pasta = c.pasta_url ? `<a href="${esc(c.pasta_url)}" target="_blank" rel="noopener" style="color:#93c5fd">📁 abrir pasta</a>${c.pasta_lida_em ? ' <small style="opacity:.7">lida ' + dh(c.pasta_lida_em) + '</small>' : ' <small style="color:#fbbf24">robô ainda não leu</small>'}` : '<span style="color:#fbbf24">📁 sem pasta ligada — o robô procura pelo nome a cada 10 min; se não achar, cole o link no cadastro</span>';
+    const seg = Number(c.seguro_det) > 0 ? `contrato lido: <b>${brl(Number(c.seguro_det))}</b> <small style="opacity:.7">${esc((c.seguro_det_fonte || '').replace(/^robô — /, ''))}</small>` : c.seguro_det_em ? `<span style="color:#f87171">robô leu em ${dh(c.seguro_det_em)} e não achou seguro</span>` : c.pasta_url ? '<span style="color:#fbbf24">⏳ contrato ainda não lido</span>' : '';
+    return `<div style="padding:6px 0;border-top:1px dashed rgba(255,255,255,.12)"><b>${fmtData(c.data_contato)}</b> · ${esc(c.banco || '—')} · lançado por <b>${esc(_nomesEq[c.atendente_id] || '—')}</b>${c.criado_em && !importado ? ' em ' + dh(c.criado_em) : ''} · tel ${esc(fmtTel(c.telefone)) || '—'} · valor lançado <b>${brl(Number(c.valor || 0))}</b>
+      <br>${pasta}${seg ? ' · ' + seg : ''}${c.adv_procuracao ? ' · procuração: <b>' + esc(c.adv_procuracao) + '</b>' : ''} · <a href="#" data-abrir="${c.id}" style="color:#67e8f9">abrir cadastro</a></div>`;
+  }).join('') || '<div style="opacity:.7">Não achei o lançamento deste cliente no mês.</div>';
+  tr.insertAdjacentHTML('afterend', `<tr class="gcli-det"><td colspan="6" style="background:rgba(34,211,238,.06);font-size:13px;line-height:1.6;white-space:normal">${linhas}</td></tr>`);
+  tr.nextElementSibling.querySelectorAll('[data-abrir]').forEach(l => l.onclick = async e => { e.preventDefault(); e.stopPropagation(); const { data } = await sb.from('clientes').select('*').eq('id', +l.dataset.abrir).maybeSingle(); if (data) abrirCliente(data); });
 }
 function baixarReceber(lista) {
   const L = [['Advogado', 'Regra', 'Cliente', 'CPF', 'Bancos', 'Processos', 'Valor do seguro', 'Base do cálculo', 'A receber']];
