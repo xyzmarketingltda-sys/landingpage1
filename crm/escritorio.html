@@ -54,7 +54,20 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
 #quest-btn .hex::after{content:"";position:absolute;inset:3px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#0b2a5c,#050d22 70%)}
 #quest-btn b{position:relative;z-index:1;display:block;text-align:center;font:900 24px/44px Inter,sans-serif;color:#fde047;text-shadow:0 0 10px #fbbf24}
 #quest-btn.feita b{color:#4ade80;text-shadow:0 0 10px #22c55e}
-#dz-btn{position:fixed;left:70px;top:74px;z-index:6;width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0;animation:dzPulsa 1.2s ease-in-out infinite}
+#dz-btn{position:fixed;left:18px;top:126px;z-index:6;width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0}
+#dz-btn .hex,#dz-btn b{animation:dzPulsa 1.2s ease-in-out infinite}
+/* letreiro neon ao lado do "!" (missão diária) e do ⚡ (desafio) */
+.neon{position:absolute;left:52px;top:50%;translate:0 -50%;white-space:nowrap;pointer-events:none;font:800 11px/1 Inter,sans-serif;letter-spacing:3px;text-transform:uppercase;padding:9px 15px 9px 13px;color:#ecfeff;
+  background:linear-gradient(90deg,rgba(2,8,22,.94),rgba(4,24,56,.9));border:1px solid rgba(34,211,238,.9);
+  clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+  text-shadow:0 0 5px #22d3ee,0 0 12px #22d3ee,0 0 24px #0ea5e9;filter:drop-shadow(0 0 7px rgba(34,211,238,.75));animation:neonPisca 5s linear infinite}
+.neon::before{content:"";position:absolute;right:5px;top:50%;width:3px;height:55%;translate:0 -50%;background:#22d3ee;box-shadow:0 0 8px #22d3ee}
+.neon.dz{border-color:rgba(251,113,133,.95);color:#fff1f2;text-shadow:0 0 5px #fb7185,0 0 12px #f43f5e,0 0 24px #e11d48;filter:drop-shadow(0 0 7px rgba(244,63,94,.75));animation-delay:-2s}
+.neon.dz::before{background:#fb7185;box-shadow:0 0 8px #fb7185}
+.neon.ok{border-color:rgba(74,222,128,.9);color:#f0fdf4;text-shadow:0 0 5px #4ade80,0 0 12px #22c55e;filter:drop-shadow(0 0 7px rgba(34,197,94,.7))}
+.neon.ok::before{background:#4ade80;box-shadow:0 0 8px #4ade80}
+@keyframes neonPisca{0%,89%,91%,94%,100%{opacity:1}90%{opacity:.55}93%{opacity:.75}}
+@media (prefers-reduced-motion:reduce){.neon{animation:none}}
 #dz-btn .hex{position:absolute;inset:0;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);background:linear-gradient(160deg,#fecaca,#ef4444 45%,#7f1d1d);box-shadow:0 0 18px rgba(239,68,68,.8)}
 #dz-btn .hex::after{content:"";position:absolute;inset:3px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#3b0a0a,#12030a 70%)}
 #dz-btn b{position:relative;z-index:1;display:block;text-align:center;font:900 22px/44px Inter,sans-serif;color:#fde047}
@@ -1249,6 +1262,7 @@ async function carregarMissoes() {
   missoes = data || [];
   const b = $('#quest-btn'); b.hidden = false;
   const meu = missoes.find(r => r.atendente_id === eu.id); b.classList.toggle('feita', !!meu?.cumpriu); b.querySelector('b').textContent = meu?.cumpriu ? '✓' : '!';
+  const nz = b.querySelector('.neon'); if (nz) { nz.hidden = !missoes.length; nz.classList.toggle('ok', !!meu?.cumpriu); nz.textContent = meu?.cumpriu ? 'Missão cumprida' : 'Missão diária'; }
   b.onclick = abrirMissao;
   marcadoresMissao();
   if (!abriuMissao && /missao=1/.test(location.search)) { abriuMissao = true; setTimeout(() => { if (meu) { balao(eu.id, '💻 Nova missão no seu PC!', 2500); } abrirMissao(); }, 1400); }
@@ -1288,6 +1302,7 @@ async function carregarDesafio(abrir) {
   desafio = (data || [])[0] || null; painelDz = [];
   if (desafio) { const { data: p } = await sb.rpc('desafio_painel', { did: desafio.id }); painelDz = p || []; }
   const b = $('#dz-btn'); b.hidden = !desafio; b.onclick = abrirDesafio;
+  if (desafio) { const nd = b.querySelector('.neon'); if (nd) nd.textContent = 'Desafio · até ' + new Date(desafio.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); }
   // animação: só em quem recebeu algum desafio ativo (geral = todas; direcionado = só a escolhida)
   const { data: todos } = await sb.from('desafios').select('id').lte('inicio', agora).gt('fim', agora);
   const ps = await Promise.all((todos || []).map(d => sb.rpc('desafio_painel', { did: d.id })));
@@ -1341,8 +1356,8 @@ async function carregarEquipe() {
   setTimeout(() => carregarDesafio(/desafio=1/.test(location.search)), 1100);
 })();
 </script>
-<button id="quest-btn" hidden title="Missão diária"><span class="hex"></span><b>!</b></button>
-<button id="dz-btn" hidden title="Desafio relâmpago"><span class="hex"></span><b>⚡</b></button>
+<button id="quest-btn" hidden title="Missão diária"><span class="hex"></span><b>!</b><span class="neon">Missão diária</span></button>
+<button id="dz-btn" hidden title="Desafio relâmpago"><span class="hex"></span><b>⚡</b><span class="neon dz">Desafio</span></button>
 <button id="desce-btn" hidden style="position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:7;background:linear-gradient(180deg,#1e90ff,#1565c0);color:#fff;border:1px solid #7dd3fc;border-radius:12px;padding:11px 20px;font:inherit;font-weight:700;cursor:pointer">⬇ Descer pro escritório</button>
 <button id="rk-btn" title="Ranking do mês" style="position:fixed;left:18px;top:126px;z-index:6;width:44px;height:44px;border:1px solid rgba(34,211,238,.6);border-radius:12px;background:rgba(3,10,26,.85);font-size:22px;cursor:pointer">🏆</button>
 <div id="quest" hidden></div>

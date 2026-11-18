@@ -205,7 +205,7 @@ tbody tr:last-child td{border-bottom:0}
 .g-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .g-top h3{font-size:15px}.g-top small{color:var(--suave);font-weight:400}
 .g-mes{display:flex;align-items:center;gap:8px}.g-mes b{min-width:120px;text-align:center;text-transform:capitalize}
-.g-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.g-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
 .g-kpis.prev{grid-template-columns:repeat(3,1fr)}.g-kpi.prev{border-color:rgba(251,191,36,.35)}.g-kpi.prev b{color:#fde68a}
 .g-kpi{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .g-kpi span{font-size:12px;color:var(--suave)}.g-kpi b{font-size:20px}.g-kpi small{font-size:11px;color:var(--suave)}
@@ -293,7 +293,27 @@ tbody tr:last-child td{border-bottom:0}
 #quest .hex{position:absolute;inset:0;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);background:linear-gradient(160deg,#fde68a,#f59e0b 45%,#b45309);box-shadow:0 0 18px rgba(251,191,36,.7)}
 #quest .hex::after{content:"";position:absolute;inset:3px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#0b2a5c,#050d22 70%)}
 #quest b{position:relative;z-index:1;font:900 26px/46px Inter,sans-serif;color:#fde047;text-shadow:0 0 10px #fbbf24,0 0 2px #fff;display:block;text-align:center}
-#quest.nova{animation:questPulo 1.4s ease-in-out infinite}
+#quest.nova .hex,#quest.nova b{animation:questPulo 1.4s ease-in-out infinite}
+/* botão do desafio relâmpago (fica acima do "!") */
+#dzq{position:fixed;right:98px;bottom:84px;z-index:60;width:46px;height:46px;border:0;cursor:pointer;background:none;padding:0}
+#dzq .hex{position:absolute;inset:0;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);background:linear-gradient(160deg,#fecaca,#ef4444 45%,#7f1d1d);box-shadow:0 0 18px rgba(239,68,68,.8)}
+#dzq .hex::after{content:"";position:absolute;inset:3px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#3b0a0a,#12030a 70%)}
+#dzq b{position:relative;z-index:1;font:900 22px/46px Inter,sans-serif;color:#fde047;display:block;text-align:center}
+@media (min-width:701px){#flut #flut-card #dzq{position:absolute;left:-20px;top:-78px;right:auto;bottom:auto}}
+@media (max-width:700px){#dzq{right:86px;bottom:74px} body:has(#flut-card:not([hidden])) #dzq{right:12px;bottom:auto;top:118px}}
+/* letreiro neon ao lado dos botões */
+.neon{position:absolute;right:52px;top:50%;translate:0 -50%;white-space:nowrap;pointer-events:none;font:800 11px/1 Inter,sans-serif;letter-spacing:3px;text-transform:uppercase;padding:9px 13px 9px 15px;color:#ecfeff;
+  background:linear-gradient(90deg,rgba(2,8,22,.94),rgba(4,24,56,.9));border:1px solid rgba(34,211,238,.9);
+  clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+  text-shadow:0 0 5px #22d3ee,0 0 12px #22d3ee,0 0 24px #0ea5e9;filter:drop-shadow(0 0 7px rgba(34,211,238,.75));animation:neonPisca 5s linear infinite}
+.neon::before{content:"";position:absolute;left:5px;top:50%;width:3px;height:55%;translate:0 -50%;background:#22d3ee;box-shadow:0 0 8px #22d3ee}
+.neon.dz{border-color:rgba(251,113,133,.95);color:#fff1f2;text-shadow:0 0 5px #fb7185,0 0 12px #f43f5e,0 0 24px #e11d48;filter:drop-shadow(0 0 7px rgba(244,63,94,.75));animation-delay:-2s}
+.neon.dz::before{background:#fb7185;box-shadow:0 0 8px #fb7185}
+.neon.ok{border-color:rgba(74,222,128,.9);color:#f0fdf4;text-shadow:0 0 5px #4ade80,0 0 12px #22c55e;filter:drop-shadow(0 0 7px rgba(34,197,94,.7))}
+.neon.ok::before{background:#4ade80;box-shadow:0 0 8px #4ade80}
+@keyframes neonPisca{0%,89%,91%,94%,100%{opacity:1}90%{opacity:.55}93%{opacity:.75}}
+@media (prefers-reduced-motion:reduce){.neon{animation:none}}
+body.embed #dzq{display:none!important}
 #quest.feita b{color:#4ade80;text-shadow:0 0 10px #22c55e}
 #quest .bolha{position:absolute;right:54px;bottom:6px;white-space:nowrap;font-size:12px;padding:6px 10px;border-radius:10px;background:rgba(5,13,34,.92);border:1px solid rgba(251,191,36,.6);color:#fde68a;box-shadow:0 0 14px rgba(251,191,36,.3);pointer-events:none}
 @keyframes questPulo{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
@@ -370,6 +390,7 @@ body.embed{background:transparent}
           <div class="g-kpi"><span>Comissões do mês</span><b id="g-com">–</b><small id="g-com-q"></small></div>
           <div class="g-kpi"><span>Despesas do mês</span><b id="g-desp">–</b><small id="g-desp-q"></small></div>
           <div class="g-kpi" id="g-res-box"><span id="g-res-rot">Resultado</span><b id="g-res">–</b><small id="g-res-sub">comissões − despesas</small></div>
+          <div class="g-kpi" id="g-dia-box" style="border-color:rgba(34,197,94,.45)"><span>💰 Ganho hoje (previsto)</span><b id="g-dia" style="color:#86efac">–</b><small id="g-dia-sub"></small></div>
         </div>
         <div id="g-alerta-pix" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.6);background:rgba(251,191,36,.08);font-size:13px"></div>
         <div id="g-alerta-cpf" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,146,60,.6);background:rgba(251,146,60,.08);font-size:13px"></div>
@@ -1060,13 +1081,22 @@ async function fechadosHoje() {
   if (!eu || eu.papel !== 'admin' || !$('#gp-dia')) return;
   const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }), ini = hoje + 'T00:00:00-03:00';
   const [{ data: cli }, { data: ass }] = await Promise.all([
-    sb.from('clientes').select('id,nome,cpf,atendente_id,data_contato,criado_em').or(`data_contato.eq.${hoje},and(data_contato.is.null,criado_em.gte."${ini}")`).limit(2000),
+    sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,pasta_url,seguro_det_em,atendente_id,data_contato,criado_em').or(`data_contato.eq.${hoje},and(data_contato.is.null,criado_em.gte."${ini}")`).limit(2000),
     sb.from('assinaturas_zap').select('doc_token,cliente,assinado_em').eq('conta', true).gte('assinado_em', ini).limit(2000)]);
   const porAt = {}, vistos = new Set();
   (cli || []).forEach(c => { const k = (c.atendente_id || '') + '|' + (so(c.cpf || '') || (c.nome || '').toUpperCase().trim()); if (vistos.has(k)) return; vistos.add(k); porAt[c.atendente_id] = (porAt[c.atendente_id] || 0) + 1; });
   const nome = id => ((equipe.find(p => p.id === id) || {}).nome || 'sem atendente').split(' ')[0];
   const lista = Object.entries(porAt).sort((x, y) => y[1] - x[1]).map(([id, n]) => nome(id) + ' ' + n).join(' · ');
   const assinadas = new Set((ass || []).map(a => (a.cliente || a.doc_token || '').toLowerCase())).size;
+  // ganho de hoje: o que os fechados de hoje rendem pelas regras de cada advogado
+  try {
+    if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
+    const porAdv = {}; (cli || []).forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
+    let ganho = 0, semValor = 0, exito = 0;
+    Object.entries(porAdv).forEach(([adv, l]) => { const r = REGRAS[adv], itens = aplicarRegra(r?.regra, l); itens.forEach(i => { ganho += i.v || 0; if (i.semValor) semValor++; }); if (r?.regra?.tipo === 'percentual') exito += itens.length; });
+    $('#g-dia').textContent = brl(ganho);
+    $('#g-dia-sub').textContent = ['pelas regras dos advogados', semValor && semValor + ' ainda sem valor do seguro', exito && exito + ' só no êxito'].filter(Boolean).join(' · ');
+  } catch (e) { $('#g-dia').textContent = '–'; }
   $('#gp-dia').textContent = vistos.size + (vistos.size === 1 ? ' cliente' : ' clientes');
   $('#gp-dia-sub').textContent = (lista || 'nenhum lançado ainda') + ' — ' + assinadas + ' procuraç' + (assinadas === 1 ? 'ão assinada' : 'ões assinadas') + ' hoje no ZapSign';
 }
@@ -1444,7 +1474,7 @@ function atualizarAoVivo(espera) {
   clearTimeout(_tAoVivo);
   _tAoVivo = setTimeout(() => {
     if (!eu || document.hidden) return;
-    try { atualizarFlutuante(); carregarPendZap(); fechadosHoje().catch(() => {}); } catch (e) {}
+    try { atualizarFlutuante(); carregarPendZap(); fechadosHoje().catch(() => {}); avisarDesafioAtivo().catch(() => {}); } catch (e) {}
     // não mexe na lista se a pessoa está com o cadastro aberto ou digitando na busca
     const ocupada = !$('#modal').hidden || document.activeElement === $('#f-busca');
     if (!ocupada && !$('#aba-clientes').hidden) carregarClientes();
@@ -1748,7 +1778,7 @@ async function carregarAdvogados() {
 let equipeEsc = [];
 async function iniciarCardEsc() {
   const { data } = await sb.rpc('equipe_escritorio'); equipeEsc = data || [];
-  XYZPresenca.entrar(sb, eu, { venda: m => { if (!m || m.id !== eu.id || m.zapsign) atualizarAoVivo(1500); }, sync: st => {
+  XYZPresenca.entrar(sb, eu, { venda: m => { if (!m || m.id !== eu.id || m.zapsign) atualizarAoVivo(1500); }, desafio: d => { try { if (d && d.id) guardar('crm-desafio-visto-' + eu.id + '-' + d.id, '1'); } catch (e) {} setTimeout(() => avisarDesafioAtivo().catch(() => {}), 1500); }, sync: st => {
     const ids = Object.keys(st), pessoas = equipeEsc.filter(p => ids.includes(p.id));
     const n = pessoas.length;
     $('#esc-dot').className = n ? 'on' : '';
@@ -1767,14 +1797,19 @@ async function iniciarMissoes() {
   prenderQuest(); const q = $('#quest'); q.hidden = false; q.onclick = () => location.href = 'escritorio.html?missao=1';
   if (!data || !data.length) { q.querySelector('b').textContent = '!'; q.classList.remove('nova', 'feita'); q.title = 'Missão diária (nenhuma hoje)'; return; }
   const meus = eu.papel === 'atendente' ? data.filter(r => r.atendente_id === eu.id) : [];
-  q.hidden = false; q.querySelector('.bolha')?.remove();
+  q.hidden = false; q.querySelector('.bolha')?.remove(); q.querySelector('.neon')?.remove();
   const feita = meus.length && meus.every(r => r.cumpriu);
   q.classList.toggle('feita', !!feita); q.querySelector('b').textContent = feita ? '✓' : '!';
-  const chave = 'crm-missao-vista-' + eu.id + '-' + diaSP();
+  // letreiro neon fixo ao lado do "!" (é por ele que a pessoa volta a ver a missão)
+  q.insertAdjacentHTML('beforeend', `<span class="neon${feita ? ' ok' : ''}">${feita ? 'Missão cumprida' : 'Missão diária'}</span>`);
+  const chave = 'crm-missao-vista-' + eu.id + '-' + diaSP(), popK = 'crm-missao-popup-' + eu.id + '-' + diaSP();
+  const aceita = ler('crm-missao-aceita-' + eu.id + '-' + diaSP());
   q.onclick = () => { guardar(chave, '1'); location.href = 'escritorio.html?missao=1'; };
-  if (!ler(chave) && !feita) {
-    q.classList.add('nova');
-    q.insertAdjacentHTML('beforeend', '<span class="bolha">📜 Nova missão diária!</span>');
+  const novidade = !ler(chave) && !aceita && !feita;
+  q.classList.toggle('nova', novidade);
+  // o aviso grande aparece UMA vez por dia (não volta a cada login); depois é só pelo "!"
+  if (novidade && !ler(popK) && eu.papel === 'atendente') {
+    guardar(popK, '1');
     const m = data[0], meu = meus[0];
     const obj = [m.meta_seguro && `${meu ? meu.seguros + '/' : ''}${m.meta_seguro} seguro(s) prestamista`, m.meta_revisional && `${meu ? meu.revisionais + '/' : ''}${m.meta_revisional} revisão(ões)`, m.meta_margem && `${meu ? meu.margens + '/' : ''}${m.meta_margem} aumento(s) de margem`].filter(Boolean).join(' · ');
     let c = document.getElementById('missao-aviso'); if (c) c.remove();
@@ -1790,9 +1825,17 @@ async function iniciarMissoes() {
 }
 async function avisarDesafioAtivo() {
   if (document.readyState === 'loading') await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
-  if (eu.papel !== 'atendente') return;
-  const { data } = await sb.from('desafios').select('*').gt('fim', new Date().toISOString()).lte('inicio', new Date().toISOString()).or('atendente_id.is.null,atendente_id.eq.' + eu.id).order('inicio', { ascending: false }).limit(1);
-  const d = (data || [])[0]; if (!d) return;
+  if (!eu) return;
+  let qd = sb.from('desafios').select('*').gt('fim', new Date().toISOString()).lte('inicio', new Date().toISOString());
+  if (eu.papel !== 'admin') qd = qd.or('atendente_id.is.null,atendente_id.eq.' + eu.id);
+  const { data } = await qd.order('inicio', { ascending: false }).limit(1);
+  const d = (data || [])[0], bt = $('#dzq');
+  // botão ⚡ com letreiro neon enquanto houver desafio valendo (some sozinho quando acaba)
+  if (bt) { prenderQuest(); bt.hidden = !d;
+    if (d) { bt.querySelector('.neon').textContent = 'Desafio · até ' + new Date(d.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+      bt.title = 'Desafio: ' + d.titulo + ' — prêmio ' + brl(d.premio); bt.onclick = () => location.href = 'escritorio.html?desafio=1'; } }
+  if (!d || eu.papel !== 'atendente') return;
+  // a faixa de "novo desafio" aparece uma vez só por desafio (não volta a cada login)
   const k = 'crm-desafio-visto-' + eu.id + '-' + d.id; if (ler(k)) return; guardar(k, '1');
   try { XYZAlertaDesafio(d); } catch (e) {}
 }
@@ -1913,7 +1956,7 @@ function iniciarFlutuante() {
   clearInterval(timerFlut); timerFlut = setInterval(atualizarFlutuante, 60000);
 }
 // o "!" da missão vai preso no canto do card do ranking (no computador)
-function prenderQuest() { const q = $('#quest'), card = $('#flut-card'); if (q && card && innerWidth > 700 && q.parentElement !== card) card.appendChild(q); }
+function prenderQuest() { const card = $('#flut-card'); if (!card || innerWidth <= 700) return; ['#quest', '#dzq'].forEach(i => { const q = $(i); if (q && q.parentElement !== card) card.appendChild(q); }); }
 document.addEventListener('DOMContentLoaded', prenderQuest);
 $('#flut-min').onclick = () => { $('#flut-card').hidden = true; $('#flut-bola').hidden = false; guardar('crm-flut', 'min'); };
 $('#flut-bola').onclick = () => { $('#flut-card').hidden = false; $('#flut-bola').hidden = true; guardar('crm-flut', 'max'); };
@@ -2066,5 +2109,6 @@ if (sb) sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') mostrarLogin(
 iniciar();
 </script>
 <button id="quest" hidden title="Missão diária"><span class="hex"></span><b>!</b></button>
+<button id="dzq" hidden title="Desafio relâmpago"><span class="hex"></span><b>⚡</b><span class="neon dz">Desafio</span></button>
 </body>
 </html>
