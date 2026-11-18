@@ -783,7 +783,9 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const so = s => String(s || '').replace(/\D/g, '');
 const brl = v => Number(v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 const fmtCPF = c => { c = so(c); return c.length === 11 ? c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : c; };
-const fmtTel = t => { t = so(t); if (t.length === 11) return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3'); if (t.length === 10) return t.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3'); return t; };
+// telefone no padrão: só dígitos, DDD + número, sem 55 nem zero na frente; celular sempre com o 9 (igual à regra do banco de dados)
+const telPadrao = t => { let d = so(t).replace(/^0+/, ''); if ((d.length === 12 || d.length === 13) && d.startsWith('55')) d = d.slice(2); d = d.replace(/^0+/, ''); if (d.length === 10 && /[6-9]/.test(d[2])) d = d.slice(0, 2) + '9' + d.slice(2); return d; };
+const fmtTel = t => { t = telPadrao(t); if (t.length === 11) return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3'); if (t.length === 10) return t.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3'); return t; };
 const fmtData = d => d ? d.split('-').reverse().join('/') : '';
 const iso = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
 const hoje = () => iso(new Date());
@@ -1527,6 +1529,8 @@ async function carregarClientes() {
     const dig = so(termo), conds = [];
     if (/[a-zA-ZÀ-ú]/.test(termo) || dig.length < 3) conds.push(`nome.ilike.*${termo}*`);
     if (dig.length >= 3) conds.push(`cpf.ilike.*${dig}*`, `telefone.ilike.*${dig}*`);
+    // telefone colado com +55, zero ou sem o 9: procura também pelo padrão e pelos 8 últimos dígitos
+    if (dig.length >= 10 && dig.length <= 13) { const tp = telPadrao(dig); if (tp !== dig) conds.push(`telefone.ilike.*${tp}*`); conds.push(`telefone.ilike.*${dig.slice(-8)}`); }
     q = q.or(conds.join(','));
   }
   if ($('#f-adv').value) q = q.eq('advogado', $('#f-adv').value);
@@ -1557,6 +1561,8 @@ $('#c-cancelar').onclick = fecharModal;
 function fecharModal() { if (EMBED && /[?&]novo=1/.test(location.search)) avisarPai({ tipo: 'modal-fechado' }); $('#modal').hidden = true; $('#c-inss').value = ''; $('#c-inss').type = 'password'; }
 $('#c-cpf').oninput = e => { e.target.value = fmtCPF(e.target.value.slice(0, 14)); cpfConfirmado = null; $('#m-aviso').hidden = true; };
 $('#c-tel').onblur = e => e.target.value = fmtTel(e.target.value);
+// colou o número (do WhatsApp, com +55, traço, espaço…): já cai no padrão na hora
+$('#c-tel').addEventListener('paste', e => setTimeout(() => { e.target.value = fmtTel(e.target.value); }, 0));
 $('#c-inss').oninput = () => inssMexeu = true;
 $('#c-inss-ver').onclick = async () => {
   const i = $('#c-inss');
@@ -1723,7 +1729,7 @@ $('#form-cli').onsubmit = async e => {
     }
   }
   const reg = {
-    nome: $('#c-nome').value.trim(), cpf, telefone: so($('#c-tel').value),
+    nome: $('#c-nome').value.trim(), cpf, telefone: telPadrao($('#c-tel').value),
     data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
     produto: produtoSel, banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null, ...(eu.papel === 'admin' ? { pasta_url: $('#c-pasta').value.trim() || null } : {})
   };
