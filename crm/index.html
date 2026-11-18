@@ -460,7 +460,7 @@ body.embed{background:transparent}
       </div>
       <div class="tabela vidro">
         <table>
-          <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Banco</th><th>Advogado</th><th>Fechamento</th><th>Acesso INSS</th><th class="col-at">Atendente</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Banco</th><th>Advogado</th><th>Fechamento</th><th>Kit</th><th>Acesso INSS</th><th class="col-at">Atendente</th></tr></thead>
           <tbody id="lista"></tbody>
         </table>
       </div>
@@ -809,6 +809,16 @@ async function iniciar() {
   carregarPendZap();
   if (EMBED) document.body.classList.add('embed');
   if (/[?&]novo=1/.test(location.search)) setTimeout(() => abrirCliente(null), 300);
+}
+
+/* ---------- checklist do kit (o robô lê a pasta do Drive) ---------- */
+const KIT = [['rg', 'RG'], ['comprovante', 'Comprovante'], ['hiscon', 'HISCON'], ['contrato', 'Contrato'], ['procuracao', 'Procuração']];
+function kitChips(c) {
+  if (!c.pasta_url) return '<small style="color:var(--suave)">sem pasta</small>';
+  if (!c.kit) return '<small style="color:var(--suave)" title="o robô ainda vai ler a pasta">aguardando…</small>';
+  const falta = KIT.filter(([k]) => !c.kit[k]);
+  const tip = KIT.map(([k, n]) => (c.kit[k] ? '✔ ' : '✖ ') + n).join('\n') + (c.kit_em ? '\nlido em ' + new Date(c.kit_em).toLocaleString('pt-BR') : '');
+  return falta.length ? `<span title="${esc(tip)}" style="white-space:nowrap;color:#fde68a;font-size:12px">⚠️ falta ${esc(falta.map(f => f[1]).join(', '))}</span>` : `<span title="${esc(tip)}" style="color:#86efac;font-size:12px;white-space:nowrap">✔ completo</span>`;
 }
 
 /* ---------- CPF já com outro advogado: aviso na hora de digitar ---------- */
@@ -1259,7 +1269,7 @@ $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(carregarClient
 
 async function carregarClientes() {
   const admin = eu.papel === 'admin';
-  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,pasta_url,status_adv,obs_adv,status_adv_em,perfis(nome)')
+  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,pasta_url,status_adv,obs_adv,status_adv_em,kit,kit_em,perfis(nome)')
     .order('data_contato', { ascending: false }).order('id', { ascending: false }).limit(1000);
   const termo = $('#f-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
   if (termo) {
@@ -1284,9 +1294,10 @@ async function carregarClientes() {
       <td data-r="Banco">${esc(c.banco)}</td>
       <td data-r="Advogado">${esc(c.advogado || '—')}</td>
       <td data-r="Fechamento">${fmtData(c.data_contato)}</td>
+      <td>${kitChips(c)}</td>
       <td><span class="cadeado ${c.tem_senha_inss ? '' : 'nao'}">${c.tem_senha_inss ? '🔒 Senha salva' : 'Sem senha'}</span></td>
       ${admin ? `<td data-r="Atendente">${esc(c.perfis?.nome)}</td>` : ''}
-    </tr>`).join('') : `<tr><td colspan="8" class="vazio">Nenhum cliente encontrado.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="9" class="vazio">Nenhum cliente encontrado.</td></tr>`;
   $$('#lista tr[data-id]').forEach(tr => tr.onclick = () => abrirCliente(clientesAtuais.find(c => c.id == tr.dataset.id)));
 }
 
