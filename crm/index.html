@@ -365,6 +365,7 @@ body.embed{background:transparent}
           <div class="g-kpi" id="g-res-box"><span>Resultado</span><b id="g-res">–</b><small>comissões − despesas</small></div>
           <div class="g-kpi"><span>Processos</span><b id="g-proc">–</b><small id="g-proc-sub"></small></div>
         </div>
+        <div id="g-alerta-pix" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.6);background:rgba(251,191,36,.08);font-size:13px"></div>
         <div id="g-alerta-proc" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(239,68,68,.6);background:rgba(239,68,68,.1);font-size:13px"></div>
         <div class="g-kpis prev">
           <div class="g-kpi prev"><span>🧾 A receber dos advogados (previsto)</span><b id="gp-prev">–</b><small id="gp-prev-sub">pelas regras de cada advogado, clientes lançados no mês</small></div>
@@ -405,7 +406,7 @@ body.embed{background:transparent}
         <div class="g-painel" id="gp-adv" hidden>
           <div class="g-linha"><button class="btn peq" id="ga-baixar" type="button">⬇️ Baixar relatório consolidado do mês (Excel)</button><small style="color:var(--suave)">valores previstos pelas regras — clientes sem valor de seguro aparecem como "sem valor" para conferir</small></div>
           <div class="g-cats" id="ga-resumo"></div>
-          <div class="g-tab"><table><thead><tr><th>Advogado</th><th>Regra</th><th style="text-align:right">Clientes</th><th style="text-align:right">Processos</th><th style="text-align:right">Sem valor</th><th style="text-align:right">A receber</th><th></th></tr></thead><tbody id="ga-lista"></tbody></table></div>
+          <div class="g-tab"><table><thead><tr><th>Advogado</th><th>Regra</th><th style="text-align:right">Clientes</th><th style="text-align:right">Processos</th><th style="text-align:right">Sem valor</th><th style="text-align:right">A receber</th><th>Pagamento</th><th></th></tr></thead><tbody id="ga-lista"></tbody></table></div>
           <div id="ga-det"></div>
         </div>
         <div class="g-painel" id="gp-mis" hidden>
@@ -590,6 +591,7 @@ body.embed{background:transparent}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="presenca.js?v=20261117n"></script>
+<script src="comissao.js?v=1"></script>
 <script>
 /* ================= FUNDO 3D (galáxia de partículas conectadas) ================= */
 (() => {
@@ -867,26 +869,7 @@ async function clientesDoMes(ini, fim) {
   for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
-function aplicarRegra(regra, linhas) {
-  // linhas: clientes do advogado no mês → agrupa por cliente (CPF), pois paga por cliente e não por processo
-  const grupos = {}; linhas.forEach(c => { const k = (c.cpf || '').replace(/\D/g, '') || c.nome; (grupos[k] = grupos[k] || []).push(c); });
-  const itens = Object.values(grupos).map(g => {
-    const seg = g.filter(c => (c.produto || 'seguro') === 'seguro'), rev = g.filter(c => c.produto === 'revisional');
-    const valor = seg.reduce((x, c) => x + (Number(c.valor) || 0), 0), facta = seg.some(c => /facta/i.test(c.banco || ''));
-    let v = 0, obs = '', semValor = seg.length > 0 && !valor;
-    if (!regra) obs = 'sem regra cadastrada';
-    else if (regra.tipo === 'por_cliente' || regra.por_cliente) { v = regra.v; obs = 'por cliente (' + g.length + ' processo(s))'; semValor = false; }
-    else if (regra.tipo === 'por_processo') { v = g.length * regra.v; obs = g.length + ' processo(s) × ' + brl(regra.v); semValor = false; }
-    else if (regra.tipo === 'percentual') { obs = regra.pct + '% no êxito'; semValor = false; }
-    else if (regra.tipo === 'faixas_cliente') {
-      if (seg.length && valor) { const f = regra.faixas.find(x => valor >= x.min); if (f) { v = f.v; obs = 'seguro ' + brl(valor); } else if (facta && regra.facta_min && valor >= regra.facta_min) { v = regra.facta_v; obs = 'Facta ' + brl(valor); } else obs = 'abaixo da faixa (' + brl(valor) + ')'; }
-      if (rev.length && regra.revisional_v) { v += regra.revisional_v; obs += (obs ? ' + ' : '') + 'juros abusivos'; }
-      if (semValor) obs = 'sem valor do seguro';
-    }
-    return { cliente: g[0].nome, cpf: g[0].cpf, bancos: [...new Set(g.map(c => c.banco).filter(Boolean))].join(', '), processos: g.length, valor, v, obs, semValor };
-  });
-  return itens;
-}
+function aplicarRegra(regra, linhas) { return XYZComissao.aplicarRegra(regra, linhas); }
 async function ajustarCrmProc(lista) {
   let ok = 0;
   for (const c of lista) { if (!c.adv_procuracao) continue; const { error } = await sb.from('clientes').update({ advogado: c.adv_procuracao }).eq('id', c.id); if (error) { toast('Erro em ' + c.nome + ': ' + error.message); } else ok++; }
@@ -922,8 +905,14 @@ async function calcularPrevisoes() {
     const corrente = G.mes === mesIso(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     $('#gp-cus').textContent = brl(cus); $('#gp-cus-sub').textContent = repetidos.length ? 'usando mês anterior p/ ' + repetidos.join(', ') + (corrente ? '' : '') : 'tudo já lançado';
     const res = prev - cus; $('#gp-res').textContent = brl(res); $('#gp-res-box').style.borderColor = res >= 0 ? 'rgba(34,197,94,.5)' : 'rgba(239,68,68,.5)';
+    await carregarCobrancas();
     if (G.aba === 'adv') desenharReceber();
   } catch (e) { console.warn(e); }
+}
+async function carregarCobrancas() {
+  const { data } = await sb.from('cobrancas').select('*').eq('mes', G.mes); const m = {}; (data || []).forEach(c => m[c.advogado] = c); window.__cob = m;
+  const { data: inf } = await sb.from('cobrancas').select('advogado,mes,valor_previsto,informado_em').eq('status', 'informado');
+  const box = $('#g-alerta-pix'); if (box) { box.hidden = !(inf || []).length; box.innerHTML = (inf || []).length ? '💬 <b>Pix informado por advogado, aguardando sua conferência:</b> ' + inf.map(c => esc(c.advogado) + ' (' + mesCurto(c.mes.slice(0, 7)) + ', ' + brl(c.valor_previsto) + ')').join(' · ') + ' — confira no extrato do BTG e marque ✔ em A receber.' : ''; }
 }
 function desenharReceber() {
   $('#ga-resumo').innerHTML = `<span>Total a receber em ${mesNome(G.mes)}: <b>${brl(RECEBER.reduce((x, a) => x + a.total, 0))}</b></span>` +
@@ -938,8 +927,22 @@ function desenharReceber() {
     const bt = $('#ga-ajtodos'); if (bt) bt.onclick = () => { if (confirm('Trocar o advogado no CRM de ' + comProc.length + ' cliente(s) pelo da procuração?')) ajustarCrmProc(comProc); };
     $('#ga-det').scrollIntoView({ behavior: 'smooth' });
   };
-  $('#ga-lista').innerHTML = RECEBER.map((a, i) => `<tr><td><b>${esc(a.adv)}</b></td><td><small>${esc(a.obs)}</small></td><td class="num">${a.itens.length}</td><td class="num">${a.processos}</td><td class="num" style="${a.semValor ? 'color:#fbbf24' : ''}">${a.semValor || ''}</td><td class="num"><b>${brl(a.total)}</b></td>
-    <td style="white-space:nowrap"><button class="btn sec peq" data-gdet="${i}">Ver clientes</button> <button class="btn sec peq" data-gcsv="${i}" title="Baixar só deste advogado">⬇️</button></td></tr>`).join('') || '<tr><td colspan="7" style="color:var(--suave)">Nenhum cliente lançado neste mês.</td></tr>';
+  const COB = window.__cob || {}, venc = XYZComissao.vencimento(G.mes), vencido = new Date() > new Date(venc.getFullYear(), venc.getMonth(), venc.getDate(), 23, 59);
+  const stPg = a => { const c = COB[a.adv]; if (c && c.status === 'pago') return `<span class="pill ok">✔ recebido ${brl(c.valor_pago || a.total)}</span>`;
+    if (c && c.status === 'informado') return `<span class="pill" style="border-color:#fbbf24;color:#fde68a" title="${esc(c.informado_obs || '')}">💬 Pix informado ${new Date(c.informado_em).toLocaleDateString('pt-BR')}</span>`;
+    return a.total ? (vencido ? '<span class="pill" style="border-color:#ef4444;color:#fca5a5">⏰ atrasado</span>' : `<span class="pill">vence ${venc.toLocaleDateString('pt-BR')}</span>`) : ''; };
+  $('#ga-lista').innerHTML = RECEBER.map((a, i) => `<tr><td><b>${esc(a.adv)}</b></td><td><small>${esc(a.obs)}</small></td><td class="num">${a.itens.length}</td><td class="num">${a.processos}</td><td class="num" style="${a.semValor ? 'color:#fbbf24' : ''}">${a.semValor || ''}</td><td class="num"><b>${brl(a.total)}</b></td><td>${stPg(a)}</td>
+    <td style="white-space:nowrap"><button class="btn sec peq" data-gdet="${i}">Ver clientes</button> <button class="btn sec peq" data-gcsv="${i}" title="Baixar só deste advogado">⬇️</button> <button class="btn sec peq" data-glink="${i}" title="Copiar link de pagamento para mandar ao advogado">🔗</button> ${COB[a.adv] && COB[a.adv].status === 'pago' ? '' : `<button class="btn sec peq" data-grec="${i}" title="Marcar como recebido">✔</button>`}</td></tr>`).join('') || '<tr><td colspan="8" style="color:var(--suave)">Nenhum cliente lançado neste mês.</td></tr>';
+  const prev = RECEBER.reduce((x, a) => x + a.total, 0), rec = RECEBER.reduce((x, a) => x + (COB[a.adv] && COB[a.adv].status === 'pago' ? Number(COB[a.adv].valor_pago || a.total) : 0), 0);
+  $('#ga-resumo').insertAdjacentHTML('beforeend', `<span>Recebido: <b style="color:#86efac">${brl(rec)}</b></span><span>Falta receber: <b style="color:${vencido ? '#fca5a5' : '#fde68a'}">${brl(Math.max(0, prev - rec))}</b></span>`);
+  $$('#ga-lista [data-glink]').forEach(b => b.onclick = () => { const a = RECEBER[+b.dataset.glink];
+    const link = location.origin + '/controle/pagamento.html?mes=' + G.mes.slice(0, 7);
+    const msg = `Olá! Segue o fechamento das indicações da XYZ de ${mesNome(G.mes)}: ${brl(a.total)} (${a.itens.length} cliente(s)). Vencimento ${venc.toLocaleDateString('pt-BR')}. Entre com seu usuário para ver a lista, baixar a planilha e pagar por Pix: ${link}`;
+    navigator.clipboard.writeText(msg).then(() => toast('Mensagem com o link copiada — cole no WhatsApp do advogado'), () => prompt('Copie:', msg)); });
+  $$('#ga-lista [data-grec]').forEach(b => b.onclick = async () => { const a = RECEBER[+b.dataset.grec];
+    const v = prompt('Valor recebido de ' + a.adv + ' em ' + mesNome(G.mes) + ':', a.total.toFixed(2).replace('.', ',')); if (v == null) return;
+    const { error } = await sb.from('cobrancas').upsert({ advogado: a.adv, mes: G.mes, valor_previsto: a.total, valor_pago: numBR(v) || a.total, status: 'pago', pago_em: new Date().toISOString(), atualizado_em: new Date().toISOString() }, { onConflict: 'advogado,mes' });
+    if (error) return alert(traduz(error)); toast('Recebimento registrado ✔'); await carregarCobrancas(); desenharReceber(); });
   $$('#ga-lista [data-gdet]').forEach(b => b.onclick = () => { const a = RECEBER[+b.dataset.gdet];
     $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px">${esc(a.adv)} — ${a.itens.length} cliente(s)</h4><div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th style="text-align:right">Processos</th><th>Base</th><th style="text-align:right">A receber</th></tr></thead><tbody>${a.itens.sort((x, y) => y.v - x.v).map(i => `<tr><td>${esc(i.cliente)}</td><td>${esc(i.cpf || '')}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num">${brl(i.v)}</td></tr>`).join('')}</tbody></table></div>`;
     $('#ga-det').scrollIntoView({ behavior: 'smooth' }); });

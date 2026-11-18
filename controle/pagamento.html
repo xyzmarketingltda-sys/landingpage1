@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagamento de comissão · XYZ</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#02060f;--painel:rgba(5,13,32,.82);--painel2:rgba(9,24,56,.85);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--azul2:#8cc8ff;--ciano:#00e5ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{width:100%;background:rgba(2,8,22,.7);border:1px solid var(--borda);border-radius:10px;padding:10px 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--ciano)}
+label{display:block;font-size:12px;color:var(--suave);margin:0 0 5px;font-weight:500}
+.btn{background:linear-gradient(135deg,#b8860b,#fbbf24 60%,#fde68a);color:#1a1205;border:0;border-radius:10px;padding:10px 15px;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn.sec{background:var(--painel2);color:var(--texto);border:1px solid var(--borda);font-weight:600}
+.btn.peq{padding:7px 11px;font-size:13px}
+.vidro{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);backdrop-filter:blur(14px)}
+.marca{font-weight:800;font-size:22px}.marca span{color:var(--ouro)}
+/* login */
+#login{min-height:100vh;display:grid;place-items:center;padding:20px}
+#login form{width:100%;max-width:380px;padding:30px}
+#login .sub{color:var(--suave);margin:6px 0 22px;font-size:14px}
+.campo{margin-bottom:14px}.erro{color:#fca5a5;font-size:13px;margin-top:10px;min-height:18px}
+.vip{display:inline-block;font-size:11px;font-weight:800;letter-spacing:1.5px;color:#1a1205;background:linear-gradient(135deg,#fbbf24,#fde68a);border-radius:99px;padding:3px 10px;margin-bottom:12px}
+/* app */
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;border-bottom:1px solid var(--borda);gap:10px;flex-wrap:wrap}
+header .acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+header .ola{color:var(--suave);font-size:14px}header .ola b{color:var(--texto)}
+main{max-width:1240px;margin:0 auto;padding:22px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{padding:14px 16px}.kpi span{font-size:12px;color:var(--suave)}.kpi b{display:block;font-size:26px;margin-top:2px}
+.kpi.ouro b{color:var(--ouro)}
+.barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;align-items:end}
+.tabela{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;padding:11px 12px;font-size:12px;color:var(--suave);font-weight:600;background:rgba(7,20,48,.9);position:sticky;top:0}
+td{padding:11px 12px;border-top:1px solid rgba(30,144,255,.12);vertical-align:middle}
+tbody tr{cursor:pointer;transition:background .15s}tbody tr:hover{background:rgba(251,191,36,.06)}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--borda);margin:1px 3px 1px 0;white-space:nowrap}
+.st{font-size:12px;padding:3px 9px;border-radius:99px;white-space:nowrap;border:1px solid var(--borda);color:var(--suave)}
+.st.s1{border-color:#60a5fa;color:#93c5fd}.st.s2{border-color:var(--ouro);color:#fde68a}.st.s3{border-color:#a78bfa;color:#c4b5fd}.st.s4{border-color:var(--verde);color:#86efac}.st.s5{border-color:var(--vermelho);color:#fca5a5}
+a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
+.vazio{color:var(--suave);padding:30px;text-align:center}
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(0,4,12,.7);display:grid;place-items:center;z-index:50;padding:16px}
+#modal .caixa{width:100%;max-width:760px;max-height:92vh;overflow:auto;padding:22px}
+.m-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}
+.m-top h2{font-size:20px}.m-top .meta{color:var(--suave);font-size:13px;margin-top:4px;line-height:1.6}
+.x{background:none;border:0;color:var(--suave);font-size:22px;cursor:pointer}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.sec-t{font-size:13px;color:var(--ouro);font-weight:700;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.8px}
+.linha-tempo{display:flex;flex-direction:column;gap:6px}
+.linha-tempo div{font-size:13px;color:var(--suave)}.linha-tempo b{color:var(--texto)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0b1a3a;border:1px solid var(--ouro);padding:10px 16px;border-radius:10px;z-index:60}
+@media(max-width:820px){.kpis{grid-template-columns:1fr 1fr}.barra{grid-template-columns:1fr 1fr}.grade{grid-template-columns:1fr}.col-m{display:none}}
+
+.pg{max-width:1100px;margin:0 auto;padding:22px}
+.topo{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:16px}
+.cobr{padding:22px}.cobr .mesn{color:var(--suave);font-size:13px;text-transform:uppercase;letter-spacing:1px}
+.cobr .total{font-size:44px;font-weight:800;color:var(--ouro);margin:6px 0}
+.cobr .linha{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--suave);font-size:14px}
+.selo{display:inline-block;font-size:12px;font-weight:800;letter-spacing:1px;padding:4px 10px;border-radius:99px;border:1px solid}
+.selo.aberto{color:#93c5fd;border-color:#60a5fa}.selo.informado{color:#fde68a;border-color:#fbbf24}.selo.pago{color:#86efac;border-color:#22c55e}.selo.atrasado{color:#fca5a5;border-color:#ef4444}
+.pix{padding:20px;display:flex;gap:16px;align-items:center}
+.pix #qr{background:#fff;padding:8px;border-radius:10px;width:172px;height:172px;flex:none;display:grid;place-items:center}
+.pix #qr img,.pix #qr canvas{width:156px;height:156px;image-rendering:pixelated}
+.pix .dados{font-size:14px;line-height:1.7}.pix .dados b{color:var(--ouro)}
+.acoesl{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.num{text-align:right;white-space:nowrap}
+.aviso{padding:12px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.08);font-size:13px;margin-bottom:14px}
+@media(max-width:820px){.topo{grid-template-columns:1fr}.pix{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<section id="login" hidden>
+  <form class="vidro" id="f-login">
+    <span class="vip">PAGAMENTO DE COMISSÃO</span>
+    <div class="marca">XYZ <span>Controle</span></div>
+    <p class="sub">Entre com seu usuário para ver o valor do mês e pagar por Pix.</p>
+    <div class="campo"><label>Usuário (seu nome)</label><input id="l-user" required autocomplete="username" placeholder="ex.: Igor"></div>
+    <div class="campo"><label>Senha</label><input type="password" id="l-senha" required autocomplete="current-password"></div>
+    <button class="btn" style="width:100%" id="l-btn">Entrar</button>
+    <div class="erro" id="l-erro"></div>
+  </form>
+</section>
+
+<section id="app" hidden>
+  <header>
+    <div class="marca">XYZ <span>Pagamento</span></div>
+    <div class="acoes">
+      <span class="ola">Olá, <b id="eu-nome"></b></span>
+      <select id="f-adv" hidden style="width:auto"></select>
+      <select id="f-mes" style="width:auto"></select>
+      <a class="btn sec peq" href="./">← Meus clientes</a>
+      <button class="btn sec peq" id="sair">Sair</button>
+    </div>
+  </header>
+  <div class="pg">
+    <div class="topo">
+      <div class="cobr vidro">
+        <div class="mesn" id="c-mes">—</div>
+        <div class="total" id="c-total">—</div>
+        <div class="linha"><span id="c-selo" class="selo aberto">EM ABERTO</span><span id="c-venc"></span><span id="c-qtd"></span></div>
+        <div id="c-info" style="margin-top:10px;font-size:13px;color:var(--suave)"></div>
+        <div class="acoesl">
+          <button class="btn" id="b-paguei">✔ Já fiz o Pix</button>
+          <button class="btn sec" id="b-xlsx">⬇️ Baixar planilha (.xlsx)</button>
+          <button class="btn sec" id="b-link" hidden>🔗 Copiar link para enviar</button>
+        </div>
+      </div>
+      <div class="pix vidro">
+        <div id="qr"></div>
+        <div class="dados">
+          <div>Pix para <b>XYZ Marketing LTDA</b></div>
+          <div>Banco: <b id="p-banco"></b></div>
+          <div>Chave (CNPJ): <b id="p-chave"></b></div>
+          <div class="acoesl"><button class="btn sec peq" id="b-chave">📋 Copiar chave</button><button class="btn peq" id="b-cc">📋 Pix copia e cola</button></div>
+          <small style="color:var(--suave)">O QR e o copia e cola já vêm com o valor do mês.</small>
+        </div>
+      </div>
+    </div>
+    <div id="aviso" class="aviso" hidden></div>
+    <div class="tabela vidro">
+      <table><thead><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th class="num">Processos</th><th>Base</th><th class="num">Valor</th></tr></thead>
+      <tbody id="lista"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<script src="../crm/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="../crm/comissao.js?v=1"></script>
+<script>
+const CFG = window.CRM_CONFIG, sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY), C = window.XYZComissao;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const so = s => String(s || '').replace(/\D/g, '');
+const brl = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtCPF = c => { const d = so(c); return d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : (c || '—'); };
+const toast = m => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.append(t); setTimeout(() => t.remove(), 3500); };
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const mesNome = m => { const [a, n] = m.split('-').map(Number); return MESES[n - 1] + ' de ' + a; };
+const hojeMes = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+const Q = new URLSearchParams(location.search);
+let eu = null, chave = null, mes = /^\d{4}-\d{2}$/.test(Q.get('mes') || '') ? Q.get('mes') : hojeMes(), itens = [], total = 0, cob = null;
+
+const slug = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^dra?\.?\s*/, '').trim().split(/\s+/)[0];
+$('#f-login').onsubmit = async e => {
+  e.preventDefault();
+  const u = $('#l-user').value.trim(), b = $('#l-btn'); b.disabled = true; $('#l-erro').textContent = '';
+  const APELIDO = { luis: 'luiz' }, k = APELIDO[slug(u)] || slug(u);
+  const email = u.includes('@') ? u.toLowerCase() : k + '@adv.xyzmarketing.com.br';
+  const { error } = await sb.auth.signInWithPassword({ email, password: $('#l-senha').value });
+  b.disabled = false;
+  if (error) return $('#l-erro').textContent = /invalid/i.test(error.message) ? 'Usuário ou senha incorretos.' : error.message;
+  iniciar();
+};
+$('#sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+async function iniciar() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { $('#login').hidden = false; $('#app').hidden = true; return; }
+  const { data: p } = await sb.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
+  if (!p || !p.ativo || p.papel === 'atendente') { $('#login').hidden = false; $('#l-erro').textContent = 'Esta página é dos advogados parceiros.'; await sb.auth.signOut(); return; }
+  eu = p; $('#login').hidden = true; $('#app').hidden = false;
+  const fem = ['Carina','Cibele','Danyelle','Junny','Rita'];
+  $('#eu-nome').textContent = p.papel === 'advogado' ? (fem.includes(p.nome) ? 'Dra. ' : 'Dr. ') + (p.nome === 'Luiz' ? 'Luís' : p.nome) : p.nome + ' (admin)';
+  if (p.papel === 'admin') {
+    const { data: advs } = await sb.from('perfis').select('nome,advogado_chave').eq('papel', 'advogado').eq('ativo', true).order('nome');
+    const s = $('#f-adv'); s.hidden = false; s.innerHTML = (advs || []).map(a => `<option value="${a.advogado_chave}">${esc(a.nome)}</option>`).join('');
+    chave = (Q.get('adv') || '').toUpperCase() || (advs && advs[0] && advs[0].advogado_chave); s.value = chave;
+    s.onchange = () => { chave = s.value; carregar(); };
+    $('#b-link').hidden = false; $('#b-paguei').textContent = '✔ Marcar como recebido';
+  } else chave = p.advogado_chave;
+  // meses: do mês atual para trás (12)
+  const ms = []; const [a0, m0] = hojeMes().split('-').map(Number);
+  for (let i = 0; i < 12; i++) { const d = new Date(a0, m0 - 1 - i, 1); ms.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
+  if (!ms.includes(mes)) ms.unshift(mes);
+  $('#f-mes').innerHTML = ms.map(m => `<option value="${m}">${mesNome(m)}</option>`).join(''); $('#f-mes').value = mes;
+  $('#f-mes').onchange = () => { mes = $('#f-mes').value; carregar(); };
+  const p_ = $('#p-banco'); p_.textContent = C.PIX.banco; $('#p-chave').textContent = C.PIX.chaveFmt;
+  carregar();
+}
+
+async function carregar() {
+  const ini = mes + '-01', fim = C.vencimento(mes).toLocaleDateString('en-CA');
+  let q = sb.from('clientes').select('nome,cpf,banco,valor,produto,data_contato,advogado').gte('data_contato', ini).lte('data_contato', fim);
+  q = q.ilike('advogado', chave);
+  const [{ data: cli }, { data: regra }, { data: cb }] = await Promise.all([q, sb.from('regras_adv').select('regra,obs').eq('advogado', chave).maybeSingle(), sb.from('cobrancas').select('*').eq('advogado', chave).eq('mes', ini).maybeSingle()]);
+  cob = cb || null;
+  itens = C.aplicarRegra(regra && regra.regra, cli || []).sort((a, b) => a.cliente.localeCompare(b.cliente));
+  total = itens.reduce((x, i) => x + i.v, 0);
+  const venc = C.vencimento(mes), atrasado = !cob || cob.status !== 'pago' ? new Date() > new Date(venc.getFullYear(), venc.getMonth(), venc.getDate(), 23, 59) : false;
+  $('#c-mes').textContent = 'Comissão de ' + mesNome(mes);
+  $('#c-total').textContent = brl(total);
+  const st = cob && cob.status === 'pago' ? ['pago', 'PAGO ✔'] : atrasado && total ? ['atrasado', 'ATRASADO'] : cob && cob.status === 'informado' ? ['informado', 'PIX INFORMADO · AGUARDANDO CONFERÊNCIA'] : ['aberto', 'EM ABERTO'];
+  $('#c-selo').className = 'selo ' + st[0]; $('#c-selo').textContent = st[1];
+  $('#c-venc').textContent = 'vence em ' + venc.toLocaleDateString('pt-BR');
+  $('#c-qtd').textContent = '· ' + itens.length + ' cliente(s)';
+  $('#c-info').innerHTML = (regra ? 'Regra: ' + esc(regra.obs || '') : 'Regra não cadastrada — fale com a XYZ.') + (cob && cob.status === 'pago' ? ' · recebido em ' + new Date(cob.pago_em).toLocaleDateString('pt-BR') + (cob.valor_pago ? ' (' + brl(cob.valor_pago) + ')' : '') : cob && cob.informado_em ? ' · Pix informado em ' + new Date(cob.informado_em).toLocaleString('pt-BR') : '');
+  const semV = itens.filter(i => i.semValor).length, perc = regra && regra.regra && regra.regra.tipo === 'percentual';
+  $('#aviso').hidden = !(semV || perc);
+  $('#aviso').innerHTML = perc ? 'Sua parceria é por percentual no êxito: os valores entram conforme os processos são pagos. A lista abaixo mostra os clientes indicados no mês.' : semV + ' cliente(s) ainda sem o valor do seguro conferido pela XYZ — eles entram no valor assim que conferirmos o contrato.';
+  $('#lista').innerHTML = itens.map(i => `<tr style="cursor:default"><td><b>${esc(i.cliente)}</b></td><td>${fmtCPF(i.cpf)}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num"><b>${i.v ? brl(i.v) : '—'}</b></td></tr>`).join('') || '<tr><td colspan="6" class="vazio">Nenhum cliente indicado neste mês.</td></tr>';
+  // Pix com valor
+  const payload = C.pixPayload(total, 'XYZ' + chave + mes.replace('-', ''));
+  window.__pix = payload;
+  const qr = qrcode(0, 'M'); qr.addData(payload); qr.make(); $('#qr').innerHTML = qr.createImgTag(4, 0);
+  $('#b-paguei').disabled = !total || (cob && cob.status === 'pago');
+}
+const copiar = (t, m) => navigator.clipboard.writeText(t).then(() => toast(m), () => prompt('Copie:', t));
+$('#b-chave').onclick = () => copiar(C.PIX.chave, 'Chave Pix copiada');
+$('#b-cc').onclick = () => copiar(window.__pix, 'Pix copia e cola copiado — cole no app do banco');
+$('#b-link').onclick = () => copiar(location.origin + location.pathname + '?mes=' + mes, 'Link copiado — mande para o advogado');
+$('#b-paguei').onclick = async () => {
+  if (eu.papel === 'admin') {
+    const v = prompt('Valor recebido de ' + chave + ' (' + mesNome(mes) + '):', total.toFixed(2).replace('.', ','));
+    if (v == null) return;
+    const valor = Number(String(v).replace(/\./g, '').replace(',', '.')) || total;
+    const { error } = await sb.from('cobrancas').upsert({ advogado: chave, mes: mes + '-01', valor_previsto: total, valor_pago: valor, status: 'pago', pago_em: new Date().toISOString(), atualizado_em: new Date().toISOString() }, { onConflict: 'advogado,mes' });
+    if (error) return alert(error.message); toast('Marcado como recebido ✔'); return carregar();
+  }
+  const obs = prompt('Pix de ' + brl(total) + ' feito? Se quiser, escreva uma observação (ex.: data, banco):', '');
+  if (obs == null) return;
+  const { error } = await sb.rpc('informar_pagamento', { p_mes: mes + '-01', p_valor: total, p_obs: obs });
+  if (error) return alert('Não consegui registrar: ' + error.message);
+  toast('Obrigado! A XYZ vai conferir o Pix.'); carregar();
+};
+$('#b-xlsx').onclick = () => {
+  const linhas = itens.map(i => ({ Cliente: i.cliente, CPF: fmtCPF(i.cpf), Bancos: i.bancos, Processos: i.processos, 'Valor do seguro': i.valor || '', Base: i.obs, 'Comissão (R$)': i.v }));
+  linhas.push({ Cliente: 'TOTAL', 'Comissão (R$)': total });
+  const ws = XLSX.utils.json_to_sheet(linhas); ws['!cols'] = [{ wch: 38 }, { wch: 16 }, { wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 34 }, { wch: 14 }];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Comissão ' + mes);
+  XLSX.writeFile(wb, 'comissao-xyz-' + chave.toLowerCase() + '-' + mes + '.xlsx');
+};
+iniciar();
+</script>
+</body>
+</html>
