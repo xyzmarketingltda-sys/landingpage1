@@ -853,8 +853,23 @@ async function carregarDesafio(abrir) {
   desafio = (data || [])[0] || null; painelDz = [];
   if (desafio) { const { data: p } = await sb.rpc('desafio_painel', { did: desafio.id }); painelDz = p || []; }
   const b = $('#dz-btn'); b.hidden = !desafio; b.onclick = abrirDesafio;
+  marcadoresDesafio();
   if (abrir && desafio) abrirDesafio();
 }
+// quem está em desafio: "!" vermelho na tela do PC e fumaça saindo da cabeça
+let marcaDz = [], animDz = [];
+function emDesafio() { return desafio ? painelDz.filter(r => !r.cumpriu).map(r => r.atendente_id) : []; }
+function marcadoresDesafio() {
+  marcaDz.forEach(m => scene.remove(m)); marcaDz = [];
+  animDz.forEach(f => { const k = animados.indexOf(f); if (k >= 0) animados.splice(k, 1); }); animDz = [];
+  emDesafio().forEach(id => {
+    const i = mesaDe[id]; if (i == null) return; const [x, z] = DESKS[i];
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto('!', 64, 64, '900 56px Inter, sans-serif', '#fff', '#dc2626'), transparent: true, depthTest: false }));
+    sp.scale.set(1.6, 1.6, 1); sp.position.set(x * U + 1.6, 6.2, z * U - 1.2); scene.add(sp); marcaDz.push(sp);
+    const f = t => { const k = .85 + Math.abs(Math.sin(t / 220)) * .35; sp.scale.set(1.6 * k, 1.6 * k, 1); }; animados.push(f); animDz.push(f);
+  });
+}
+setInterval(() => { emDesafio().forEach(id => { const a = atores.get(id); if (a && a.alpha > .5) efeitos.push({ x: a.x, y: a.y, dx: (Math.random() - .5) * 18, v: 22 + Math.random() * 14, emoji: '💨', ate: T + 1400 + Math.random() * 500 }); }); }, 450);
 setInterval(() => carregarDesafio(false), 45000);
 
 /* ---------- início ---------- */

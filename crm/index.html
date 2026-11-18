@@ -875,20 +875,27 @@ function aplicarRegra(regra, linhas) {
   });
   return itens;
 }
+async function ajustarCrmProc(lista) {
+  let ok = 0;
+  for (const c of lista) { if (!c.adv_procuracao) continue; const { error } = await sb.from('clientes').update({ advogado: c.adv_procuracao }).eq('id', c.id); if (error) { toast('Erro em ' + c.nome + ': ' + error.message); } else ok++; }
+  toast(ok + ' cliente(s) ajustado(s) no CRM pela procuração'); $('#ga-det').innerHTML = ''; calcularPrevisoes();
+}
 async function alertaProcuracao() {
-  const { data } = await sb.from('clientes').select('nome,advogado,adv_drive,adv_procuracao,pasta_caminho,atendente_id').not('adv_procuracao', 'is', null).not('adv_drive', 'is', null).limit(1000);
+  const { data } = await sb.from('clientes').select('id,nome,advogado,adv_drive,adv_procuracao,pasta_caminho,atendente_id').not('adv_procuracao', 'is', null).not('adv_drive', 'is', null).limit(1000);
   const ruins = (data || []).filter(c => c.adv_procuracao !== c.adv_drive);
   const box = $('#g-alerta-proc'); box.hidden = !ruins.length; if (!ruins.length) return;
   const at = id => (equipe.find(p => p.id === id) || {}).nome || '';
   box.innerHTML = `<b style="color:#fca5a5">🚨 ${ruins.length} procuração(ões) na pasta do advogado errado</b> — a procuração é de um escritório e a pasta (com os documentos) está no Drive de outro. Confira já:
-    <div class="g-tab" style="margin-top:8px"><table><thead><tr><th>Cliente</th><th>Procuração de</th><th>Está na pasta de</th><th>No CRM</th><th>Atendente</th><th>Caminho</th></tr></thead><tbody>${ruins.map(c => `<tr><td>${esc(c.nome)}</td><td><b>${esc(c.adv_procuracao)}</b></td><td><b style="color:#fca5a5">${esc(c.adv_drive)}</b></td><td>${esc(c.advogado || '')}</td><td>${esc(at(c.atendente_id))}</td><td><small style="color:var(--suave)">${esc(c.pasta_caminho || '')}</small></td></tr>`).join('')}</tbody></table></div>`;
+    <div class="g-tab" style="margin-top:8px"><table><thead><tr><th>Cliente</th><th>Procuração de</th><th>Está na pasta de</th><th>No CRM</th><th>Atendente</th><th>Caminho</th><th></th></tr></thead><tbody>${ruins.map(c => `<tr><td>${esc(c.nome)}</td><td><b>${esc(c.adv_procuracao)}</b></td><td><b style="color:#fca5a5">${esc(c.adv_drive)}</b></td><td>${esc(c.advogado || '')}</td><td>${esc(at(c.atendente_id))}</td><td><small style="color:var(--suave)">${esc(c.pasta_caminho || '')}</small></td><td>${c.advogado !== c.adv_procuracao ? `<button class="btn sec peq" data-ajp="${c.id}">✔ CRM → ${esc(c.adv_procuracao)}</button>` : '<small style="color:#86efac">CRM ok</small>'}</td></tr>`).join('')}</tbody></table></div>
+    <small style="color:var(--suave)">A pasta precisa ser movida no Drive para o advogado da procuração (manual). O botão ajusta só o CRM.</small>`;
+  $$('#g-alerta-proc [data-ajp]').forEach(b => b.onclick = () => ajustarCrmProc(ruins.filter(c => c.id == b.dataset.ajp)));
 }
 async function calcularPrevisoes() {
   try { alertaProcuracao(); } catch (e) {}
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim);
-    DIVERGE = cli.filter(c => c.adv_drive && c.adv_drive !== (c.advogado || '').toUpperCase().trim());
+    DIVERGE = cli.filter(c => { const crm = (c.advogado || '').toUpperCase().trim(); return c.adv_procuracao ? c.adv_procuracao !== crm : (c.adv_drive && c.adv_drive !== crm); });
     const porAdv = {}; cli.forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
     RECEBER = Object.entries(porAdv).map(([adv, l]) => { const r = REGRAS[adv]; const itens = aplicarRegra(r?.regra, l); return { adv, obs: r?.obs || 'sem regra', itens, total: itens.reduce((x, i) => x + i.v, 0), semValor: itens.filter(i => i.semValor).length, processos: l.length }; }).sort((a, b) => b.total - a.total);
     const prev = RECEBER.reduce((x, a) => x + a.total, 0);
@@ -908,11 +915,15 @@ async function calcularPrevisoes() {
 }
 function desenharReceber() {
   $('#ga-resumo').innerHTML = `<span>Total a receber em ${mesNome(G.mes)}: <b>${brl(RECEBER.reduce((x, a) => x + a.total, 0))}</b></span>` +
-    (DIVERGE.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-div">⚠️ ${DIVERGE.length} cliente(s) com advogado diferente no Drive — ver</span>` : '');
+    (DIVERGE.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-div">⚠️ ${DIVERGE.length} cliente(s) com advogado do CRM diferente da procuração/Drive — ver</span>` : '');
   const bd = $('#ga-div'); if (bd) bd.onclick = () => {
-    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px;color:#fde68a">⚠️ Advogado no CRM diferente da pasta no Drive</h4>
-      <small style="color:var(--suave)">Só apontamento: confira e corrija o advogado no cadastro do cliente, se for o caso.</small>
-      <div class="g-tab"><table><thead><tr><th>Cliente</th><th>No CRM</th><th>Pasta no Drive</th><th>Procuração</th><th>Caminho</th></tr></thead><tbody>${DIVERGE.map(c => `<tr><td>${esc(c.nome)}</td><td>${esc(c.advogado || '—')}</td><td><b>${esc(c.adv_drive)}</b></td><td>${esc(c.adv_procuracao || '—')}</td><td><small style="color:var(--suave)">${esc(c.pasta_caminho || '')}</small></td></tr>`).join('')}</tbody></table></div>`;
+    const comProc = DIVERGE.filter(c => c.adv_procuracao);
+    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px;color:#fde68a">⚠️ Advogado no CRM diferente da procuração / Drive</h4>
+      <small style="color:var(--suave)">A procuração assinada é o que vale: o botão ajusta só o advogado no CRM (o Drive não é mexido). Sem procuração lida, fica só o apontamento.</small>
+      ${comProc.length > 1 ? `<div style="margin:8px 0"><button class="btn peq" id="ga-ajtodos">✔ Ajustar CRM pela procuração (${comProc.length})</button></div>` : ''}
+      <div class="g-tab"><table><thead><tr><th>Cliente</th><th>No CRM</th><th>Procuração (vale)</th><th>Pasta no Drive</th><th>Caminho</th><th></th></tr></thead><tbody>${DIVERGE.map(c => `<tr><td>${esc(c.nome)}</td><td>${esc(c.advogado || '—')}</td><td><b style="color:#86efac">${esc(c.adv_procuracao || '—')}</b></td><td style="${c.adv_procuracao && c.adv_drive && c.adv_drive !== c.adv_procuracao ? 'color:#fca5a5;font-weight:700' : ''}">${esc(c.adv_drive || '—')}</td><td><small style="color:var(--suave)">${esc(c.pasta_caminho || '')}</small></td><td>${c.adv_procuracao ? `<button class="btn sec peq" data-ajcrm="${c.id}">✔ CRM → ${esc(c.adv_procuracao)}</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    $$('#ga-det [data-ajcrm]').forEach(b => b.onclick = () => ajustarCrmProc(DIVERGE.filter(c => c.id == b.dataset.ajcrm)));
+    const bt = $('#ga-ajtodos'); if (bt) bt.onclick = () => { if (confirm('Trocar o advogado no CRM de ' + comProc.length + ' cliente(s) pelo da procuração?')) ajustarCrmProc(comProc); };
     $('#ga-det').scrollIntoView({ behavior: 'smooth' });
   };
   $('#ga-lista').innerHTML = RECEBER.map((a, i) => `<tr><td><b>${esc(a.adv)}</b></td><td><small>${esc(a.obs)}</small></td><td class="num">${a.itens.length}</td><td class="num">${a.processos}</td><td class="num" style="${a.semValor ? 'color:#fbbf24' : ''}">${a.semValor || ''}</td><td class="num"><b>${brl(a.total)}</b></td>
