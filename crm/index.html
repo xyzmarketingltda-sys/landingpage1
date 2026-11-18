@@ -847,12 +847,12 @@ function carregarPainel() {
 
 /* ---------- comissão prevista por regra de advogado + custos previstos ---------- */
 const FIXAS = ['Salários', 'Aluguel', 'Contas', 'Sistemas'], REF_ANT = ['Tráfego/Marketing'];
-let REGRAS = null, RECEBER = [];
+let REGRAS = null, RECEBER = [], DIVERGE = [];
 const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Date(a, m, 0).toLocaleDateString('en-CA'); };
 const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
 async function clientesDoMes(ini, fim) {
   let tudo = [], de = 0;
-  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,pasta_caminho').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
 function aplicarRegra(regra, linhas) {
@@ -878,6 +878,7 @@ async function calcularPrevisoes() {
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim);
+    DIVERGE = cli.filter(c => c.adv_drive && c.adv_drive !== (c.advogado || '').toUpperCase().trim());
     const porAdv = {}; cli.forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
     RECEBER = Object.entries(porAdv).map(([adv, l]) => { const r = REGRAS[adv]; const itens = aplicarRegra(r?.regra, l); return { adv, obs: r?.obs || 'sem regra', itens, total: itens.reduce((x, i) => x + i.v, 0), semValor: itens.filter(i => i.semValor).length, processos: l.length }; }).sort((a, b) => b.total - a.total);
     const prev = RECEBER.reduce((x, a) => x + a.total, 0);
@@ -896,7 +897,17 @@ async function calcularPrevisoes() {
   } catch (e) { console.warn(e); }
 }
 function desenharReceber() {
-  $('#ga-resumo').innerHTML = `<span>Total a receber em ${mesNome(G.mes)}: <b>${brl(RECEBER.reduce((x, a) => x + a.total, 0))}</b></span>`;
+  $('#ga-resumo').innerHTML = `<span>Total a receber em ${mesNome(G.mes)}: <b>${brl(RECEBER.reduce((x, a) => x + a.total, 0))}</b></span>` +
+    (DIVERGE.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-div">⚠️ ${DIVERGE.length} cliente(s) com advogado diferente no Drive — ver</span>` : '');
+  const bd = $('#ga-div'); if (bd) bd.onclick = () => {
+    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px;color:#fde68a">⚠️ Advogado no CRM diferente da pasta no Drive</h4>
+      <div class="g-linha"><button class="btn peq" id="ga-corr-todos" type="button">Corrigir todos para o advogado do Drive</button><small style="color:var(--suave)">a pasta/procuração no Drive é que vale</small></div>
+      <div class="g-tab"><table><thead><tr><th>Cliente</th><th>No CRM</th><th>No Drive</th><th>Pasta</th><th></th></tr></thead><tbody>${DIVERGE.map(c => `<tr><td>${esc(c.nome)}</td><td>${esc(c.advogado || '—')}</td><td><b>${esc(c.adv_drive)}</b></td><td><small style="color:var(--suave)">${esc(c.pasta_caminho || '')}</small></td><td><button class="btn sec peq" data-corr="${c.id}" data-adv="${esc(c.adv_drive)}">Corrigir</button></td></tr>`).join('')}</tbody></table></div>`;
+    const corrigir = async lista => { for (const c of lista) await sb.from('clientes').update({ advogado: c.adv }).eq('id', c.id); toast(lista.length + ' cliente(s) corrigido(s).'); await calcularPrevisoes(); };
+    $$('#ga-det [data-corr]').forEach(b => b.onclick = () => corrigir([{ id: b.dataset.corr, adv: b.dataset.adv }]));
+    $('#ga-corr-todos').onclick = () => { if (confirm(`Trocar o advogado de ${DIVERGE.length} cliente(s) para o que está no Drive?`)) corrigir(DIVERGE.map(c => ({ id: c.id, adv: c.adv_drive }))); };
+    $('#ga-det').scrollIntoView({ behavior: 'smooth' });
+  };
   $('#ga-lista').innerHTML = RECEBER.map((a, i) => `<tr><td><b>${esc(a.adv)}</b></td><td><small>${esc(a.obs)}</small></td><td class="num">${a.itens.length}</td><td class="num">${a.processos}</td><td class="num" style="${a.semValor ? 'color:#fbbf24' : ''}">${a.semValor || ''}</td><td class="num"><b>${brl(a.total)}</b></td>
     <td style="white-space:nowrap"><button class="btn sec peq" data-gdet="${i}">Ver clientes</button> <button class="btn sec peq" data-gcsv="${i}" title="Baixar só deste advogado">⬇️</button></td></tr>`).join('') || '<tr><td colspan="7" style="color:var(--suave)">Nenhum cliente lançado neste mês.</td></tr>';
   $$('#ga-lista [data-gdet]').forEach(b => b.onclick = () => { const a = RECEBER[+b.dataset.gdet];
