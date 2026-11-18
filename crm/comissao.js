@@ -9,7 +9,7 @@
       // por cliente vale o seguro de MAIOR valor (não soma os bancos); a soma só serve para saber se há algum valor
       const maior = seg.reduce((m, c) => (Number(c.valor) || 0) > (Number(m && m.valor) || 0) ? c : m, null);
       const valor = maior ? Number(maior.valor) || 0 : 0, facta = !!maior && /facta/i.test(maior.banco || '');
-      const faixaDe = (val, ehFacta) => { const f = regra.faixas.find(x => val >= x.min); return f ? f.v : (ehFacta && regra.facta_min && val >= regra.facta_min) ? regra.facta_v : 0; };
+      const faixaDe = (val, ehFacta) => { const f = regra.faixas.find(x => val >= x.min); return Math.max(f ? f.v : 0, (ehFacta && regra.facta_min && val >= regra.facta_min) ? regra.facta_v : 0); };
       let v = 0, obs = '', semValor = seg.length > 0 && !valor;
       if (!regra) obs = 'sem regra cadastrada';
       else if (regra.tipo === 'por_cliente' || regra.por_cliente) { v = regra.v; obs = 'por cliente (' + g.length + ' processo(s))'; semValor = false; }
