@@ -185,6 +185,7 @@ const centro = new THREE.Vector3((GX + VIPX * .5) * U / 2, 0, GY * U / 2);
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -500, 1000);
 camera.position.set(centro.x + 100, 92, centro.z + 100); camera.lookAt(centro.x, 8, centro.z);
 let S = 1, LARG = 1, ALT = 1, ZOOM = 1;
+function focoCamera(dx) { camera.position.set(centro.x + dx + 100, 92, centro.z + 100); camera.lookAt(centro.x + dx, 8, centro.z); }
 function ajustar() {
   LARG = innerWidth; ALT = innerHeight - 56;
   renderer.setSize(LARG, ALT); cv.width = LARG; cv.height = ALT;
@@ -325,7 +326,7 @@ async function montarAmbiente() {
   for (const dz of [-3.6, 3.6]) { const l = caixa3(GX * U, .05, .18, '#00e5ff', GX * U / 2, .02, CORREDOR * U + dz, { emissive: '#00e5ff', emissiveIntensity: 1.6 }); animados.push(t => l.material.emissiveIntensity = 1.2 + Math.sin(t / 900) * .5); }
   // paredes azul-marinho (fundo e esquerda), com janelões na esquerda
   for (let x = 0; x < GX; x++) por('wall', x + .5, -.025, 0, { cor: '#0e121a' });
-  for (let z = 0; z < GY; z++) por(z >= 1 && z <= 4 ? 'wallWindow' : 'wall', -.025, z + .5, 90, { cor: '#0e121a', so: /^(?!.*glass)/i });
+  for (let z = 0; z < GY; z++) por(z >= 1 && z <= 3 ? 'wallWindow' : 'wall', -.025, z + .5, 90, { cor: '#0e121a', so: /^(?!.*glass)/i });
   // faixas de LED
   const led = (x, y, z, sx, sz) => { const m = caixa3(sx, .25, sz, '#00e5ff', x, y, z, { emissive: '#00e5ff', emissiveIntensity: 2.2 }); animados.push(t => m.material.emissiveIntensity = 1.6 + Math.sin(t / 700) * .6); };
   led(GX * U / 2, ALT_PAREDE - .6, .45, GX * U, .15); led(.45, ALT_PAREDE - .6, GY * U / 2, .15, GY * U);
@@ -341,8 +342,8 @@ async function montarAmbiente() {
   // telão do ranking do mês (ao vivo)
   telaoCv = document.createElement('canvas'); telaoCv.width = 640; telaoCv.height = 400;
   telaoTex = new THREE.CanvasTexture(telaoCv); telaoTex.colorSpace = THREE.SRGBColorSpace;
-  caixa3(13.6, 8.9, .5, '#05070b', TELAO[0], TELAO[1] - 4.45, .45, { metalness: .6, roughness: .3 });
-  const telao = new THREE.Mesh(new THREE.PlaneGeometry(12.8, 8), new THREE.MeshBasicMaterial({ map: telaoTex, toneMapped: false })); telao.position.set(TELAO[0], TELAO[1], .75); scene.add(telao);
+  caixa3(.5, 8.9, 13.6, '#05070b', .45, TELAO[1] - 4.45, TELAO[0], { metalness: .6, roughness: .3 });
+  const telao = new THREE.Mesh(new THREE.PlaneGeometry(12.8, 8), new THREE.MeshBasicMaterial({ map: telaoTex, toneMapped: false })); telao.position.set(.75, TELAO[1], TELAO[0]); telao.rotation.y = Math.PI / 2; scene.add(telao);
   desenharTelao();
 }
 
@@ -470,15 +471,41 @@ function montarSofaXYZ(x, z, rot, L = 10.5, esc_ = 1) {
   if (L > 8) for (const i of [-1, 1]) for (const k of [0, 1]) { const q = B(1.5, 1.5, .5, ciano, i * (L / 2 - 2) + (k ? -i * 1.6 : 0), 1.7, -P / 2 + 1.6); q.rotation.z = i * .12; }  // almofadas
   g.scale.setScalar(esc_); g.position.copy(W(x, z)); g.rotation.y = rot * Math.PI / 180; scene.add(g); return g;
 }
-function abrirTerraco() {
-  const t = $('#terraco'), c = $('#tr-ceu'); c.width = innerWidth; c.height = innerHeight; pintarCidade(c.getContext('2d'), c.width, c.height, 23, ehDia());
-  const tot = vendasMes.reduce((x, r) => x + Number(r.vendas || 0), 0);
-  $('#tr-sub').textContent = tot ? 'A equipe já fechou ' + tot + ' este mês. Bora buscar o próximo! 🚀' : 'O mês está só começando. Bora buscar o primeiro! 🚀';
-  t.hidden = false; t.querySelector('.flash').style.animation = 'none'; void t.offsetWidth; t.querySelector('.flash').style.animation = '';
-  try { particulas(eu.id, '✨', 10); enviar('falar', null, '🚀 Subi pro terraço!'); } catch (e) {}
-  $('#tr-voltar').onclick = () => { t.hidden = true; try { particulas(eu.id, '✨', 8); } catch (e) {} };
+/* ---------- terraço: o topo do prédio, a céu aberto (o teleportador leva pra cá) ---------- */
+const TX = 40, TPORTAL = [TX + 6.9, 4.6];        // deslocamento do terraço (em tiles) e o portal de volta
+function montarTerraco() {
+  const X0 = TX * U, LX = (GX + 1) * U, LZ = GY * U, M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .7, ...o });
+  const amb = new THREE.PointLight(0xbfd7ff, 260, 160); amb.position.set(X0 + LX / 2, 40, LZ / 2); scene.add(amb);
+  // laje com placas de concreto
+  const cc = document.createElement('canvas'); cc.width = cc.height = 256; const g = cc.getContext('2d'); g.fillStyle = '#4b5563'; g.fillRect(0, 0, 256, 256); g.strokeStyle = '#374151'; g.lineWidth = 3; for (let k = 0; k <= 4; k++) { g.beginPath(); g.moveTo(k * 64, 0); g.lineTo(k * 64, 256); g.moveTo(0, k * 64); g.lineTo(256, k * 64); g.stroke(); }
+  const tx = new THREE.CanvasTexture(cc); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(4, 3); tx.colorSpace = THREE.SRGBColorSpace;
+  const laje = new THREE.Mesh(new THREE.BoxGeometry(LX, 2, LZ), M('#ffffff', { map: tx })); laje.position.set(X0 + LX / 2, -1, LZ / 2); scene.add(laje);
+  caixa3(LX, 60, LZ, '#0b0f17', X0 + LX / 2, -62, LZ / 2);                                                    // corpo do prédio descendo
+  // mureta baixa com filete de LED (tudo aberto, sem paredes)
+  const mur = (sx, sz, x, z) => { caixa3(sx, 1.3, sz, '#1f2937', x, 0, z); const l = caixa3(Math.max(.14, sx - .3), .1, Math.max(.14, sz - .3), '#22d3ee', x, 1.3, z, { emissive: '#22d3ee', emissiveIntensity: 2 }); animados.push(t => l.material.emissiveIntensity = 1.5 + Math.sin(t / 800) * .5); };
+  mur(LX, .6, X0 + LX / 2, .3); mur(LX, .6, X0 + LX / 2, LZ - .3); mur(.6, LZ, X0 + .3, LZ / 2); mur(.6, LZ, X0 + LX - .3, LZ / 2);
+  // heliponto
+  const hp = document.createElement('canvas'); hp.width = hp.height = 256; const h = hp.getContext('2d'); h.strokeStyle = '#fbbf24'; h.lineWidth = 12; h.beginPath(); h.arc(128, 128, 112, 0, 6.3); h.stroke(); h.fillStyle = '#f8fafc'; h.font = '800 150px Inter, sans-serif'; h.textAlign = 'center'; h.textBaseline = 'middle'; h.fillText('H', 128, 138);
+  const heli = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(hp), transparent: true })); heli.rotation.x = -Math.PI / 2; heli.position.set(X0 + LX * .62, .05, LZ * .6); scene.add(heli);
+  // letreiro neon gigante
+  for (const dx of [-15, 15]) caixa3(.6, 9, .6, '#111827', X0 + LX * .42 + dx, 0, 5, { metalness: .6 });
+  caixa3(36, 11, .5, '#05070b', X0 + LX * .42, 8, 5, { metalness: .5 });
+  const neon = new THREE.Mesh(new THREE.PlaneGeometry(34, 9.6), new THREE.MeshBasicMaterial({ map: texturaTexto('VAMOS\nPRODUZIR!', 1024, 290, '800 122px Inter, sans-serif', '#fff7d6', '#f59e0b'), transparent: true, toneMapped: false })); neon.position.set(X0 + LX * .42, 13.5, 5.3); scene.add(neon);
+  const borda = caixa3(36.4, .18, .2, '#22d3ee', X0 + LX * .42, 8, 5.35, { emissive: '#22d3ee', emissiveIntensity: 2.4 }); const borda2 = caixa3(36.4, .18, .2, '#22d3ee', X0 + LX * .42, 18.85, 5.35, { emissive: '#22d3ee', emissiveIntensity: 2.4 });
+  animados.push(t => { const p = (Math.sin(t / 130) > .96 ? .55 : 1); neon.material.opacity = p; borda.material.emissiveIntensity = borda2.material.emissiveIntensity = 2.4 * p; });
+  const lz = new THREE.PointLight(0xfbbf24, 120, 60); lz.position.set(X0 + LX * .42, 12, 12); scene.add(lz);
+  // caixa d'água, ar-condicionado, antena
+  const cx = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 6, 20), M('#64748b', { metalness: .4 })); cx.position.set(X0 + 8, 5, LZ - 9); scene.add(cx); for (const [dx, dz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) caixa3(.4, 2, .4, '#334155', X0 + 8 + dx, 0, LZ - 9 + dz);
+  for (let k = 0; k < 3; k++) { caixa3(4, 2.6, 3, '#9ca3af', X0 + 7 + k * 5.2, 0, 22, { metalness: .3 }); const v = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, .2, 16), M('#1f2937')); v.position.set(X0 + 7 + k * 5.2, 2.7, 22); scene.add(v); const pa = caixa3(2, .08, .3, '#e5e7eb', X0 + 7 + k * 5.2, 2.82, 22); animados.push(t => pa.rotation.y = t / 60 + k); }
+  caixa3(.3, 16, .3, '#94a3b8', X0 + LX - 5, 0, 6, { metalness: .7 }); const luzA = caixa3(.6, .6, .6, '#ef4444', X0 + LX - 5, 16, 6, { emissive: '#ef4444', emissiveIntensity: 3 }); animados.push(t => luzA.material.emissiveIntensity = Math.sin(t / 400) > 0 ? 3 : .2);
+  // cantinho de descanso e o portal de volta
+  montarSofaXYZ(TX + 2.2, 4.3, 0, 8.5, .9); por('v:Plant_03', TX + .9, 4.3); por('v:Plant_03', TX + 3.5, 4.3);
+  montarPortal(TPORTAL[0], TPORTAL[1]);
 }
-document.addEventListener('keydown', ev => { if (ev.key === 'Escape') $('#terraco').hidden = true; });
+const noTopo = () => !!(atores.get(eu?.id) || {}).topo;
+function teleportar(sobe) { XYZPresenca.enviar('acao', { de: eu.id, tipo: 'teleporte', topo: !!sobe }); }
+function abrirTerraco() { teleportar(true); }
+function descerDoTopo(a) { if (!a.topo) return; a.topo = false; a.x = PORTA[0] - .5; a.y = PORTA[1] + .7; a.rota = []; if (a.id === eu.id) { focoCamera(0); $('#desce-btn').hidden = true; } }
 function pintarCeu() { const c = document.getElementById('ceu'); if (!c) return; c.width = innerWidth; c.height = innerHeight; pintarCidade(c.getContext('2d'), c.width, c.height, 11, ehDia()); }
 setInterval(pintarCeu, 30 * 60000);
 pintarCeu(); addEventListener('resize', pintarCeu);
@@ -498,7 +525,7 @@ async function montarMoveis() {
   montarSofaXYZ(.5, 4.6, 90);
   por('v:Table_Coffee_01_Black', 1.35, 4.55, 90);
   montarSofaXYZ(2.2, 4.6, -90);
-  por('lampRoundFloor', .25, 3.45); por('v:Plant_03', .25, 5.75); por('v:Plant_01', 1.35, 4.5, 0, { y: 1.75 });
+  por('lampRoundFloor', .25, 3.45); por('v:Plant_03', 4.75, .25); por('v:Plant_01', 1.35, 4.5, 0, { y: 1.75 });
   // estações de trabalho
   for (let i = 0; i < DESKS.length; i++) {
     const [x, z] = DESKS[i], chefe = i === DESKS.length - 1;
@@ -791,6 +818,7 @@ function aEstrela(ini, fim) {
   return null;
 }
 function rota(a, alvo) {
+  if (a.topo) { a.rota = [alvo]; return; }
   if (Math.hypot(a.x - alvo[0], a.y - alvo[1]) < .05) { a.rota = []; return; }
   if (BLOQ) {
     const ini = livreMaisPerto(celDe([a.x, a.y])), fim = livreMaisPerto(celDe(alvo));
@@ -820,7 +848,7 @@ function atualizarAtores() {
     }
     a.p = p;
     if (a.est !== est) {
-      a.est = est;
+      a.est = est; descerDoTopo(a);
       a.livre = false;
       if (est === 'mesa') rota(a, assentoDe(p, i));
       else if (est === 'almoco') rota(a, COZINHA[i % COZINHA.length]);
@@ -913,6 +941,13 @@ function executar(m) {
   const de = atores.get(m.de), para = m.para ? atores.get(m.para) : null;
   if (!de) return;
   if (m.tipo === 'andar' && m.x != null) { de.livre = true; de.cafe = false; rota(de, [m.x, m.y]); return; }
+  if (m.tipo === 'teleporte') {
+    particulas(m.de, '✨', 10); de.livre = true; de.cafe = false; de.rota = [];
+    if (m.topo) { de.topo = true; de.x = TPORTAL[0] - 1; de.y = TPORTAL[1] + .5; balao(m.de, '🚀 Subi pro terraço!', 3000); if (de.id === eu.id) { focoCamera(TX * U); $('#desce-btn').hidden = false; } }
+    else { descerDoTopo(de); balao(m.de, '⬇ Voltei pro escritório', 2500); }
+    setTimeout(() => particulas(m.de, '✨', 10), 60); return;
+  }
+  if (de.topo && (m.tipo === 'tomarcafe' || m.tipo === 'sentar')) descerDoTopo(de);
   if (m.tipo === 'tomarcafe') { de.livre = true; de.cafe = true; const k = [...String(de.id)].reduce((s, c) => s + c.charCodeAt(0), 0) % 3; rota(de, [[1.0, 1.45, 1.9][k], 1.92]); balao(m.de, '☕ Pausa pro café', 3000); return; }
   if (m.tipo === 'peixes') { alimentarPeixes(); balao(m.de, '🐟 Alimentei os peixes!', 3500); return; }
   if (m.tipo === 'sentar') { de.livre = false; de.cafe = false; const i = equipe.filter(q => q.papel === 'atendente').indexOf(de.p); rota(de, assentoDe(de.p, Math.max(0, i))); return; }
@@ -977,7 +1012,15 @@ gl.addEventListener('click', e => {
   let melhor = null, dmin = 1e9;
   atores.forEach(a => { const [x, y] = telaDe(a.x * U, (a.sentado && !a.andando ? SENTA : 0) + AV_ALT / 2, a.y * U), d = Math.hypot(mx - x, my - y); if (d < dmin) { dmin = d; melhor = a; } });
   const m = $('#menu');
-  { const [tx, ty] = telaDe(TELAO[0], TELAO[1], .75); if (Math.abs(mx - tx) < 70 * ZOOM && Math.abs(my - ty) < 45 * ZOOM) { abrirRanking(); return; } }
+  if (noTopo()) {
+    if (!m.hidden) { m.hidden = true; return; }
+    const [qx, qy] = telaDe(TPORTAL[0] * U, 6.5, TPORTAL[1] * U); if (Math.abs(mx - qx) < 34 * ZOOM && Math.abs(my - qy) < 70 * ZOOM) return teleportar(false);
+    const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(mx / r.width * 2 - 1, -(my / r.height) * 2 + 1), camera);
+    const pt = new THREE.Vector3(); if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -AV_ALT * .5), pt)) return;
+    const x = pt.x / U, y = pt.z / U; if (x < TX + .3 || x > TX + GX + .7 || y < .9 || y > GY - .3) return;
+    XYZPresenca.enviar('acao', { de: eu.id, tipo: 'andar', x: +x.toFixed(2), y: +y.toFixed(2) }); efeitos.push({ x, y, dx: 0, v: 20, emoji: '📍', ate: T + 900 }); return;
+  }
+  { const [tx, ty] = telaDe(.75, TELAO[1], TELAO[0]); if (Math.abs(mx - tx) < 70 * ZOOM && Math.abs(my - ty) < 45 * ZOOM) { abrirRanking(); return; } }
   if (AQ) { const [ax, ay] = telaDe(AQ.X + AQ.L / 2, 6.8, AQ.Z + AQ.P); if (Math.abs(mx - ax) < 95 * ZOOM && Math.abs(my - ay) < 40 * ZOOM) {
     m.innerHTML = '<b>🐠 Aquário</b><button data-aq="1">🐟 Alimentar os peixes</button>'; m.style.left = Math.min(innerWidth - 190, e.clientX + 8) + 'px'; m.style.top = e.clientY + 8 + 'px'; m.hidden = false;
     m.querySelector('[data-aq]').onclick = () => { m.hidden = true; enviar('peixes'); }; return; } }
@@ -1045,7 +1088,8 @@ $('#hor-salvar').onclick = async () => {
 
 /* ---------- metas na mesa ---------- */
 let liderId = null;
-const TELAO = [52.5, 7.6];   // x e altura do centro do telão na parede dos fundos
+const TELAO = [51, 7.6];   // (z, altura) na parede dos janelões, ao lado dos sofás
+const _TELAO_ANT = [52.5, 7.6];   // x e altura do centro do telão na parede dos fundos
 let vendasMes = [], telaoCv = null, telaoTex = null, CONQ = {};
 function rankingMes() { return [...vendasMes].filter(r => (equipe.find(p => p.id === r.id) || {}).papel === 'atendente').sort((a, b) => Number(b.vendas) - Number(a.vendas)); }
 function desenharTelao() {
@@ -1076,6 +1120,7 @@ async function carregarConquistas() {
 }
 setInterval(carregarConquistas, 300000);
 document.getElementById('rk-btn').onclick = () => abrirRanking();
+document.getElementById('desce-btn').onclick = () => teleportar(false);
 function aplicarMetas() {
   nivelMesa = {};
   vendasMes.forEach(r => { const f = FAIXAS[r.tipo] || FAIXAS.estagiario, nv = f.filter(x => Number(r.vendas) >= x).length; if (mesaDe[r.id] != null) nivelMesa[mesaDe[r.id]] = nv; });
@@ -1224,6 +1269,7 @@ async function carregarEquipe() {
   });
   await montarAmbiente(); await montarMoveis();
   try { await Promise.allSettled(CARREGANDO); scene.updateMatrixWorld(true); montarGrade(); } catch (e) { console.warn('grade', e); }
+  try { montarTerraco(); } catch (e) { console.warn('grade', e); }
   await carregarEquipe(); await carregarMetas();
   setTimeout(carregarConquistas, 1500);
   requestAnimationFrame(quadro);
@@ -1233,6 +1279,7 @@ async function carregarEquipe() {
 </script>
 <button id="quest-btn" hidden title="Missão diária"><span class="hex"></span><b>!</b></button>
 <button id="dz-btn" hidden title="Desafio relâmpago"><span class="hex"></span><b>⚡</b></button>
+<button id="desce-btn" hidden style="position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:7;background:linear-gradient(180deg,#1e90ff,#1565c0);color:#fff;border:1px solid #7dd3fc;border-radius:12px;padding:11px 20px;font:inherit;font-weight:700;cursor:pointer">⬇ Descer pro escritório</button>
 <button id="rk-btn" title="Ranking do mês" style="position:fixed;left:18px;top:126px;z-index:6;width:44px;height:44px;border:1px solid rgba(34,211,238,.6);border-radius:12px;background:rgba(3,10,26,.85);font-size:22px;cursor:pointer">🏆</button>
 <div id="quest" hidden></div>
 </body>
