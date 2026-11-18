@@ -173,6 +173,9 @@ tbody tr:last-child td{border-bottom:0}
 .flut-top h4{font-size:14px;letter-spacing:.3px;display:flex;align-items:center;gap:7px}
 .flut-top small{color:var(--suave);font-weight:500;font-size:11px;display:block;margin-top:1px}
 .flut-x{background:rgba(255,255,255,.06);border:0;border-radius:8px;width:28px;height:28px;cursor:pointer;color:var(--suave)}
+.flut-abas{display:flex;gap:3px;margin-left:auto;margin-right:6px;padding:3px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(125,211,252,.18)}
+.flut-abas button{border:0;background:none;color:var(--suave);font:700 11px Inter,sans-serif;letter-spacing:.3px;padding:5px 11px;border-radius:7px;cursor:pointer}
+.flut-abas button.on{background:linear-gradient(180deg,#1e90ff,#0066ff);color:#fff;box-shadow:0 0 12px rgba(30,144,255,.55)}
 .podio{display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:6px;margin:14px 0 10px;transform:translateZ(55px);transform-style:preserve-3d}
 .lugar{text-align:center;position:relative}
 .lugar .av{display:flex;width:58px;height:58px;font-size:17px;margin:0 auto}
@@ -590,7 +593,8 @@ body.embed{background:transparent}
   <div id="flut">
     <div id="flut-card">
       <div class="flut-top">
-        <div><h4>🏆 Ranking do mês</h4><small id="flut-mes"></small></div>
+        <div><h4 id="flut-tit">🏆 Ranking do mês</h4><small id="flut-mes"></small></div>
+        <div class="flut-abas" title="Trocar entre o ranking do mês e o de hoje"><button type="button" data-fm="mes" class="on">Mês</button><button type="button" data-fm="dia">Dia</button></div>
         <button class="flut-x" id="flut-min" title="Minimizar">–</button>
       </div>
       <div class="podio" id="flut-podio"></div>
@@ -1983,12 +1987,18 @@ $('#flut-bola').onclick = () => { $('#flut-card').hidden = false; $('#flut-bola'
   card.addEventListener('pointerleave', () => card.style.transform = 'rotateY(-8deg) rotateX(6deg)');
   card.style.transform = 'rotateY(-8deg) rotateX(6deg)';
 })();
+// ranking flutuante: aba "Mês" ou "Dia" (a escolha fica guardada no navegador)
+let flutModo = ler('crm-flut-modo') === 'dia' ? 'dia' : 'mes';
+$$('.flut-abas [data-fm]').forEach(b => b.onclick = e => { e.stopPropagation(); flutModo = b.dataset.fm; guardar('crm-flut-modo', flutModo); atualizarFlutuante(); });
 async function atualizarFlutuante() {
   if (!eu) return;
-  const [ini, fim] = intervalo('mes');
-  $('#flut-mes').textContent = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const dia = flutModo === 'dia', [ini, fim] = intervalo(dia ? 'hoje' : 'mes');
+  $$('.flut-abas [data-fm]').forEach(b => b.classList.toggle('on', b.dataset.fm === flutModo));
+  $('#flut-tit').textContent = dia ? '🏆 Ranking do dia' : '🏆 Ranking do mês';
+  $('#flut-mes').textContent = dia ? new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }) : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const { data, error } = await sb.rpc('ranking', { inicio: ini, fim });
-  if (error || !data) return;
+  if (error || !data || (flutModo === 'dia') !== dia) return;
+  if (dia && !data.some(r => Number(r.clientes) > 0)) { $('#flut-podio').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--suave);font-size:13px;padding:18px 0">Ninguém fechou hoje ainda.<br>Quem abre o placar? 🚀</div>'; $('#flut-lista').innerHTML = ''; return; }
   const top = data.slice(0, 3), ordem = [1, 0, 2];
   $('#flut-podio').innerHTML = top.length ? ordem.map(i => {
     const r = top[i]; if (!r) return '<div></div>';
