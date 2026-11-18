@@ -117,7 +117,7 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
   <span id="relogio"></span>
   <button class="btn sec" id="btn-horarios" hidden>⏰ Horários</button>
 </header>
-<div id="palco"><canvas id="ceu" style="position:absolute;inset:0;width:100%;height:100%;opacity:.55;pointer-events:none"></canvas><canvas id="cv"></canvas><canvas id="hud"></canvas></div>
+<div id="palco"><canvas id="ceu" style="position:absolute;inset:0;width:100%;height:100%;opacity:.9;pointer-events:none"></canvas><canvas id="cv"></canvas><canvas id="hud"></canvas></div>
 <div id="lado"><h3>Equipe agora</h3><div id="lista"></div></div>
 <div id="dica">Clique em alguém para interagir 👋 · role para dar zoom <span style="opacity:.5;margin-left:8px">móveis: MariaIsMe (CC BY 4.0) · Kenney.nl (CC0)</span></div>
 <div id="pc" hidden><div class="mon">
@@ -224,24 +224,50 @@ async function carregarModelo(nome) {
   const g = new THREE.Group(); g.add(obj); g.userData.tam = box.getSize(new THREE.Vector3());
   return g;
 }
-// skyline futurista: prédios em camadas, contorno neon, letreiros e névoa — tudo desenhado por código
+// cidade à noite vista de um andar alto: céu com névoa, skyline em camadas com profundidade, janelas acesas e luzes desfocadas lá embaixo
 function pintarCidade(g, W_, H_, semente) {
   let sd = semente || 1; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-  const ceu = g.createLinearGradient(0, 0, 0, H_); ceu.addColorStop(0, '#01030a'); ceu.addColorStop(.55, '#0a1440'); ceu.addColorStop(.8, '#3b1466'); ceu.addColorStop(1, '#7a1c6e'); g.fillStyle = ceu; g.fillRect(0, 0, W_, H_);
-  for (let k = 0; k < 90; k++) { g.fillStyle = 'rgba(255,255,255,' + (.2 + R() * .6) + ')'; g.fillRect(R() * W_, R() * H_ * .45, 1.3, 1.3); }
-  const NEON = ['#22d3ee', '#e879f9', '#a78bfa', '#38bdf8', '#f472b6', '#34d399'];
-  [[.5, '#070b22', .35, 26], [.68, '#050818', .55, 22], [.9, '#02040d', .8, 16]].forEach(([alt, cor, luz, n], cam) => {
+  const hz = H_ * .46;                                             // linha do horizonte
+  const ceu = g.createLinearGradient(0, 0, 0, H_);
+  ceu.addColorStop(0, '#02040b'); ceu.addColorStop(.3, '#071226'); ceu.addColorStop(.46, '#1b2a4a'); ceu.addColorStop(.5, '#3a3550'); ceu.addColorStop(.62, '#0b1020'); ceu.addColorStop(1, '#020308');
+  g.fillStyle = ceu; g.fillRect(0, 0, W_, H_);
+  for (let k = 0; k < 120; k++) { g.fillStyle = 'rgba(220,230,255,' + (.08 + R() * .35) + ')'; g.fillRect(R() * W_, R() * hz * .8, 1, 1); }
+  // brilho da cidade no horizonte (poluição luminosa) e lua
+  const gl2 = g.createRadialGradient(W_ * .5, hz, 0, W_ * .5, hz, W_ * .75); gl2.addColorStop(0, 'rgba(255,170,110,.30)'); gl2.addColorStop(.35, 'rgba(120,120,200,.14)'); gl2.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl2; g.fillRect(0, 0, W_, H_);
+  const lx = W_ * .82, ly = H_ * .13, lua = g.createRadialGradient(lx, ly, 0, lx, ly, H_ * .16); lua.addColorStop(0, 'rgba(255,250,235,.95)'); lua.addColorStop(.08, 'rgba(255,245,220,.9)'); lua.addColorStop(.1, 'rgba(200,215,255,.22)'); lua.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = lua; g.fillRect(0, 0, W_, H_);
+  // nuvens finas
+  for (let k = 0; k < 9; k++) { const cx = R() * W_, cy = hz * (.25 + R() * .6), rw = W_ * (.12 + R() * .2); const n = g.createRadialGradient(cx, cy, 0, cx, cy, rw); n.addColorStop(0, 'rgba(150,165,205,.07)'); n.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = n; g.save(); g.translate(cx, cy); g.scale(1, .22); g.translate(-cx, -cy); g.fillRect(cx - rw, cy - rw, rw * 2, rw * 2); g.restore(); }
+  // prédios: 4 camadas, das mais distantes (claras, azuladas, desfocadas) às mais próximas (escuras, nítidas)
+  const CAM = [[.10, '#2a3556', 60, 1.6, .35], [.19, '#182341', 42, 1.0, .55], [.33, '#0d1528', 26, .5, .8], [.52, '#060a14', 15, 0, 1]];
+  CAM.forEach(([alt, cor, n, blur, luz], ci) => {
+    const alvo = g, aux = document.createElement('canvas'); aux.width = W_; aux.height = H_; g = aux.getContext('2d');
     for (let k = 0; k < n; k++) {
-      const w = W_ / n * (.7 + R() * .9), x = k * W_ / n + (R() - .5) * 20, h = H_ * alt * (.45 + R() * .55), y = H_ - h, neon = NEON[(R() * NEON.length) | 0];
-      g.fillStyle = cor; g.fillRect(x, y, w, h);
-      if (R() < .5) { g.fillRect(x + w * .3, y - h * .08, w * .4, h * .08); g.fillRect(x + w * .48, y - h * .2, 2, h * .13); g.fillStyle = '#ff4d6d'; g.fillRect(x + w * .48 - 1, y - h * .2, 4, 3); }
-      g.strokeStyle = neon; g.globalAlpha = luz; g.lineWidth = 1.5; g.shadowColor = neon; g.shadowBlur = 10; g.strokeRect(x + .5, y + .5, w - 1, h + 4); g.shadowBlur = 0;
-      for (let j = 6; j < h - 4; j += 7) for (let i = 4; i < w - 4; i += 6) if (R() < .32) { g.fillStyle = R() < .6 ? '#fde68a' : R() < .5 ? '#67e8f9' : '#f0abfc'; g.fillRect(x + i, y + j, 2.4, 3.2); }
-      if (cam > 0 && R() < .35) { g.fillStyle = neon; g.shadowColor = neon; g.shadowBlur = 14; g.fillRect(x + w * .15, y + h * (.15 + R() * .3), w * .7, 5 + R() * 8); g.shadowBlur = 0; }
-      g.globalAlpha = 1;
+      const w = W_ / n * (.75 + R() * .8), x = k * W_ / n + (R() - .5) * W_ / n * .6, h = H_ * alt * (.35 + R() * .65) + (R() < .08 ? H_ * alt * .6 : 0), base = hz + H_ * (.05 + ci * .13), y = base - h;
+      g.fillStyle = cor; g.fillRect(x, y, w, H_ - y);
+      const tipo = R();                                            // topos variados
+      if (tipo < .25) { g.fillRect(x + w * .2, y - h * .06, w * .6, h * .06); g.fillRect(x + w * .38, y - h * .11, w * .24, h * .05); }
+      else if (tipo < .4) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + w * .5, y - h * .12); g.lineTo(x + w, y); g.fill(); }
+      if (tipo < .4 || R() < .2) { g.fillRect(x + w * .5 - .5, y - h * .24, 1.2, h * .2); if (ci > 1) { g.fillStyle = 'rgba(255,60,60,.9)'; g.fillRect(x + w * .5 - 1, y - h * .24, 2.4, 2.4); g.fillStyle = cor; } }
+      // janelas: andares em faixas, alguns escritórios acesos, tons quentes e frios
+      const px = Math.max(2, w / (5 + ci * 3)), py = Math.max(2.2, 3 + ci * 1.6), quente = R() < .7;
+      for (let j = y + py; j < Math.min(H_, base + H_ * .2); j += py * 1.7) { const andar = R() < .12 ? .9 : .28;
+        for (let i = x + px * .5; i < x + w - px * .6; i += px) if (R() < andar * luz) {
+          g.fillStyle = quente ? 'rgba(255,' + (190 + R() * 45 | 0) + ',' + (120 + R() * 60 | 0) + ',' + (.35 + R() * .5) + ')' : 'rgba(' + (170 + R() * 40 | 0) + ',215,255,' + (.3 + R() * .45) + ')';
+          g.fillRect(i, j, px * .55, py * .6); } }
     }
-    const nev = g.createLinearGradient(0, H_ * (1 - alt * .35), 0, H_); nev.addColorStop(0, 'rgba(60,20,110,0)'); nev.addColorStop(1, 'rgba(120,40,140,' + (.18 - cam * .05) + ')'); g.fillStyle = nev; g.fillRect(0, 0, W_, H_);
+    g = alvo; g.save(); if (blur) g.filter = 'blur(' + blur + 'px)'; g.drawImage(aux, 0, 0); g.restore();
+    // névoa entre as camadas (profundidade)
+    const nv = g.createLinearGradient(0, hz - H_ * .05, 0, hz + H_ * (.25 + ci * .13)); nv.addColorStop(0, 'rgba(70,85,130,0)'); nv.addColorStop(1, 'rgba(40,50,85,' + (.22 - ci * .05) + ')'); g.fillStyle = nv; g.fillRect(0, 0, W_, H_);
   });
+  // lá embaixo: ruas e luzes desfocadas (bokeh), como visto do alto
+  const alvo2 = g, aux2 = document.createElement('canvas'); aux2.width = W_; aux2.height = H_; g = aux2.getContext('2d'); g.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 260; k++) { const y = H_ * (.72 + R() * .3), x = R() * W_, r = (1.5 + R() * 5) * H_ / 520 * (.5 + (y / H_ - .7) * 2.2), c = R();
+    g.fillStyle = c < .5 ? 'rgba(255,190,110,' + (.10 + R() * .25) + ')' : c < .75 ? 'rgba(255,90,70,' + (.08 + R() * .2) + ')' : c < .9 ? 'rgba(200,225,255,' + (.08 + R() * .2) + ')' : 'rgba(90,220,200,' + (.08 + R() * .18) + ')';
+    g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fill(); }
+  for (let k = 0; k < 5; k++) { const y = H_ * (.78 + k * .05), gr2 = g.createLinearGradient(0, y, W_, y + H_ * .04 * (R() - .5)); gr2.addColorStop(0, 'rgba(255,200,120,0)'); gr2.addColorStop(.5, 'rgba(255,200,120,.10)'); gr2.addColorStop(1, 'rgba(255,200,120,0)'); g.strokeStyle = gr2; g.lineWidth = 2 + k; g.beginPath(); g.moveTo(0, y); g.lineTo(W_, y + H_ * .06 * (R() - .5)); g.stroke(); }
+  g = alvo2; g.save(); g.filter = 'blur(' + Math.max(2, H_ / 220) + 'px)'; g.globalCompositeOperation = 'lighter'; g.drawImage(aux2, 0, 0); g.restore();
+  // vinheta
+  const vg = g.createRadialGradient(W_ / 2, H_ / 2, H_ * .3, W_ / 2, H_ / 2, Math.max(W_, H_) * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = vg; g.fillRect(0, 0, W_, H_);
 }
 const CARREGANDO = [];
 function por(...args) { const pr = por_(...args); CARREGANDO.push(pr); return pr; }
