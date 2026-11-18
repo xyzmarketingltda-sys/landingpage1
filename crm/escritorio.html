@@ -342,8 +342,9 @@ async function montarAmbiente() {
   // telão do ranking do mês (ao vivo)
   telaoCv = document.createElement('canvas'); telaoCv.width = 640; telaoCv.height = 400;
   telaoTex = new THREE.CanvasTexture(telaoCv); telaoTex.colorSpace = THREE.SRGBColorSpace;
-  caixa3(.5, 8.9, 13.6, '#05070b', .45, TELAO[1] - 4.45, TELAO[0], { metalness: .6, roughness: .3 });
-  const telao = new THREE.Mesh(new THREE.PlaneGeometry(12.8, 8), new THREE.MeshBasicMaterial({ map: telaoTex, toneMapped: false })); telao.position.set(.75, TELAO[1], TELAO[0]); telao.rotation.y = Math.PI / 2; scene.add(telao);
+  caixa3(.35, 9.5, 18.5, '#020305', .4, TELAO[1] - 4.75, TELAO[0], { metalness: .8, roughness: .2 });
+  { const l = caixa3(.1, .12, 18.5, '#22d3ee', .55, TELAO[1] - 4.9, TELAO[0], { emissive: '#22d3ee', emissiveIntensity: 2 }); animados.push(t => l.material.emissiveIntensity = 1.6 + Math.sin(t / 900) * .4); }
+  const telao = new THREE.Mesh(new THREE.PlaneGeometry(18, 9), new THREE.MeshBasicMaterial({ map: telaoTex, toneMapped: false })); telao.position.set(.75, TELAO[1], TELAO[0]); telao.rotation.y = Math.PI / 2; scene.add(telao);
   desenharTelao();
 }
 
@@ -882,6 +883,7 @@ function cabecaDe(a) { return telaDe(a.x * U, (a.sentado && !a.andando ? SENTA :
 function textos() {
   mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.clearRect(0, 0, cv.width, cv.height);
   const esc2 = Math.max(.8, Math.min(1.3, ZOOM));
+  try { letreiroTelao(); } catch (e) {}
   for (const a of [...atores.values()].sort((p, q) => p.x + p.y - q.x - q.y)) {
     const [X, Y] = cabecaDe(a);
     mctx.globalAlpha = Math.max(0, a.alpha);
@@ -1088,20 +1090,28 @@ $('#hor-salvar').onclick = async () => {
 
 /* ---------- metas na mesa ---------- */
 let liderId = null;
-const TELAO = [51, 7.6];   // (z, altura) na parede dos janelões, ao lado dos sofás
+const TELAO = [50.5, 7.4];   // (z, altura) na parede dos janelões, ao lado dos sofás
 const _TELAO_ANT = [52.5, 7.6];   // x e altura do centro do telão na parede dos fundos
 let vendasMes = [], telaoCv = null, telaoTex = null, CONQ = {};
 function rankingMes() { return [...vendasMes].filter(r => (equipe.find(p => p.id === r.id) || {}).papel === 'atendente').sort((a, b) => Number(b.vendas) - Number(a.vendas)); }
-function desenharTelao() {
+function desenharTelao() {   // só o painel LED aceso; o texto é desenhado por cima, na mesma fonte dos nomes (função letreiroTelao)
   if (!telaoCv) return; const g = telaoCv.getContext('2d'), W2 = 640, H2 = 400;
-  g.fillStyle = '#030b1f'; g.fillRect(0, 0, W2, H2); g.strokeStyle = '#22d3ee'; g.lineWidth = 6; g.strokeRect(3, 3, W2 - 6, H2 - 6);
-  g.fillStyle = '#7dd3fc'; g.font = '800 44px Inter, sans-serif'; g.textAlign = 'left'; g.fillText('🏆 RANKING', 26, 62);
-  const nomeDe = id => (equipe.find(p => p.id === id) || {}).nome || '—', rk = rankingMes().slice(0, 4);
-  rk.forEach((r, i) => { const y = 132 + i * 68;
-    g.fillStyle = ['#fbbf24', '#e5e7eb', '#d97706', '#93a9c9'][i]; g.font = '800 46px Inter, sans-serif'; g.textAlign = 'left'; g.fillText((i + 1) + 'º ' + nomeDe(r.id), 26, y);
-    g.fillStyle = '#fde68a'; g.textAlign = 'right'; g.fillText(String(Number(r.vendas)), W2 - 26, y); });
-  if (!rk.length) { g.fillStyle = '#93a9c9'; g.font = '600 30px Inter, sans-serif'; g.textAlign = 'left'; g.fillText('Sem vendas no mês ainda', 26, 200); }
-  g.textAlign = 'left'; telaoTex.needsUpdate = true;
+  const f = g.createLinearGradient(0, 0, W2, H2); f.addColorStop(0, '#0a1f4a'); f.addColorStop(1, '#03102b'); g.fillStyle = f; g.fillRect(0, 0, W2, H2);
+  g.fillStyle = 'rgba(255,255,255,.035)'; for (let y = 0; y < H2; y += 6) g.fillRect(0, y, W2, 2);
+  telaoTex.needsUpdate = true;
+}
+function letreiroTelao() {
+  if (noTopo()) return; const [X, Y] = telaDe(.75, TELAO[1], TELAO[0]); if (X < -200 || X > LARG + 200) return;
+  const fs = Math.max(9, Math.min(26, 11.5 * ZOOM)), lin = fs * 1.38, rk = rankingMes().slice(0, 4), larg = fs * 11.5, alt = lin * (rk.length + 1) + fs * .5;
+  const nomeDe = id => (equipe.find(p => p.id === id) || {}).nome || '—', x0 = X - larg / 2, y0 = Y - alt / 2;
+  mctx.globalAlpha = 1; mctx.textBaseline = 'middle';
+  mctx.fillStyle = 'rgba(3,10,26,.55)'; mctx.beginPath(); mctx.roundRect(x0 - 4, y0 - 2, larg + 8, alt + 4, 6); mctx.fill();
+  mctx.font = `800 ${fs}px Inter, sans-serif`; mctx.textAlign = 'center'; mctx.fillStyle = '#7dd3fc'; mctx.fillText('🏆 RANKING DO MÊS', X, y0 + lin * .55);
+  mctx.font = `700 ${fs}px Inter, sans-serif`;
+  rk.forEach((r, i) => { const y = y0 + lin * (i + 1.55);
+    mctx.textAlign = 'left'; mctx.fillStyle = ['#fbbf24', '#e5e7eb', '#fdba74', '#cbd5e1'][i]; mctx.fillText((i + 1) + 'º ' + nomeDe(r.id), x0 + 2, y);
+    mctx.textAlign = 'right'; mctx.fillStyle = '#fff'; mctx.fillText(String(Number(r.vendas)), x0 + larg - 2, y); });
+  if (!rk.length) { mctx.textAlign = 'center'; mctx.fillStyle = '#cbd5e1'; mctx.fillText('sem vendas ainda', X, y0 + lin * 1.6); }
 }
 // ranking completo em janela (clique no telão ou no botão 🏆)
 function abrirRanking() {
