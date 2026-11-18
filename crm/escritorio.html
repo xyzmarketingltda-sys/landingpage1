@@ -117,7 +117,7 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
   <span id="relogio"></span>
   <button class="btn sec" id="btn-horarios" hidden>⏰ Horários</button>
 </header>
-<div id="palco"><canvas id="cv"></canvas><canvas id="hud"></canvas></div>
+<div id="palco"><canvas id="ceu" style="position:absolute;inset:0;width:100%;height:100%;opacity:.55;pointer-events:none"></canvas><canvas id="cv"></canvas><canvas id="hud"></canvas></div>
 <div id="lado"><h3>Equipe agora</h3><div id="lista"></div></div>
 <div id="dica">Clique em alguém para interagir 👋 · role para dar zoom <span style="opacity:.5;margin-left:8px">móveis: MariaIsMe (CC BY 4.0) · Kenney.nl (CC0)</span></div>
 <div id="pc" hidden><div class="mon">
@@ -224,6 +224,25 @@ async function carregarModelo(nome) {
   const g = new THREE.Group(); g.add(obj); g.userData.tam = box.getSize(new THREE.Vector3());
   return g;
 }
+// skyline futurista: prédios em camadas, contorno neon, letreiros e névoa — tudo desenhado por código
+function pintarCidade(g, W_, H_, semente) {
+  let sd = semente || 1; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const ceu = g.createLinearGradient(0, 0, 0, H_); ceu.addColorStop(0, '#01030a'); ceu.addColorStop(.55, '#0a1440'); ceu.addColorStop(.8, '#3b1466'); ceu.addColorStop(1, '#7a1c6e'); g.fillStyle = ceu; g.fillRect(0, 0, W_, H_);
+  for (let k = 0; k < 90; k++) { g.fillStyle = 'rgba(255,255,255,' + (.2 + R() * .6) + ')'; g.fillRect(R() * W_, R() * H_ * .45, 1.3, 1.3); }
+  const NEON = ['#22d3ee', '#e879f9', '#a78bfa', '#38bdf8', '#f472b6', '#34d399'];
+  [[.5, '#070b22', .35, 26], [.68, '#050818', .55, 22], [.9, '#02040d', .8, 16]].forEach(([alt, cor, luz, n], cam) => {
+    for (let k = 0; k < n; k++) {
+      const w = W_ / n * (.7 + R() * .9), x = k * W_ / n + (R() - .5) * 20, h = H_ * alt * (.45 + R() * .55), y = H_ - h, neon = NEON[(R() * NEON.length) | 0];
+      g.fillStyle = cor; g.fillRect(x, y, w, h);
+      if (R() < .5) { g.fillRect(x + w * .3, y - h * .08, w * .4, h * .08); g.fillRect(x + w * .48, y - h * .2, 2, h * .13); g.fillStyle = '#ff4d6d'; g.fillRect(x + w * .48 - 1, y - h * .2, 4, 3); }
+      g.strokeStyle = neon; g.globalAlpha = luz; g.lineWidth = 1.5; g.shadowColor = neon; g.shadowBlur = 10; g.strokeRect(x + .5, y + .5, w - 1, h + 4); g.shadowBlur = 0;
+      for (let j = 6; j < h - 4; j += 7) for (let i = 4; i < w - 4; i += 6) if (R() < .32) { g.fillStyle = R() < .6 ? '#fde68a' : R() < .5 ? '#67e8f9' : '#f0abfc'; g.fillRect(x + i, y + j, 2.4, 3.2); }
+      if (cam > 0 && R() < .35) { g.fillStyle = neon; g.shadowColor = neon; g.shadowBlur = 14; g.fillRect(x + w * .15, y + h * (.15 + R() * .3), w * .7, 5 + R() * 8); g.shadowBlur = 0; }
+      g.globalAlpha = 1;
+    }
+    const nev = g.createLinearGradient(0, H_ * (1 - alt * .35), 0, H_); nev.addColorStop(0, 'rgba(60,20,110,0)'); nev.addColorStop(1, 'rgba(120,40,140,' + (.18 - cam * .05) + ')'); g.fillStyle = nev; g.fillRect(0, 0, W_, H_);
+  });
+}
 const CARREGANDO = [];
 function por(...args) { const pr = por_(...args); CARREGANDO.push(pr); return pr; }
 async function por_(nome, x, z, rot = 0, opc = {}) { // x,z = centro em tiles; rot em graus
@@ -259,18 +278,13 @@ async function montarAmbiente() {
   for (const dz of [-3.6, 3.6]) { const l = caixa3(GX * U, .05, .18, '#00e5ff', GX * U / 2, .02, CORREDOR * U + dz, { emissive: '#00e5ff', emissiveIntensity: 1.6 }); animados.push(t => l.material.emissiveIntensity = 1.2 + Math.sin(t / 900) * .5); }
   // paredes azul-marinho (fundo e esquerda), com janelões na esquerda
   for (let x = 0; x < GX; x++) por('wall', x + .5, -.025, 0, { cor: '#0e121a' });
-  for (let z = 0; z < GY; z++) por(z === 1 || z === 2 ? 'wallWindow' : 'wall', -.025, z + .5, 90, { cor: '#0e121a', so: /^(?!.*glass)/i });
+  for (let z = 0; z < GY; z++) por(z >= 1 && z <= 4 ? 'wallWindow' : 'wall', -.025, z + .5, 90, { cor: '#0e121a', so: /^(?!.*glass)/i });
   // faixas de LED
   const led = (x, y, z, sx, sz) => { const m = caixa3(sx, .25, sz, '#00e5ff', x, y, z, { emissive: '#00e5ff', emissiveIntensity: 2.2 }); animados.push(t => m.material.emissiveIntensity = 1.6 + Math.sin(t / 700) * .6); };
   led(GX * U / 2, ALT_PAREDE - .6, .45, GX * U, .15); led(.45, ALT_PAREDE - .6, GY * U / 2, .15, GY * U);
   led(GX * U / 2, .4, .45, GX * U, .15); led(.45, .4, GY * U / 2, .15, GY * U);
-  // cidade lá fora (atrás dos janelões)
-  const ct = document.createElement('canvas'); ct.width = 512; ct.height = 256; const g = ct.getContext('2d');
-  const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#020617'); gr.addColorStop(1, '#0b2d6b'); g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
-  for (let k = 0; k < 55; k++) { const w = 12 + Math.random() * 28, h = 60 + Math.random() * 185, x = Math.random() * 512; g.fillStyle = k % 3 ? '#060d22' : '#0a1530'; g.fillRect(x, 256 - h, w, h);
-    for (let j = 0; j < h / 8; j++) for (let i = 2; i < w - 3; i += 5) if (Math.random() < .28) { g.fillStyle = Math.random() < .8 ? '#ffe9a8' : '#9be7ff'; g.fillRect(x + i, 256 - h + 5 + j * 8, 2, 3); } }
-  // torre com antena (tipo Empire State) e luz vermelha
-  g.fillStyle = '#081228'; g.fillRect(300, 20, 26, 236); g.fillRect(306, 4, 14, 20); g.fillRect(312, -10, 2, 18); g.fillStyle = '#ff4d4d'; g.fillRect(311, 0, 4, 4);
+  // cidade lá fora (atrás dos janelões): metrópole neon vista de um andar alto
+  const ct = document.createElement('canvas'); ct.width = 1024; ct.height = 512; pintarCidade(ct.getContext('2d'), 1024, 512, 7);
   const cidade = new THREE.CanvasTexture(ct); cidade.colorSpace = THREE.SRGBColorSpace;
   const fora = new THREE.Mesh(new THREE.PlaneGeometry(GY * U - 1, ALT_PAREDE - 1.2), new THREE.MeshBasicMaterial({ map: cidade }));
   fora.position.set(-1.2, (ALT_PAREDE - 1.2) / 2 + .3, GY * U / 2); fora.rotation.y = Math.PI / 2; scene.add(fora);
@@ -380,6 +394,8 @@ function montarSofaXYZ(x, z, rot) {
   for (const i of [-1, 1]) for (const k of [0, 1]) { const q = B(1.5, 1.5, .5, ciano, i * (L / 2 - 2) + (k ? -i * 1.6 : 0), 1.7, -P / 2 + 1.6); q.rotation.z = i * .12; }  // almofadas
   g.position.copy(W(x, z)); g.rotation.y = rot * Math.PI / 180; scene.add(g); return g;
 }
+function pintarCeu() { const c = document.getElementById('ceu'); if (!c) return; c.width = innerWidth; c.height = innerHeight; pintarCidade(c.getContext('2d'), c.width, c.height, 11); }
+pintarCeu(); addEventListener('resize', pintarCeu);
 async function montarMoveis() {
   // cozinha no canto do fundo
   por('kitchenFridge', .3, .32, 0); por('kitchenCabinet', .78, .32, 0); por('kitchenSink', 1.23, .32, 0); por('kitchenStove', 1.68, .32, 0); por('kitchenCabinet', 2.13, .32, 0);
@@ -396,13 +412,13 @@ async function montarMoveis() {
   montarSofaXYZ(.5, 4.6, 90);
   por('v:Table_Coffee_01_Black', 1.35, 4.55, 90);
   montarSofaXYZ(2.2, 4.6, -90);
-  por('lampRoundFloor', .25, 3.45); por('v:Plant_03', .25, 5.75); por('v:Plant_01', 1.35, 4.5, 0, { y: 1.75 }); por('v:Cabinet_01', .2, 2.6, 90);
+  por('lampRoundFloor', .25, 3.45); por('v:Plant_03', .25, 5.75); por('v:Plant_01', 1.35, 4.5, 0, { y: 1.75 });
   // estações de trabalho
   for (let i = 0; i < DESKS.length; i++) {
     const [x, z] = DESKS[i], chefe = i === DESKS.length - 1;
     if (chefe) {
       por('v:Table_White_2x2_01', x, z, 180); por('v:PC_01', x - .1, z - .05, 180, { y: 3.85 }); por('laptop', x + .25, z + .05, 200, { y: 3.85 });
-      por('lampRoundTable', x - .35, z, 0, { y: 3.85 }); por('v:Chair_Black_01', x - .25, z - .43, 180);
+      por('lampRoundTable', x - .35, z, 0, { y: 3.85 }); por('v:Chair_Black_01', x - .25, z - .43, 0);
       por('rugRectangle', x - .05, z - .05, 0, { cor: '#0f2a5c', so: /carpet/i });
       const tr = new THREE.Mesh(new THREE.CylinderGeometry(.3, .5, 1.6, 12), new THREE.MeshStandardMaterial({ color: '#fbbf24', metalness: .85, roughness: .2 })); tr.position.set(x * U + 3.2, 4.65, z * U - .6); scene.add(tr);
     } else {
@@ -761,6 +777,7 @@ function textos() {
     mctx.fillStyle = a.id === eu.id ? 'rgba(30,144,255,.92)' : 'rgba(3,10,26,.8)';
     mctx.beginPath(); mctx.roundRect(X - w / 2, Y - h, w, h, 7); mctx.fill();
     mctx.fillStyle = '#fff'; mctx.fillText(nome, X, Y - h / 2);
+    if (a.id === liderId) { mctx.font = `${Math.round(22 * esc2)}px serif`; mctx.fillText('👑', X, Y - h - 13 * esc2 + Math.sin(T / 400) * 1.5); }
     if (a.balao && a.balao.ate > T) {
       mctx.font = `600 ${Math.round(13 * esc2)}px Inter, sans-serif`;
       const txt = a.balao.txt.length > 34 ? a.balao.txt.slice(0, 33) + '…' : a.balao.txt;
@@ -933,6 +950,7 @@ $('#hor-salvar').onclick = async () => {
 };
 
 /* ---------- metas na mesa ---------- */
+let liderId = null;
 let vendasMes = [], telaoCv = null, telaoTex = null, CONQ = {};
 function desenharTelao() {
   if (!telaoCv) return; const g = telaoCv.getContext('2d'), W2 = 640, H2 = 400;
@@ -980,7 +998,7 @@ async function carregarMetas() {
   const [y, m] = hoje.split('-').map(Number), ini = `${y}-${String(m).padStart(2, '0')}-01`;
   const fim = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   const { data } = await sb.rpc('metas_mes', { inicio: ini, fim });
-  if (data) { vendasMes = data; aplicarMetas(); atualizarDinheiro(); desenharTelao(); }
+  if (data) { vendasMes = data; const top = [...data].filter(r => (equipe.find(p => p.id === r.id) || {}).papel === 'atendente' && Number(r.vendas) > 0).sort((a, b) => Number(b.vendas) - Number(a.vendas))[0]; liderId = top ? top.id : null; aplicarMetas(); atualizarDinheiro(); desenharTelao(); }
 }
 setInterval(carregarMetas, 60000);
 

@@ -901,7 +901,7 @@ const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Da
 const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
 async function clientesDoMes(ini, fim) {
   let tudo = [], de = 0;
-  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,seguro_det,seguro_det_fonte,seguro_det_em').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
 function aplicarRegra(regra, linhas) { return XYZComissao.aplicarRegra(regra, linhas); }
@@ -929,7 +929,7 @@ async function calcularPrevisoes() {
   try { alertaProcuracao(); alertaCpfMulti(); } catch (e) {}
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
-    const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim);
+    const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim); window.__cliMes = cli;
     DIVERGE = cli.filter(c => { const crm = (c.advogado || '').toUpperCase().trim(); return c.adv_procuracao ? c.adv_procuracao !== crm : (c.adv_drive && c.adv_drive !== crm); });
     const porAdv = {}; cli.forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
     RECEBER = Object.entries(porAdv).map(([adv, l]) => { const r = REGRAS[adv]; const itens = aplicarRegra(r?.regra, l); return { adv, obs: r?.obs || 'sem regra', itens, total: itens.reduce((x, i) => x + i.v, 0), semValor: itens.filter(i => i.semValor).length, processos: l.length }; }).sort((a, b) => b.total - a.total);
@@ -957,6 +957,15 @@ async function carregarCobrancas() {
 function desenharReceber() {
   $('#ga-resumo').innerHTML = `<span>Total a receber em ${mesNome(G.mes)}: <b>${brl(RECEBER.reduce((x, a) => x + a.total, 0))}</b></span>` +
     (DIVERGE.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-div">⚠️ ${DIVERGE.length} cliente(s) com advogado do CRM diferente da procuração/Drive — ver</span>` : '');
+  const DIFV = (window.__cliMes || []).filter(c => Number(c.seguro_det) > 0 && Math.abs(Number(c.valor || 0) - Number(c.seguro_det)) > 1);
+  const mapeados = (window.__cliMes || []).filter(c => c.seguro_det_em).length;
+  $('#ga-resumo').insertAdjacentHTML('beforeend', `<span title="pastas do mês em que o robô já leu os contratos">🔎 contratos lidos: <b>${mapeados}/${(window.__cliMes || []).length}</b></span>` + (DIFV.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-difv">💰 ${DIFV.length} com valor lançado diferente do contrato — ver</span>` : ''));
+  const bv = $('#ga-difv'); if (bv) bv.onclick = () => {
+    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px;color:#fde68a">💰 Valor lançado × valor lido no contrato (seguro, prêmio ou pacote de benefícios — sem IOF)</h4>
+      <div class="g-tab"><table><thead><tr><th>Cliente</th><th>Advogado</th><th>Banco</th><th style="text-align:right">Lançado</th><th style="text-align:right">No contrato</th><th>Onde achou</th><th></th></tr></thead><tbody>${DIFV.map(c => `<tr><td>${esc(c.nome)}</td><td>${esc(c.advogado || '')}</td><td>${esc(c.banco || '')}</td><td class="num">${brl(c.valor)}</td><td class="num"><b>${brl(c.seguro_det)}</b></td><td><small style="color:var(--suave)">${esc(c.seguro_det_fonte || '')}</small></td><td><button class="btn sec peq" data-usar="${c.id}">Usar o do contrato</button></td></tr>`).join('')}</tbody></table></div>`;
+    $$('#ga-det [data-usar]').forEach(b => b.onclick = async () => { const c = DIFV.find(x => x.id == b.dataset.usar); const { error } = await sb.from('clientes').update({ valor: c.seguro_det, valor_fonte: 'contrato (conferido pelo admin)' }).eq('id', c.id); if (error) return alert(traduz(error)); toast('Valor atualizado.'); calcularPrevisoes(); });
+    $('#ga-det').scrollIntoView({ behavior: 'smooth' });
+  };
   const bd = $('#ga-div'); if (bd) bd.onclick = () => {
     const comProc = DIVERGE.filter(c => c.adv_procuracao);
     $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px;color:#fde68a">⚠️ Advogado no CRM diferente da procuração / Drive</h4>
