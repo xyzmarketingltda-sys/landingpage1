@@ -906,7 +906,10 @@ $('#ga-baixar').onclick = () => baixarReceber(RECEBER);
 async function carregarZap() {
   const { data: st } = await sb.rpc('zapsign_status'); const z = (st || [])[0] || {};
   $('#gz-status').innerHTML = z.conectado ? `✅ <b>Conectado</b> · ${z.assinaturas} assinatura(s) recebida(s)${z.sem_dono ? ` · <span style="color:#fbbf24">${z.sem_dono} sem atendente — escolha abaixo</span>` : ''}` : '⚪ Não conectado';
-  $('#gz-conectar').textContent = z.conectado ? 'Trocar token' : 'Conectar';
+  $('#gz-conectar').textContent = 'Conectar';
+  $('#gz-token').hidden = $('#gz-conectar').hidden = !!z.conectado;
+  if (z.conectado && !$('#gz-trocar')) { const t = document.createElement('button'); t.id = 'gz-trocar'; t.type = 'button'; t.className = 'btn sec peq'; t.textContent = 'trocar token'; t.style.opacity = '.6';
+    t.onclick = () => { $('#gz-token').hidden = $('#gz-conectar').hidden = false; t.remove(); }; $('#gz-status').after(t); }
   const { data } = await sb.from('assinaturas_zap').select('*').order('assinado_em', { ascending: false }).limit(30);
   const ops = equipe.filter(p => p.papel === 'atendente').map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
   $('#gz-lista').innerHTML = (data || []).map(a => `<tr><td>${new Date(a.assinado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td><td>${esc(a.cliente || '')}<br><small style="color:var(--suave)">${esc(a.nome_doc || '')}</small></td><td><small>${esc(a.criador_email || '')}</small></td>
