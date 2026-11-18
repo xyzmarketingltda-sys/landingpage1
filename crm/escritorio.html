@@ -873,7 +873,7 @@ async function carregarEquipe() {
     sync: st => { online = new Set(Object.keys(st)); syncOk = true; atualizarAtores(); },
     acao: executar,
     desafio: () => { setTimeout(() => carregarDesafio(true), 600); atores.forEach((a, id) => particulas(id, '💰', 6)); },
-    venda: m => { setTimeout(carregarMetas, 800); setTimeout(carregarMissoes, 1200); setTimeout(() => carregarDesafio(false), 1300); balao(m.id, '🎉 Fechei mais um!', 4000); particulas(m.id, '🎉', 6); particulas(m.id, '💰', 4); const a = atores.get(m.id); if (a) a.danca = T + 3000; },
+    venda: m => { setTimeout(carregarMetas, 800); setTimeout(carregarMissoes, 1200); setTimeout(() => carregarDesafio(false), 1300); balao(m.id, m.zapsign ? '✍️ Procuração assinada!' : '🎉 Fechei mais um!', 4000); particulas(m.id, '🎉', 6); particulas(m.id, '💰', 4); const a = atores.get(m.id); if (a) a.danca = T + 3000; },
   });
   await montarAmbiente(); await montarMoveis();
   await carregarEquipe(); await carregarMetas();

@@ -407,6 +407,11 @@ tbody tr:last-child td{border-bottom:0}
           </form>
           <div class="g-linha"><b style="font-size:13px">🧪 Testar quest diária:</b><input type="date" id="gm-teste" style="max-width:160px;color-scheme:dark"><button class="btn sec peq" id="gm-ver" type="button">👁 Ver como fica</button><small style="color:var(--suave)">abre o escritório com a janela da missão do dia escolhido e o progresso de cada atendente</small></div>
           <div class="g-tab"><table><thead><tr><th>Dia</th><th>Missão</th><th>Objetivos</th><th style="text-align:right">Prêmio</th><th></th></tr></thead><tbody id="gm-lista"></tbody></table></div>
+          <h4 style="margin:18px 0 8px;color:#7dd3fc">🔗 ZapSign <small style="color:var(--suave);font-weight:400">— procuração assinada já conta ponto na missão e no desafio, mesmo antes de lançar o cliente</small></h4>
+          <div class="g-linha" style="flex-wrap:wrap"><span id="gz-status" style="font-size:13px"></span>
+            <input id="gz-token" type="password" placeholder="Token da API do ZapSign (Configurações → Integrações → API)" style="min-width:300px;flex:1" autocomplete="off">
+            <button class="btn peq" id="gz-conectar" type="button">Conectar</button></div>
+          <div class="g-tab"><table><thead><tr><th>Assinado em</th><th>Cliente</th><th>Criado por (ZapSign)</th><th>Atendente</th></tr></thead><tbody id="gz-lista"></tbody></table></div>
           <h4 style="margin:18px 0 8px;color:#fbbf24">⚡ Desafios relâmpago <small style="color:var(--suave);font-weight:400">— toca som de dinheiro e avisa todo mundo na hora, em qualquer aba</small></h4>
           <form class="g-linha" id="gdz-form" style="flex-wrap:wrap">
             <input id="gdz-tit" placeholder="Nome do desafio (ex.: Corrida das 15h)" required style="min-width:240px;flex:1">
@@ -824,7 +829,7 @@ function carregarPainel() {
   if (G.aba === 'desp') carregarDespesas();
   if (G.aba === 'com') carregarComissoes();
   if (G.aba === 'hist') desenharHistorico();
-  if (G.aba === 'mis') { carregarMissoesAdm(); carregarDesafiosAdm(); }
+  if (G.aba === 'mis') { carregarMissoesAdm(); carregarDesafiosAdm(); carregarZap(); }
   if (G.aba === 'adv') desenharReceber();
 }
 
@@ -897,6 +902,35 @@ function baixarReceber(lista) {
 }
 $('#ga-baixar').onclick = () => baixarReceber(RECEBER);
 
+async function carregarZap() {
+  const { data: st } = await sb.rpc('zapsign_status'); const z = (st || [])[0] || {};
+  $('#gz-status').innerHTML = z.conectado ? `✅ <b>Conectado</b> · ${z.assinaturas} assinatura(s) recebida(s)${z.sem_dono ? ` · <span style="color:#fbbf24">${z.sem_dono} sem atendente — escolha abaixo</span>` : ''}` : '⚪ Não conectado';
+  $('#gz-conectar').textContent = z.conectado ? 'Trocar token' : 'Conectar';
+  const { data } = await sb.from('assinaturas_zap').select('*').order('assinado_em', { ascending: false }).limit(30);
+  const ops = equipe.filter(p => p.papel === 'atendente').map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+  $('#gz-lista').innerHTML = (data || []).map(a => `<tr><td>${new Date(a.assinado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td><td>${esc(a.cliente || a.nome_doc || '')}</td><td><small>${esc(a.criador_email || '')}</small></td>
+    <td><select data-zt="${esc(a.doc_token)}" data-ze="${esc(a.criador_email || '')}"><option value="">— escolher —</option>${ops}</select></td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--suave)">Nenhuma procuração assinada ainda.</td></tr>';
+  (data || []).forEach(a => { const sel = document.querySelector(`[data-zt="${CSS.escape(a.doc_token)}"]`); if (sel && a.atendente_id) sel.value = a.atendente_id; });
+  $$('#gz-lista [data-zt]').forEach(sel => sel.onchange = async () => {
+    await sb.from('assinaturas_zap').update({ atendente_id: sel.value || null }).eq('doc_token', sel.dataset.zt);
+    if (sel.value && sel.dataset.ze) { await sb.from('zapsign_mapa').upsert({ email: sel.dataset.ze, atendente_id: sel.value }); await sb.from('assinaturas_zap').update({ atendente_id: sel.value }).eq('criador_email', sel.dataset.ze).is('atendente_id', null); }
+    toast('Atendente definida — as próximas desse e-mail vão direto pra ela.'); carregarZap();
+  });
+}
+$('#gz-conectar').onclick = async () => {
+  const t = $('#gz-token').value.trim(); if (t.length < 20) return alert('Cole o token da API do ZapSign (Configurações → Integrações → ZapSign API).');
+  const b = $('#gz-conectar'); ocupado(b, true);
+  try {
+    const { error } = await sb.rpc('salvar_zapsign_token', { t }); if (error) throw error;
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(CFG_URL() + '/functions/v1/zapsign-webhook?acao=registrar', { method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token, apikey: (window.CRM_CONFIG || {}).SUPABASE_ANON_KEY } });
+    const j = await r.json();
+    if (!j.ok) throw new Error('ZapSign recusou: ' + (j.erro || j.resposta || j.status));
+    $('#gz-token').value = ''; toast('🔗 ZapSign conectado! Cada procuração assinada já conta ponto.'); carregarZap();
+  } catch (e) { alert(e.message || traduz(e)); }
+  ocupado(b, false);
+};
+const CFG_URL = () => (window.CRM_CONFIG || {}).SUPABASE_URL;
 let gmEditando = null;
 const abrirTesteMissao = d => window.open('escritorio.html?missao=1&teste=1&dia=' + d, '_blank');
 async function carregarMissoesAdm() {
