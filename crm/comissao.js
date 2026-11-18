@@ -15,7 +15,11 @@
       else if (regra.tipo === 'faixas_cliente') {
         if (seg.length && valor) { const f = regra.faixas.find(x => valor >= x.min); if (f) { v = f.v; obs = 'seguro ' + brl(valor); } else if (facta && regra.facta_min && valor >= regra.facta_min) { v = regra.facta_v; obs = 'Facta ' + brl(valor); } else obs = 'abaixo da faixa (' + brl(valor) + ')'; }
         if (rev.length && regra.revisional_v) { v += regra.revisional_v; obs += (obs ? ' + ' : '') + 'juros abusivos'; }
-        if (semValor) obs = 'sem valor do seguro';
+        if (semValor) {
+        // mostra se o robô ainda vai ler o contrato ou se já leu e não achou
+        const temInfo = seg.some(x => 'seguro_det_em' in x);
+        obs = !temInfo ? 'sem valor do seguro' : seg.every(x => !x.pasta_url) ? '📁 sem valor — ainda sem pasta no Drive' : seg.some(x => x.pasta_url && !x.seguro_det_em) ? '⏳ sem valor — robô ainda vai ler o contrato' : '❌ sem valor — robô já leu e não achou (conferir à mão)';
+      }
       }
       return { cliente: g[0].nome, cpf: g[0].cpf, bancos: [...new Set(g.map(c => c.banco).filter(Boolean))].join(', '), processos: g.length, valor, v, obs, semValor };
     });

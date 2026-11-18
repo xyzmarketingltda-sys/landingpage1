@@ -225,20 +225,23 @@ async function carregarModelo(nome) {
   return g;
 }
 // cidade à noite vista de um andar alto: céu com névoa, skyline em camadas com profundidade, janelas acesas e luzes desfocadas lá embaixo
-function pintarCidade(g, W_, H_, semente) {
+const ehDia = () => { const m = location.search.match(/hora=(\d+)/); const h = m ? +m[1] : +new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false }); return h >= 6 && h < 18; };
+function pintarCidade(g, W_, H_, semente, dia) {
   let sd = semente || 1; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const hz = H_ * .46;                                             // linha do horizonte
   const ceu = g.createLinearGradient(0, 0, 0, H_);
-  ceu.addColorStop(0, '#02040b'); ceu.addColorStop(.3, '#071226'); ceu.addColorStop(.46, '#1b2a4a'); ceu.addColorStop(.5, '#3a3550'); ceu.addColorStop(.62, '#0b1020'); ceu.addColorStop(1, '#020308');
+  if (dia) { ceu.addColorStop(0, '#141a33'); ceu.addColorStop(.22, '#3a3156'); ceu.addColorStop(.38, '#a8563f'); ceu.addColorStop(.46, '#e58a4a'); ceu.addColorStop(.5, '#f2b071'); ceu.addColorStop(.6, '#5a3a40'); ceu.addColorStop(1, '#1a1220'); }
+  else { ceu.addColorStop(0, '#02040b'); ceu.addColorStop(.3, '#071226'); ceu.addColorStop(.46, '#1b2a4a'); ceu.addColorStop(.5, '#3a3550'); ceu.addColorStop(.62, '#0b1020'); ceu.addColorStop(1, '#020308'); }
   g.fillStyle = ceu; g.fillRect(0, 0, W_, H_);
-  for (let k = 0; k < 120; k++) { g.fillStyle = 'rgba(220,230,255,' + (.08 + R() * .35) + ')'; g.fillRect(R() * W_, R() * hz * .8, 1, 1); }
+  if (!dia) for (let k = 0; k < 120; k++) { g.fillStyle = 'rgba(220,230,255,' + (.08 + R() * .35) + ')'; g.fillRect(R() * W_, R() * hz * .8, 1, 1); }
   // brilho da cidade no horizonte (poluição luminosa) e lua
-  const gl2 = g.createRadialGradient(W_ * .5, hz, 0, W_ * .5, hz, W_ * .75); gl2.addColorStop(0, 'rgba(255,170,110,.30)'); gl2.addColorStop(.35, 'rgba(120,120,200,.14)'); gl2.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl2; g.fillRect(0, 0, W_, H_);
-  const lx = W_ * .82, ly = H_ * .13, lua = g.createRadialGradient(lx, ly, 0, lx, ly, H_ * .16); lua.addColorStop(0, 'rgba(255,250,235,.95)'); lua.addColorStop(.08, 'rgba(255,245,220,.9)'); lua.addColorStop(.1, 'rgba(200,215,255,.22)'); lua.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = lua; g.fillRect(0, 0, W_, H_);
+  const gl2 = g.createRadialGradient(W_ * .5, hz, 0, W_ * .5, hz, W_ * .75); gl2.addColorStop(0, dia ? 'rgba(255,190,110,.55)' : 'rgba(255,170,110,.30)'); gl2.addColorStop(.35, dia ? 'rgba(255,130,80,.20)' : 'rgba(120,120,200,.14)'); gl2.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl2; g.fillRect(0, 0, W_, H_);
+  const lx = W_ * (dia ? .7 : .82), ly = dia ? hz - H_ * .035 : H_ * .13, lua = g.createRadialGradient(lx, ly, 0, lx, ly, H_ * (dia ? .3 : .16)); lua.addColorStop(0, dia ? 'rgba(255,236,190,.95)' : 'rgba(255,250,235,.95)'); lua.addColorStop(.08, dia ? 'rgba(255,205,130,.85)' : 'rgba(255,245,220,.9)'); lua.addColorStop(.1, dia ? 'rgba(255,160,90,.35)' : 'rgba(200,215,255,.22)'); lua.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = lua; g.fillRect(0, 0, W_, H_);
   // nuvens finas
-  for (let k = 0; k < 9; k++) { const cx = R() * W_, cy = hz * (.25 + R() * .6), rw = W_ * (.12 + R() * .2); const n = g.createRadialGradient(cx, cy, 0, cx, cy, rw); n.addColorStop(0, 'rgba(150,165,205,.07)'); n.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = n; g.save(); g.translate(cx, cy); g.scale(1, .22); g.translate(-cx, -cy); g.fillRect(cx - rw, cy - rw, rw * 2, rw * 2); g.restore(); }
+  for (let k = 0; k < 9; k++) { const cx = R() * W_, cy = hz * (.25 + R() * .6), rw = W_ * (.12 + R() * .2); const n = g.createRadialGradient(cx, cy, 0, cx, cy, rw); n.addColorStop(0, dia ? 'rgba(255,190,150,.13)' : 'rgba(150,165,205,.07)'); n.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = n; g.save(); g.translate(cx, cy); g.scale(1, .22); g.translate(-cx, -cy); g.fillRect(cx - rw, cy - rw, rw * 2, rw * 2); g.restore(); }
   // prédios: 4 camadas, das mais distantes (claras, azuladas, desfocadas) às mais próximas (escuras, nítidas)
-  const CAM = [[.10, '#2a3556', 60, 1.6, .35], [.19, '#182341', 42, 1.0, .55], [.33, '#0d1528', 26, .5, .8], [.52, '#060a14', 15, 0, 1]];
+  const CAM = dia ? [[.10, '#b5705a', 60, 1.6, .12], [.19, '#7a4a4c', 42, 1.0, .2], [.33, '#40293a', 26, .5, .3], [.52, '#1c1422', 15, 0, .4]]
+    : [[.10, '#2a3556', 60, 1.6, .35], [.19, '#182341', 42, 1.0, .55], [.33, '#0d1528', 26, .5, .8], [.52, '#060a14', 15, 0, 1]];
   CAM.forEach(([alt, cor, n, blur, luz], ci) => {
     const alvo = g, aux = document.createElement('canvas'); aux.width = W_; aux.height = H_; g = aux.getContext('2d');
     for (let k = 0; k < n; k++) {
@@ -257,17 +260,17 @@ function pintarCidade(g, W_, H_, semente) {
     }
     g = alvo; g.save(); if (blur) g.filter = 'blur(' + blur + 'px)'; g.drawImage(aux, 0, 0); g.restore();
     // névoa entre as camadas (profundidade)
-    const nv = g.createLinearGradient(0, hz - H_ * .05, 0, hz + H_ * (.25 + ci * .13)); nv.addColorStop(0, 'rgba(70,85,130,0)'); nv.addColorStop(1, 'rgba(40,50,85,' + (.22 - ci * .05) + ')'); g.fillStyle = nv; g.fillRect(0, 0, W_, H_);
+    const nv = g.createLinearGradient(0, hz - H_ * .05, 0, hz + H_ * (.25 + ci * .13)); nv.addColorStop(0, dia ? 'rgba(255,170,110,0)' : 'rgba(70,85,130,0)'); nv.addColorStop(1, (dia ? 'rgba(230,140,95,' : 'rgba(40,50,85,') + (.22 - ci * .05) + ')'); g.fillStyle = nv; g.fillRect(0, 0, W_, H_);
   });
   // lá embaixo: ruas e luzes desfocadas (bokeh), como visto do alto
   const alvo2 = g, aux2 = document.createElement('canvas'); aux2.width = W_; aux2.height = H_; g = aux2.getContext('2d'); g.globalCompositeOperation = 'lighter';
-  for (let k = 0; k < 260; k++) { const y = H_ * (.72 + R() * .3), x = R() * W_, r = (1.5 + R() * 5) * H_ / 520 * (.5 + (y / H_ - .7) * 2.2), c = R();
+  for (let k = 0; k < (dia ? 90 : 260); k++) { const y = H_ * (.72 + R() * .3), x = R() * W_, r = (1.5 + R() * 5) * H_ / 520 * (.5 + (y / H_ - .7) * 2.2), c = R();
     g.fillStyle = c < .5 ? 'rgba(255,190,110,' + (.10 + R() * .25) + ')' : c < .75 ? 'rgba(255,90,70,' + (.08 + R() * .2) + ')' : c < .9 ? 'rgba(200,225,255,' + (.08 + R() * .2) + ')' : 'rgba(90,220,200,' + (.08 + R() * .18) + ')';
     g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fill(); }
   for (let k = 0; k < 5; k++) { const y = H_ * (.78 + k * .05), gr2 = g.createLinearGradient(0, y, W_, y + H_ * .04 * (R() - .5)); gr2.addColorStop(0, 'rgba(255,200,120,0)'); gr2.addColorStop(.5, 'rgba(255,200,120,.10)'); gr2.addColorStop(1, 'rgba(255,200,120,0)'); g.strokeStyle = gr2; g.lineWidth = 2 + k; g.beginPath(); g.moveTo(0, y); g.lineTo(W_, y + H_ * .06 * (R() - .5)); g.stroke(); }
   g = alvo2; g.save(); g.filter = 'blur(' + Math.max(2, H_ / 220) + 'px)'; g.globalCompositeOperation = 'lighter'; g.drawImage(aux2, 0, 0); g.restore();
   // vinheta
-  const vg = g.createRadialGradient(W_ / 2, H_ / 2, H_ * .3, W_ / 2, H_ / 2, Math.max(W_, H_) * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = vg; g.fillRect(0, 0, W_, H_);
+  const vg = g.createRadialGradient(W_ / 2, H_ / 2, H_ * .3, W_ / 2, H_ / 2, Math.max(W_, H_) * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, dia ? 'rgba(10,5,15,.6)' : 'rgba(0,0,0,.55)'); g.fillStyle = vg; g.fillRect(0, 0, W_, H_);
 }
 const CARREGANDO = [];
 function por(...args) { const pr = por_(...args); CARREGANDO.push(pr); return pr; }
@@ -310,7 +313,7 @@ async function montarAmbiente() {
   led(GX * U / 2, ALT_PAREDE - .6, .45, GX * U, .15); led(.45, ALT_PAREDE - .6, GY * U / 2, .15, GY * U);
   led(GX * U / 2, .4, .45, GX * U, .15); led(.45, .4, GY * U / 2, .15, GY * U);
   // cidade lá fora (atrás dos janelões): metrópole neon vista de um andar alto
-  const ct = document.createElement('canvas'); ct.width = 1024; ct.height = 512; pintarCidade(ct.getContext('2d'), 1024, 512, 7);
+  const ct = document.createElement('canvas'); ct.width = 1024; ct.height = 512; pintarCidade(ct.getContext('2d'), 1024, 512, 7, ehDia());
   const cidade = new THREE.CanvasTexture(ct); cidade.colorSpace = THREE.SRGBColorSpace;
   const fora = new THREE.Mesh(new THREE.PlaneGeometry(GY * U - 1, ALT_PAREDE - 1.2), new THREE.MeshBasicMaterial({ map: cidade }));
   fora.position.set(-1.2, (ALT_PAREDE - 1.2) / 2 + .3, GY * U / 2); fora.rotation.y = Math.PI / 2; scene.add(fora);
@@ -320,8 +323,8 @@ async function montarAmbiente() {
   // telão do ranking do mês (ao vivo)
   telaoCv = document.createElement('canvas'); telaoCv.width = 640; telaoCv.height = 400;
   telaoTex = new THREE.CanvasTexture(telaoCv); telaoTex.colorSpace = THREE.SRGBColorSpace;
-  caixa3(12.8, 8.3, .5, '#05070b', 58, 3.35, .45, { metalness: .6, roughness: .3 });
-  const telao = new THREE.Mesh(new THREE.PlaneGeometry(12, 7.5), new THREE.MeshBasicMaterial({ map: telaoTex, toneMapped: false })); telao.position.set(58, 7.5, .75); scene.add(telao);
+  caixa3(13.6, 8.9, .5, '#05070b', TELAO[0], TELAO[1] - 4.45, .45, { metalness: .6, roughness: .3 });
+  const telao = new THREE.Mesh(new THREE.PlaneGeometry(12.8, 8), new THREE.MeshBasicMaterial({ map: telaoTex, toneMapped: false })); telao.position.set(TELAO[0], TELAO[1], .75); scene.add(telao);
   desenharTelao();
 }
 
@@ -420,7 +423,8 @@ function montarSofaXYZ(x, z, rot) {
   for (const i of [-1, 1]) for (const k of [0, 1]) { const q = B(1.5, 1.5, .5, ciano, i * (L / 2 - 2) + (k ? -i * 1.6 : 0), 1.7, -P / 2 + 1.6); q.rotation.z = i * .12; }  // almofadas
   g.position.copy(W(x, z)); g.rotation.y = rot * Math.PI / 180; scene.add(g); return g;
 }
-function pintarCeu() { const c = document.getElementById('ceu'); if (!c) return; c.width = innerWidth; c.height = innerHeight; pintarCidade(c.getContext('2d'), c.width, c.height, 11); }
+function pintarCeu() { const c = document.getElementById('ceu'); if (!c) return; c.width = innerWidth; c.height = innerHeight; pintarCidade(c.getContext('2d'), c.width, c.height, 11, ehDia()); }
+setInterval(pintarCeu, 30 * 60000);
 pintarCeu(); addEventListener('resize', pintarCeu);
 async function montarMoveis() {
   // cozinha no canto do fundo
@@ -431,8 +435,8 @@ async function montarMoveis() {
   // aquário e portal na parede do fundo
   montarAquario(2.75, .08, 1.7, .55);
   montarPortal(6.45, .5);
-  por('v:Plant_03', 4.75, .25); por('v:Plant_03', 6.85, 3.6); por('v:Printer', 5.9, .3); por('v:Traschcan_Recycle_Blue', 5.55, .25);
-  por('v:Wall_Clock_01', 4.35, .04, 0, { y: 8 });
+  por('v:Plant_03', 6.85, 3.6); por('v:Printer', 5.0, .3); por('v:Traschcan_Recycle_Blue', 5.5, .25);
+  
   // área de descanso (frente, perto dos janelões)
   por('rugRound', 1.25, 4.55, 0, { cor: '#1e3a8a', so: /carpet/i });
   montarSofaXYZ(.5, 4.6, 90);
@@ -683,7 +687,7 @@ function assentoDe(p, i) {
 const CEL = 1, NX = (GX + VIPX) * U / CEL | 0, NZ = GY * U / CEL | 0;
 let BLOQ = null;
 function montarGrade() {
-  const g = new Uint8Array(NX * NZ), bx = new THREE.Box3(), FOLGA = 1.1;
+  const g = new Uint8Array(NX * NZ), bx = new THREE.Box3(), FOLGA = .55;
   scene.children.forEach(o => {
     if (o.isLight || o.isSprite || o.isCamera) return;
     bx.setFromObject(o); if (bx.isEmpty()) return;
@@ -837,7 +841,7 @@ function desenharLista() {
   $('#lista').innerHTML = equipe.filter(p => p.papel !== 'advogado' || online.has(p.id)).map(p => {
     const e = estadoDe(p), cls = e === 'mesa' ? 'on' : e === 'almoco' ? 'alm' : '';
     const txt = p.papel === 'advogado' ? 'no hall' : e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
-    const c = CONQ[p.id], med = c && medalhaDe(c), extra = c ? (c.sequencia >= 2 ? ` <span title="${c.sequencia} dias seguidos cumprindo a missão">🔥${c.sequencia}</span>` : '') + (med ? ` <span title="${med[2]}">${med[1]}</span>` : '') + (c.desafios ? ` <span title="${c.desafios} desafio(s) vencido(s)">⚡${c.desafios}</span>` : '') : '';
+    const c = CONQ[p.id], extra = c ? (c.sequencia >= 2 ? ` <span title="${c.sequencia} dias seguidos cumprindo a missão">🔥${c.sequencia}</span>` : '') + (c.desafios ? ` <span title="${c.desafios} desafio(s) vencido(s)">⚡${c.desafios}</span>` : '') : '';
     return `<div class="pessoa"><i class="${cls}"></i>${esc(p.papel === 'advogado' ? nomeExib(p) : p.nome)}${p.papel === 'admin' ? ' 👑' : p.papel === 'advogado' ? ' ⭐' : ''}${extra}<small>${txt}</small></div>`;
   }).join('');
 }
@@ -914,6 +918,7 @@ gl.addEventListener('click', e => {
   let melhor = null, dmin = 1e9;
   atores.forEach(a => { const [x, y] = telaDe(a.x * U, (a.sentado && !a.andando ? SENTA : 0) + AV_ALT / 2, a.y * U), d = Math.hypot(mx - x, my - y); if (d < dmin) { dmin = d; melhor = a; } });
   const m = $('#menu');
+  { const [tx, ty] = telaDe(TELAO[0], TELAO[1], .75); if (Math.abs(mx - tx) < 70 * ZOOM && Math.abs(my - ty) < 45 * ZOOM) { abrirRanking(); return; } }
   const minha = mesaDe[eu.id];
   if (minha != null) { const [px, py] = telaDe(...pcDe(minha)), dpc = Math.hypot(mx - px, my - py);
     if (dpc < 48 * ZOOM && (!melhor || melhor.id === eu.id || dpc < dmin)) { abrirPC(); return; } }
@@ -922,7 +927,7 @@ gl.addEventListener('click', e => {
     // clicar no chão: anda até lá
     const eu_ = atores.get(eu.id); if (!eu_) return;
     const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(mx / r.width * 2 - 1, -(my / r.height) * 2 + 1), camera);
-    const pt = new THREE.Vector3(); if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pt)) return;
+    const pt = new THREE.Vector3(); if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -AV_ALT * .5), pt)) return;
     let x = pt.x / U, y = pt.z / U; const lim = y < 3 ? GX + VIPX - .25 : GX - .25;
     if (x < .2 || y < .2 || x > lim || y > GY - .2) return;
     if (BLOQ) { const c = livreMaisPerto(celDe([x, y])); if (!c) return; if (!livre(...celDe([x, y]))) { x = (c[0] + .5) * CEL / U; y = (c[1] + .5) * CEL / U; } }
@@ -977,44 +982,37 @@ $('#hor-salvar').onclick = async () => {
 
 /* ---------- metas na mesa ---------- */
 let liderId = null;
+const TELAO = [52.5, 7.6];   // x e altura do centro do telão na parede dos fundos
 let vendasMes = [], telaoCv = null, telaoTex = null, CONQ = {};
+function rankingMes() { return [...vendasMes].filter(r => (equipe.find(p => p.id === r.id) || {}).papel === 'atendente').sort((a, b) => Number(b.vendas) - Number(a.vendas)); }
 function desenharTelao() {
   if (!telaoCv) return; const g = telaoCv.getContext('2d'), W2 = 640, H2 = 400;
-  const fundo = g.createLinearGradient(0, 0, 0, H2); fundo.addColorStop(0, '#04122e'); fundo.addColorStop(1, '#020611'); g.fillStyle = fundo; g.fillRect(0, 0, W2, H2);
-  g.strokeStyle = '#22d3ee'; g.lineWidth = 4; g.strokeRect(4, 4, W2 - 8, H2 - 8);
-  g.fillStyle = '#7dd3fc'; g.font = '800 30px Inter, sans-serif'; g.fillText('🏆 RANKING DO MÊS', 24, 50);
-  g.fillStyle = '#93a9c9'; g.font = '600 16px Inter, sans-serif'; g.fillText(new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase(), 380, 48);
-  const nomeDe = id => (equipe.find(p => p.id === id) || {}).nome || '—';
-  const rk = [...vendasMes].filter(r => (equipe.find(p => p.id === r.id) || {}).papel === 'atendente').sort((a, b) => Number(b.vendas) - Number(a.vendas)).slice(0, 5);
-  const max = Math.max(1, ...rk.map(r => Number(r.vendas)));
-  rk.forEach((r, i) => {
-    const y = 92 + i * 60, v = Number(r.vendas), c = CONQ[r.id] || {};
-    g.fillStyle = ['#fbbf24', '#e5e7eb', '#d97706', '#93a9c9', '#93a9c9'][i]; g.font = '800 28px Inter, sans-serif'; g.fillText((i + 1) + 'º', 24, y + 30);
-    g.fillStyle = '#eaf3ff'; g.font = '700 24px Inter, sans-serif'; g.fillText(nomeDe(r.id) + (c.sequencia >= 2 ? '  🔥' + c.sequencia : ''), 80, y + 22);
-    g.fillStyle = 'rgba(30,144,255,.18)'; g.fillRect(80, y + 32, 440, 14);
-    const gr = g.createLinearGradient(80, 0, 520, 0); gr.addColorStop(0, '#1e90ff'); gr.addColorStop(1, '#22d3ee'); g.fillStyle = gr; g.fillRect(80, y + 32, 440 * v / max, 14);
-    g.fillStyle = '#fde68a'; g.font = '800 26px Inter, sans-serif'; g.fillText(String(v), 540, y + 44);
-  });
-  if (!rk.length) { g.fillStyle = '#93a9c9'; g.font = '600 22px Inter, sans-serif'; g.fillText('Aguardando as primeiras vendas do mês…', 24, 200); }
-  telaoTex.needsUpdate = true;
+  g.fillStyle = '#030b1f'; g.fillRect(0, 0, W2, H2); g.strokeStyle = '#22d3ee'; g.lineWidth = 6; g.strokeRect(3, 3, W2 - 6, H2 - 6);
+  g.fillStyle = '#7dd3fc'; g.font = '800 44px Inter, sans-serif'; g.textAlign = 'left'; g.fillText('🏆 RANKING', 26, 62);
+  const nomeDe = id => (equipe.find(p => p.id === id) || {}).nome || '—', rk = rankingMes().slice(0, 4);
+  rk.forEach((r, i) => { const y = 132 + i * 68;
+    g.fillStyle = ['#fbbf24', '#e5e7eb', '#d97706', '#93a9c9'][i]; g.font = '800 46px Inter, sans-serif'; g.textAlign = 'left'; g.fillText((i + 1) + 'º ' + nomeDe(r.id), 26, y);
+    g.fillStyle = '#fde68a'; g.textAlign = 'right'; g.fillText(String(Number(r.vendas)), W2 - 26, y); });
+  if (!rk.length) { g.fillStyle = '#93a9c9'; g.font = '600 30px Inter, sans-serif'; g.textAlign = 'left'; g.fillText('Sem vendas no mês ainda', 26, 200); }
+  g.textAlign = 'left'; telaoTex.needsUpdate = true;
+}
+// ranking completo em janela (clique no telão ou no botão 🏆)
+function abrirRanking() {
+  const q = $('#quest'), rk = rankingMes(), top = Math.max(1, ...rk.map(r => Number(r.vendas))), nomeDe = id => (equipe.find(p => p.id === id) || {}).nome || '—';
+  q.hidden = false;
+  q.innerHTML = `<div class="q"><div class="selo"><span>🏆</span></div><div class="tipo">Ranking de ${new Date().toLocaleDateString('pt-BR', { month: 'long' })}</div><h2>Quem está na frente</h2>
+    ${rk.map((r, i) => { const c = CONQ[r.id] || {}; return `<div class="obj ${i === 0 && Number(r.vendas) ? 'ok' : ''}" style="${r.id === eu.id ? 'background:rgba(30,144,255,.15);border-radius:6px;padding:2px 6px' : ''}"><span>${['🥇', '🥈', '🥉'][i] || (i + 1) + 'º'} ${esc(nomeDe(r.id))}${i === 0 && Number(r.vendas) ? ' 👑' : ''}${c.sequencia >= 2 ? ` <small title="dias seguidos cumprindo a missão">🔥${c.sequencia}</small>` : ''}${c.desafios ? ` <small title="desafios vencidos">⚡${c.desafios}</small>` : ''}</span><b>${Number(r.vendas)}</b></div><div class="barra"><i style="width:${Number(r.vendas) / top * 100}%"></i></div>`; }).join('') || '<div class="desc">Ainda sem vendas neste mês.</div>'}
+    <div class="acoes"><button data-q="fechar">Fechar</button></div></div>`;
+  q.onclick = ev => { if (ev.target.closest('[data-q]') || ev.target === q) q.hidden = true; };
 }
 /* ---------- conquistas: sequência de missões, medalhas e selo na mesa ---------- */
-const MEDALHAS = [[500, '💎', 'Diamante: 500 clientes'], [250, '🥇', 'Ouro: 250 clientes'], [100, '🥈', 'Prata: 100 clientes'], [50, '🥉', 'Bronze: 50 clientes'], [10, '🎖️', '10 clientes']];
-const medalhaDe = c => { const m = MEDALHAS.find(([n]) => (c.clientes || 0) >= n); return m ? m : null; };
 let seloDz = [];
 async function carregarConquistas() {
   const { data } = await sb.rpc('conquistas_equipe'); CONQ = {}; (data || []).forEach(r => CONQ[r.atendente_id] = r);
-  seloDz.forEach(m => scene.remove(m)); seloDz = [];
-  Object.values(CONQ).forEach(c => {
-    const i = mesaDe[c.atendente_id]; if (i == null) return; const [x, z] = DESKS[i];
-    const med = medalhaDe(c), txt = (c.sequencia >= 2 ? '🔥' + c.sequencia : '') + (med ? ' ' + med[1] : '');
-    if (!txt.trim()) return;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto(txt.trim(), 192, 64, '800 40px Inter, sans-serif', '#fff7d6', '#f97316'), transparent: true }));
-    sp.scale.set(5.4, 1.8, 1); sp.position.set(x * U - 3.2, 5.6, z * U + 2.2); scene.add(sp); seloDz.push(sp);
-  });
   desenharLista(); desenharTelao();
 }
 setInterval(carregarConquistas, 300000);
+document.getElementById('rk-btn').onclick = () => abrirRanking();
 function aplicarMetas() {
   nivelMesa = {};
   vendasMes.forEach(r => { const f = FAIXAS[r.tipo] || FAIXAS.estagiario, nv = f.filter(x => Number(r.vendas) >= x).length; if (mesaDe[r.id] != null) nivelMesa[mesaDe[r.id]] = nv; });
@@ -1104,8 +1102,8 @@ function abrirDesafio() {
   }
   q.innerHTML = `<div class="q" style="border-color:rgba(239,68,68,.7);box-shadow:0 0 0 4px rgba(2,8,22,.9),0 0 0 5px rgba(239,68,68,.45),0 0 50px rgba(239,68,68,.35)"><div class="selo" style="background:linear-gradient(160deg,#fecaca,#ef4444 45%,#7f1d1d)"><span style="color:#fde047">⚡</span></div>
     <div class="tipo" style="color:#fca5a5">Desafio relâmpago · termina em ${hh ? hh + 'h ' : ''}${mm}min</div><h2>${esc(d.titulo)}</h2><div class="desc">${esc(d.descricao || '')}</div>
-    ${eu.papel === 'atendente' && meu ? `<h4>Objetivos</h4>${obj('Seguros prestamistas', meu.seguros, d.meta_seguro)}${obj('Revisões de juros', meu.revisionais, d.meta_revisional)}${obj('Aumentos de margem', meu.margens, d.meta_margem)}`
-      : `<h4>Equipe</h4>${painelDz.map(r => `<div class="obj ${r.cumpriu ? 'ok' : ''}"><span>${r.cumpriu ? '✔' : '◇'} ${esc(r.atendente)}</span><b>${r.seguros}/${d.meta_seguro}${d.meta_revisional ? ' · ' + r.revisionais + '/' + d.meta_revisional : ''}${d.meta_margem ? ' · ' + r.margens + '/' + d.meta_margem : ''}</b></div>`).join('')}`}
+    ${eu.papel === 'atendente' && meu ? `<h4>Objetivos</h4>${obj('Seguros prestamistas', meu.seguros, meu.meta_seguro ?? d.meta_seguro)}${obj('Revisões de juros', meu.revisionais, meu.meta_revisional ?? d.meta_revisional)}${obj('Aumentos de margem', meu.margens, meu.meta_margem ?? d.meta_margem)}`
+      : `<h4>Equipe</h4>${painelDz.map(r => `<div class="obj ${r.cumpriu ? 'ok' : ''}"><span>${r.cumpriu ? '✔' : '◇'} ${esc(r.atendente)}</span><b>${r.seguros}/${r.meta_seguro ?? d.meta_seguro}${(r.meta_revisional ?? d.meta_revisional) ? ' · ' + r.revisionais + '/' + (r.meta_revisional ?? d.meta_revisional) : ''}${(r.meta_margem ?? d.meta_margem) ? ' · ' + r.margens + '/' + (r.meta_margem ?? d.meta_margem) : ''}</b></div>`).join('')}`}
     <h4>Prêmio</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(d.premio)}</b><small>soma nas premiações do mês · pago junto com a meta</small></div></div>
     ${meu?.cumpriu ? '<div class="completa">✦ DESAFIO CUMPRIDO ✦</div>' : ''}<div class="acoes"><button data-q="fechar">${meu?.cumpriu ? 'Fechar' : 'Bora!'}</button></div></div>`;
   q.onclick = e => { if (e.target.closest('[data-q]') || e.target === q) q.hidden = true; };
@@ -1172,6 +1170,7 @@ async function carregarEquipe() {
 </script>
 <button id="quest-btn" hidden title="Missão diária"><span class="hex"></span><b>!</b></button>
 <button id="dz-btn" hidden title="Desafio relâmpago"><span class="hex"></span><b>⚡</b></button>
+<button id="rk-btn" title="Ranking do mês" style="position:fixed;left:18px;top:126px;z-index:6;width:44px;height:44px;border:1px solid rgba(34,211,238,.6);border-radius:12px;background:rgba(3,10,26,.85);font-size:22px;cursor:pointer">🏆</button>
 <div id="quest" hidden></div>
 </body>
 </html>

@@ -418,6 +418,10 @@ body.embed{background:transparent}
             <label style="font-size:12px;color:var(--suave)">Seguro prestamista <input id="gm-seg" type="number" min="0" value="0" style="width:64px"></label>
             <label style="font-size:12px;color:var(--suave)">Revisão de juros <input id="gm-rev" type="number" min="0" value="0" style="width:64px"></label>
             <label style="font-size:12px;color:var(--suave)">Aumento de margem <input id="gm-mar" type="number" min="0" value="0" style="width:64px"></label>
+<span style="flex-basis:100%;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;color:#fde68a">👔 Meta dos CLT (deixe vazio = igual à de cima, que vale para estagiário):
+              <label style="font-size:12px;color:var(--suave)">Seguro <input id="gm-seg-clt" type="number" min="0" placeholder="igual" style="width:64px"></label>
+              <label style="font-size:12px;color:var(--suave)">Revisão <input id="gm-rev-clt" type="number" min="0" placeholder="igual" style="width:64px"></label>
+              <label style="font-size:12px;color:var(--suave)">Margem <input id="gm-mar-clt" type="number" min="0" placeholder="igual" style="width:64px"></label></span>
             <label style="font-size:12px;color:var(--suave)">Prêmio R$ <input id="gm-pre" inputmode="decimal" value="20" style="width:70px"></label>
             <button class="btn peq">+ Criar missão</button>
           </form>
@@ -436,6 +440,10 @@ body.embed{background:transparent}
             <label style="font-size:12px;color:var(--suave)">Seguro prestamista <input id="gdz-seg" type="number" min="0" value="3" style="width:64px"></label>
             <label style="font-size:12px;color:var(--suave)">Revisão <input id="gdz-rev" type="number" min="0" value="0" style="width:64px"></label>
             <label style="font-size:12px;color:var(--suave)">Aumento de margem <input id="gdz-mar" type="number" min="0" value="0" style="width:64px"></label>
+<span style="flex-basis:100%;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;color:#fde68a">👔 Meta dos CLT (deixe vazio = igual à de cima, que vale para estagiário):
+              <label style="font-size:12px;color:var(--suave)">Seguro <input id="gdz-seg-clt" type="number" min="0" placeholder="igual" style="width:64px"></label>
+              <label style="font-size:12px;color:var(--suave)">Revisão <input id="gdz-rev-clt" type="number" min="0" placeholder="igual" style="width:64px"></label>
+              <label style="font-size:12px;color:var(--suave)">Margem <input id="gdz-mar-clt" type="number" min="0" placeholder="igual" style="width:64px"></label></span>
             <label style="font-size:12px;color:var(--suave)">Prêmio R$ <input id="gdz-pre" inputmode="decimal" value="30" style="width:70px"></label>
             <label style="font-size:12px;color:var(--suave)">Vale até <input id="gdz-fim" type="time" value="18:00" style="width:100px;color-scheme:dark"></label>
             <label style="font-size:12px;color:var(--suave)">Para <select id="gdz-para"><option value="">⚡ Todas</option></select></label>
@@ -593,7 +601,7 @@ body.embed{background:transparent}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="presenca.js?v=20261117n"></script>
-<script src="comissao.js?v=1"></script>
+<script src="comissao.js?v=2"></script>
 <script>
 /* ================= FUNDO 3D (galáxia de partículas conectadas) ================= */
 (() => {
@@ -901,7 +909,7 @@ const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Da
 const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
 async function clientesDoMes(ini, fim) {
   let tudo = [], de = 0;
-  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,seguro_det,seguro_det_fonte,seguro_det_em').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,seguro_det,seguro_det_fonte,seguro_det_em').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
 function aplicarRegra(regra, linhas) { return XYZComissao.aplicarRegra(regra, linhas); }
@@ -1041,17 +1049,19 @@ $('#gz-conectar').onclick = async () => {
 };
 const CFG_URL = () => (window.CRM_CONFIG || {}).SUPABASE_URL;
 let gmEditando = null;
+const cltVal = id => { const v = $(id).value.trim(); return v === '' ? null : Math.max(0, parseInt(v) || 0); };
+const cltTxt = m => { const p = [m.meta_seguro_clt != null && m.meta_seguro_clt + ' prestamista', m.meta_revisional_clt != null && m.meta_revisional_clt + ' revisão', m.meta_margem_clt != null && m.meta_margem_clt + ' margem'].filter(Boolean); return p.length ? `<br><small style="color:#fde68a">👔 CLT: ${p.join(' + ')}</small>` : ''; };
 const abrirTesteMissao = d => window.open('escritorio.html?missao=1&teste=1&dia=' + d, '_blank');
 async function carregarMissoesAdm() {
   if (!$('#gm-dia').value) { const a = new Date(); a.setDate(a.getDate() + 1); $('#gm-dia').value = a.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
   if (!$('#gm-teste').value) $('#gm-teste').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
   const { data } = await sb.from('missoes').select('*').order('dia', { ascending: false }).limit(60);
   const obj = m => [m.meta_seguro && m.meta_seguro + ' prestamista', m.meta_revisional && m.meta_revisional + ' revisão', m.meta_margem && m.meta_margem + ' aumento de margem'].filter(Boolean).join(' + ');
-  $('#gm-lista').innerHTML = (data || []).map(m => `<tr><td>${new Date(m.dia + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td><td><b>${esc(m.titulo)}</b><br><small style="color:var(--suave)">${esc(m.descricao || '')}</small></td><td>${obj(m) || '—'}</td><td class="num">${brl(m.recompensa)}</td>
+  $('#gm-lista').innerHTML = (data || []).map(m => `<tr><td>${new Date(m.dia + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td><td><b>${esc(m.titulo)}</b><br><small style="color:var(--suave)">${esc(m.descricao || '')}</small></td><td>${obj(m) || '—'}${cltTxt(m)}</td><td class="num">${brl(m.recompensa)}</td>
     <td style="white-space:nowrap"><button class="btn sec peq" data-medit="${m.id}">✏️</button> <button class="btn sec peq" data-mver="${m.dia}">👁 Testar</button> <button class="x" title="Apagar" data-mdel="${m.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--suave)">Nenhuma missão cadastrada.</td></tr>';
   $$('#gm-lista [data-mver]').forEach(b => b.onclick = () => abrirTesteMissao(b.dataset.mver));
   $$('#gm-lista [data-medit]').forEach(b => b.onclick = () => { const m = data.find(x => String(x.id) === b.dataset.medit); if (!m) return;
-    gmEditando = m.id; $('#gm-dia').value = m.dia; $('#gm-tit').value = m.titulo; $('#gm-desc').value = m.descricao || ''; $('#gm-seg').value = m.meta_seguro; $('#gm-rev').value = m.meta_revisional; $('#gm-mar').value = m.meta_margem || 0;
+    gmEditando = m.id; $('#gm-dia').value = m.dia; $('#gm-tit').value = m.titulo; $('#gm-desc').value = m.descricao || ''; $('#gm-seg').value = m.meta_seguro; $('#gm-rev').value = m.meta_revisional; $('#gm-mar').value = m.meta_margem || 0; $('#gm-seg-clt').value = m.meta_seguro_clt ?? ''; $('#gm-rev-clt').value = m.meta_revisional_clt ?? ''; $('#gm-mar-clt').value = m.meta_margem_clt ?? '';
     $('#gm-pre').value = String(m.recompensa).replace('.', ','); $('#gm-form button').textContent = '💾 Salvar alteração'; $('#gm-form').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   $$('#gm-lista [data-mdel]').forEach(b => b.onclick = async () => { if (!confirm('Apagar esta missão?')) return; const { error } = await sb.from('missoes').delete().eq('id', b.dataset.mdel); if (error) return alert(traduz(error)); carregarMissoesAdm(); });
 }
@@ -1073,7 +1083,7 @@ async function carregarDesafiosAdm() {
     }
     const obj = [d.meta_seguro && d.meta_seguro + ' prestamista', d.meta_revisional && d.meta_revisional + ' revisão', d.meta_margem && d.meta_margem + ' margem'].filter(Boolean).join(' + ');
     const alvo = d.atendente_id ? (equipe.find(p => p.id === d.atendente_id) || {}).nome : null;
-    linhas.push(`<tr><td><b>${esc(d.titulo)}</b> ${ativo ? '<span class="pill ok">ao vivo</span>' : ''}${alvo ? `<br><small style="color:#fbbf24">🎯 só ${esc(alvo)}</small>` : ''}</td><td>${new Date(d.inicio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} → ${new Date(d.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td>${obj}</td><td class="num">${brl(d.premio)}</td><td>${ok.length ? esc(ok.join(', ')) : '—'}</td>
+    linhas.push(`<tr><td><b>${esc(d.titulo)}</b> ${ativo ? '<span class="pill ok">ao vivo</span>' : ''}${alvo ? `<br><small style="color:#fbbf24">🎯 só ${esc(alvo)}</small>` : ''}</td><td>${new Date(d.inicio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} → ${new Date(d.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td>${obj}${cltTxt(d)}</td><td class="num">${brl(d.premio)}</td><td>${ok.length ? esc(ok.join(', ')) : '—'}</td>
       <td style="white-space:nowrap">${ativo ? `<button class="btn sec peq" data-dzen="${d.id}" title="Encerrar agora">⏹</button>` : ''} <button class="x" data-dzdel="${d.id}" title="Apagar">✕</button></td></tr>`);
   }
   $('#gdz-lista').innerHTML = linhas.join('') || '<tr><td colspan="6" style="color:var(--suave)">Nenhum desafio ainda.</td></tr>';
@@ -1097,7 +1107,9 @@ $('#gdz-form').onsubmit = async e => {
   const conta = [seg && 'seguro prestamista', rev && 'revisão', mar && 'aumento de margem'].filter(Boolean);
   const para = $('#gdz-para').value || null;
   const desc = comp ? '🏆 Competição: quem fechar mais' + (conta.length ? ' (' + conta.join(' + ') + ')' : '') + ' até ' + $('#gdz-fim').value + ' leva o prêmio!' : 'Feche ' + partes.join(' + ') + ' até ' + $('#gdz-fim').value + '.';
-  const reg = { atendente_id: para, modo: comp ? 'competicao' : 'meta', titulo: $('#gdz-tit').value.trim(), descricao: desc, meta_seguro: comp ? Math.min(seg, 1) : seg, meta_revisional: comp ? Math.min(rev, 1) : rev, meta_margem: comp ? Math.min(mar, 1) : mar, premio: numBR($('#gdz-pre').value) || 0, fim: fim.toISOString() };
+  const dS = comp ? null : cltVal('#gdz-seg-clt'), dR = comp ? null : cltVal('#gdz-rev-clt'), dM = comp ? null : cltVal('#gdz-mar-clt');
+  const descF = (dS != null || dR != null || dM != null) ? 'Bata a sua meta até ' + $('#gdz-fim').value + ' — veja os objetivos abaixo.' : desc;
+  const reg = { atendente_id: para, meta_seguro_clt: dS, meta_revisional_clt: dR, meta_margem_clt: dM, modo: comp ? 'competicao' : 'meta', titulo: $('#gdz-tit').value.trim(), descricao: descF, meta_seguro: comp ? Math.min(seg, 1) : seg, meta_revisional: comp ? Math.min(rev, 1) : rev, meta_margem: comp ? Math.min(mar, 1) : mar, premio: numBR($('#gdz-pre').value) || 0, fim: fim.toISOString() };
   const { data, error } = await sb.from('desafios').insert(reg).select('id').single();
   if (error) return alert(traduz(error));
   try { XYZPresenca.enviar('desafio', { id: data.id, ...reg }); } catch (e) {}
@@ -1108,11 +1120,12 @@ $('#gm-form').onsubmit = async e => {
   const n = id => Math.max(0, parseInt($(id).value) || 0), seg = n('#gm-seg'), rev = n('#gm-rev'), mar = n('#gm-mar');
   if (!seg && !rev && !mar) return alert('Coloque pelo menos uma quantidade.');
   const partes = [seg && seg + ' clientes de seguro prestamista', rev && rev + ' de revisão de juros', mar && mar + ' de aumento de margem'].filter(Boolean);
-  const desc = $('#gm-desc').value.trim() || 'Feche ' + partes.join(', ').replace(/, ([^,]*)$/, ' e $1') + ' hoje.';
-  const reg = { dia: $('#gm-dia').value, titulo: $('#gm-tit').value.trim(), descricao: desc, meta_seguro: seg, meta_revisional: rev, meta_margem: mar, recompensa: numBR($('#gm-pre').value) || 0 };
+  const cS = cltVal('#gm-seg-clt'), cR = cltVal('#gm-rev-clt'), cM = cltVal('#gm-mar-clt'), temClt = cS != null || cR != null || cM != null;
+  const desc = $('#gm-desc').value.trim() || (temClt ? 'Bata os objetivos de hoje — veja a sua meta logo abaixo.' : 'Feche ' + partes.join(', ').replace(/, ([^,]*)$/, ' e $1') + ' hoje.');
+  const reg = { dia: $('#gm-dia').value, titulo: $('#gm-tit').value.trim(), descricao: desc, meta_seguro: seg, meta_revisional: rev, meta_margem: mar, meta_seguro_clt: cS, meta_revisional_clt: cR, meta_margem_clt: cM, recompensa: numBR($('#gm-pre').value) || 0 };
   const { error } = gmEditando ? await sb.from('missoes').update(reg).eq('id', gmEditando) : await sb.from('missoes').insert(reg);
   if (error) return alert(traduz(error));
-  toast(gmEditando ? '📜 Missão atualizada!' : '📜 Missão criada!'); gmEditando = null; $('#gm-form button').textContent = '+ Criar missão'; $('#gm-tit').value = ''; $('#gm-desc').value = ''; carregarMissoesAdm();
+  toast(gmEditando ? '📜 Missão atualizada!' : '📜 Missão criada!'); gmEditando = null; $('#gm-form button').textContent = '+ Criar missão'; $('#gm-tit').value = ''; $('#gm-desc').value = ''; ['#gm-seg-clt', '#gm-rev-clt', '#gm-mar-clt'].forEach(i => $(i).value = ''); carregarMissoesAdm();
 };
 $('#g-form-desp').onsubmit = async e => {
   e.preventDefault();
