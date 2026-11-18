@@ -48,6 +48,10 @@ main{max-width:1240px;margin:0 auto;padding:22px}
 .carteira .c-nums>div.sel{border-color:var(--ouro);box-shadow:0 0 0 1px rgba(251,191,36,.5),0 0 18px rgba(251,191,36,.18)}
 .carteira .c-bt{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:14px 0 8px;font-size:13px;color:var(--suave)}
 .carteira .c-bt b{color:var(--ouro);text-transform:uppercase;letter-spacing:.8px;font-size:12px}
+.carteira .c-vis{display:flex;gap:4px;padding:3px;border:1px solid var(--borda);border-radius:10px;background:rgba(2,8,22,.45)}
+.carteira .c-vis button{border:0;background:none;color:var(--suave);font:700 12px Inter,sans-serif;text-transform:uppercase;letter-spacing:.8px;padding:6px 12px;border-radius:7px;cursor:pointer}
+.carteira .c-vis button.on{background:linear-gradient(135deg,#fbbf24,#fde68a);color:#1a1205}
+#w-regioes{margin:0 0 8px}
 .carteira .c-bancos{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
 .carteira .c-bancos .bk{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--borda);border-radius:10px;background:rgba(2,8,22,.45);font-size:13px}
 .carteira .c-bancos .bk i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(251,191,36,.22),rgba(251,191,36,.05));pointer-events:none}
@@ -114,7 +118,8 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
         <div class="tot sel" data-w="tot" title="Clique para ver por banco o total"><span>Total da carteira</span><b id="w-tot">–</b><small id="w-tot-q"></small></div>
       </div>
       <div class="c-meses" id="w-meses"></div>
-      <div class="c-bt"><b>Por banco</b><span id="w-bt-sub"></span></div>
+      <div class="c-bt"><div class="c-vis"><button type="button" data-v="banco" class="on">Por banco</button><button type="button" data-v="estado">Por estado</button></div><span id="w-bt-sub"></span></div>
+      <div class="c-meses" id="w-regioes" hidden></div>
       <div class="c-bancos" id="w-bancos"></div>
     </div>
     <div class="kpis">
@@ -239,16 +244,35 @@ function bancoNome(b) {
   for (const [re, n] of R) if (re.test(x)) return n;
   return x.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()).slice(0, 26);
 }
+// estado pelo DDD do telefone do cliente (aproximação: é o que o cadastro tem)
+const DDD_UF = { SP: [11,12,13,14,15,16,17,18,19], RJ: [21,22,24], ES: [27,28], MG: [31,32,33,34,35,37,38], PR: [41,42,43,44,45,46], SC: [47,48,49], RS: [51,53,54,55], DF: [61], GO: [62,64], TO: [63], MT: [65,66], MS: [67], AC: [68], RO: [69],
+  BA: [71,73,74,75,77], SE: [79], PE: [81,87], AL: [82], PB: [83], RN: [84], CE: [85,88], PI: [86,89], PA: [91,93,94], AM: [92,97], RR: [95], AP: [96], MA: [98,99] };
+const UF_DDD = {}; Object.entries(DDD_UF).forEach(([uf, l]) => l.forEach(d => UF_DDD[d] = uf));
+const UF_NOME = { SP: 'São Paulo', RJ: 'Rio de Janeiro', ES: 'Espírito Santo', MG: 'Minas Gerais', PR: 'Paraná', SC: 'Santa Catarina', RS: 'Rio Grande do Sul', DF: 'Distrito Federal', GO: 'Goiás', TO: 'Tocantins', MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', AC: 'Acre', RO: 'Rondônia',
+  BA: 'Bahia', SE: 'Sergipe', PE: 'Pernambuco', AL: 'Alagoas', PB: 'Paraíba', RN: 'Rio Grande do Norte', CE: 'Ceará', PI: 'Piauí', PA: 'Pará', AM: 'Amazonas', RR: 'Roraima', AP: 'Amapá', MA: 'Maranhão' };
+const UF_REGIAO = { SP: 'Sudeste', RJ: 'Sudeste', ES: 'Sudeste', MG: 'Sudeste', PR: 'Sul', SC: 'Sul', RS: 'Sul', DF: 'Centro-Oeste', GO: 'Centro-Oeste', MT: 'Centro-Oeste', MS: 'Centro-Oeste',
+  TO: 'Norte', AC: 'Norte', RO: 'Norte', PA: 'Norte', AM: 'Norte', RR: 'Norte', AP: 'Norte', BA: 'Nordeste', SE: 'Nordeste', PE: 'Nordeste', AL: 'Nordeste', PB: 'Nordeste', RN: 'Nordeste', CE: 'Nordeste', PI: 'Nordeste', MA: 'Nordeste' };
+function ufDoTelefone(t) { let d = so(t); if (d.length >= 12 && d.startsWith('55')) d = d.slice(2); if (d.startsWith('0')) d = d.replace(/^0+/, ''); return d.length >= 10 ? (UF_DDD[+d.slice(0, 2)] || null) : null; }
+let wVisao = 'banco';
 function bancosCarteira() {
   const real = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   $$('.carteira .c-nums [data-w]').forEach(d => d.classList.toggle('sel', d.dataset.w === wEscopo));
-  const l = W[wEscopo] || [], g = {};
-  l.forEach(c => { const n = bancoNome(c.banco), o = g[n] = g[n] || { n, v: 0, q: 0, sem: 0 }; const v = Number(c.valor) || 0; o.v += v; if (v > 0) o.q++; else o.sem++; });
+  $$('.carteira .c-vis [data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === wVisao));
+  const l = W[wEscopo] || [], g = {}, reg = {}, porEstado = wVisao === 'estado';
+  l.forEach(c => {
+    const uf = porEstado ? ufDoTelefone(c.telefone) : null;
+    const n = porEstado ? (uf ? uf + ' · ' + UF_NOME[uf] : 'Sem DDD no telefone') : bancoNome(c.banco), o = g[n] = g[n] || { n, v: 0, q: 0, sem: 0, r: uf ? UF_REGIAO[uf] : '' };
+    const v = Number(c.valor) || 0; o.v += v; if (v > 0) o.q++; else o.sem++;
+    if (porEstado) { const r = uf ? UF_REGIAO[uf] : 'Sem DDD'; reg[r] = (reg[r] || 0) + v; }
+  });
   const lista = Object.values(g).sort((a, b) => b.v - a.v || b.q - a.q), max = lista.length ? lista[0].v : 0, tot = lista.reduce((x, o) => x + o.v, 0);
-  $('#w-bt-sub').textContent = ({ dia: 'indicados hoje', mes: 'indicados este mês', tot: 'total da carteira' })[wEscopo] + (lista.length ? ' · ' + lista.length + (lista.length === 1 ? ' banco' : ' bancos') : '');
-  $('#w-bancos').innerHTML = lista.map(o => `<div class="bk"><i style="width:${max ? Math.max(2, o.v / max * 100) : 0}%"></i><span>${esc(o.n)}<small>${o.q} ${o.q === 1 ? 'seguro' : 'seguros'}${o.sem ? ' · ' + o.sem + ' sem valor' : ''}${tot ? ' · ' + Math.round(o.v / tot * 100) + '%' : ''}</small></span><b>${real(o.v)}</b></div>`).join('')
+  $('#w-bt-sub').textContent = ({ dia: 'indicados hoje', mes: 'indicados este mês', tot: 'total da carteira' })[wEscopo] + (lista.length ? ' · ' + lista.length + (porEstado ? (lista.length === 1 ? ' estado' : ' estados') + ' · pelo DDD do telefone do cliente' : (lista.length === 1 ? ' banco' : ' bancos')) : '');
+  const rg = $('#w-regioes'); rg.hidden = !porEstado || !lista.length;
+  if (!rg.hidden) rg.innerHTML = 'Por região: ' + Object.entries(reg).sort((a, b) => b[1] - a[1]).map(([r, v]) => `<span class="chip">${esc(r)} <b>${real(v)}</b>${tot ? ' · ' + Math.round(v / tot * 100) + '%' : ''}</span>`).join('');
+  $('#w-bancos').innerHTML = lista.map(o => `<div class="bk"><i style="width:${max ? Math.max(2, o.v / max * 100) : 0}%"></i><span>${esc(o.n)}<small>${o.q} ${o.q === 1 ? 'seguro' : 'seguros'}${o.sem ? ' · ' + o.sem + ' sem valor' : ''}${tot ? ' · ' + Math.round(o.v / tot * 100) + '%' : ''}${o.r ? ' · ' + o.r : ''}</small></span><b>${real(o.v)}</b></div>`).join('')
     || '<span style="color:var(--suave);font-size:13px">Nenhum seguro neste período.</span>';
 }
+$$('.carteira .c-vis [data-v]').forEach(b => b.onclick = () => { wVisao = b.dataset.v; bancosCarteira(); });
 $$('.carteira .c-nums [data-w]').forEach(d => d.onclick = () => { wEscopo = d.dataset.w; bancosCarteira(); });
 let tb; $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(desenhar, 200); };
 ['#f-status', '#f-de', '#f-ate'].forEach(s => $(s).onchange = desenhar);
