@@ -363,6 +363,7 @@ tbody tr:last-child td{border-bottom:0}
           <div class="g-kpi" id="g-res-box"><span>Resultado</span><b id="g-res">–</b><small>comissões − despesas</small></div>
           <div class="g-kpi"><span>Processos</span><b id="g-proc">–</b><small id="g-proc-sub"></small></div>
         </div>
+        <div id="g-alerta-proc" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(239,68,68,.6);background:rgba(239,68,68,.1);font-size:13px"></div>
         <div class="g-kpis prev">
           <div class="g-kpi prev"><span>🧾 A receber dos advogados (previsto)</span><b id="gp-prev">–</b><small id="gp-prev-sub">pelas regras de cada advogado, clientes lançados no mês</small></div>
           <div class="g-kpi prev"><span>📉 Custos previstos do mês</span><b id="gp-cus">–</b><small id="gp-cus-sub"></small></div>
@@ -852,7 +853,7 @@ const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Da
 const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
 async function clientesDoMes(ini, fim) {
   let tudo = [], de = 0;
-  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,pasta_caminho').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
 function aplicarRegra(regra, linhas) {
@@ -874,7 +875,16 @@ function aplicarRegra(regra, linhas) {
   });
   return itens;
 }
+async function alertaProcuracao() {
+  const { data } = await sb.from('clientes').select('nome,advogado,adv_drive,adv_procuracao,pasta_caminho,atendente_id').not('adv_procuracao', 'is', null).not('adv_drive', 'is', null).limit(1000);
+  const ruins = (data || []).filter(c => c.adv_procuracao !== c.adv_drive);
+  const box = $('#g-alerta-proc'); box.hidden = !ruins.length; if (!ruins.length) return;
+  const at = id => (equipe.find(p => p.id === id) || {}).nome || '';
+  box.innerHTML = `<b style="color:#fca5a5">🚨 ${ruins.length} procuração(ões) na pasta do advogado errado</b> — a procuração é de um escritório e a pasta (com os documentos) está no Drive de outro. Confira já:
+    <div class="g-tab" style="margin-top:8px"><table><thead><tr><th>Cliente</th><th>Procuração de</th><th>Está na pasta de</th><th>No CRM</th><th>Atendente</th><th>Caminho</th></tr></thead><tbody>${ruins.map(c => `<tr><td>${esc(c.nome)}</td><td><b>${esc(c.adv_procuracao)}</b></td><td><b style="color:#fca5a5">${esc(c.adv_drive)}</b></td><td>${esc(c.advogado || '')}</td><td>${esc(at(c.atendente_id))}</td><td><small style="color:var(--suave)">${esc(c.pasta_caminho || '')}</small></td></tr>`).join('')}</tbody></table></div>`;
+}
 async function calcularPrevisoes() {
+  try { alertaProcuracao(); } catch (e) {}
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim);
@@ -901,11 +911,8 @@ function desenharReceber() {
     (DIVERGE.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-div">⚠️ ${DIVERGE.length} cliente(s) com advogado diferente no Drive — ver</span>` : '');
   const bd = $('#ga-div'); if (bd) bd.onclick = () => {
     $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px;color:#fde68a">⚠️ Advogado no CRM diferente da pasta no Drive</h4>
-      <div class="g-linha"><button class="btn peq" id="ga-corr-todos" type="button">Corrigir todos para o advogado do Drive</button><small style="color:var(--suave)">a pasta/procuração no Drive é que vale</small></div>
-      <div class="g-tab"><table><thead><tr><th>Cliente</th><th>No CRM</th><th>No Drive</th><th>Pasta</th><th></th></tr></thead><tbody>${DIVERGE.map(c => `<tr><td>${esc(c.nome)}</td><td>${esc(c.advogado || '—')}</td><td><b>${esc(c.adv_drive)}</b></td><td><small style="color:var(--suave)">${esc(c.pasta_caminho || '')}</small></td><td><button class="btn sec peq" data-corr="${c.id}" data-adv="${esc(c.adv_drive)}">Corrigir</button></td></tr>`).join('')}</tbody></table></div>`;
-    const corrigir = async lista => { for (const c of lista) await sb.from('clientes').update({ advogado: c.adv }).eq('id', c.id); toast(lista.length + ' cliente(s) corrigido(s).'); await calcularPrevisoes(); };
-    $$('#ga-det [data-corr]').forEach(b => b.onclick = () => corrigir([{ id: b.dataset.corr, adv: b.dataset.adv }]));
-    $('#ga-corr-todos').onclick = () => { if (confirm(`Trocar o advogado de ${DIVERGE.length} cliente(s) para o que está no Drive?`)) corrigir(DIVERGE.map(c => ({ id: c.id, adv: c.adv_drive }))); };
+      <small style="color:var(--suave)">Só apontamento: confira e corrija o advogado no cadastro do cliente, se for o caso.</small>
+      <div class="g-tab"><table><thead><tr><th>Cliente</th><th>No CRM</th><th>Pasta no Drive</th><th>Procuração</th><th>Caminho</th></tr></thead><tbody>${DIVERGE.map(c => `<tr><td>${esc(c.nome)}</td><td>${esc(c.advogado || '—')}</td><td><b>${esc(c.adv_drive)}</b></td><td>${esc(c.adv_procuracao || '—')}</td><td><small style="color:var(--suave)">${esc(c.pasta_caminho || '')}</small></td></tr>`).join('')}</tbody></table></div>`;
     $('#ga-det').scrollIntoView({ behavior: 'smooth' });
   };
   $('#ga-lista').innerHTML = RECEBER.map((a, i) => `<tr><td><b>${esc(a.adv)}</b></td><td><small>${esc(a.obs)}</small></td><td class="num">${a.itens.length}</td><td class="num">${a.processos}</td><td class="num" style="${a.semValor ? 'color:#fbbf24' : ''}">${a.semValor || ''}</td><td class="num"><b>${brl(a.total)}</b></td>
