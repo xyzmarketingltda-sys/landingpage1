@@ -378,6 +378,7 @@ body.embed{background:transparent}
         <div class="g-kpis prev">
           <div class="g-kpi prev"><span>🧾 A receber dos advogados (previsto)</span><b id="gp-prev">–</b><small id="gp-prev-sub">pelas regras de cada advogado, clientes lançados no mês</small></div>
           <div class="g-kpi prev"><span>📉 Custos previstos do mês</span><b id="gp-cus">–</b><small id="gp-cus-sub"></small></div>
+          <div class="g-kpi" id="gp-dia-box" style="border-color:rgba(34,197,94,.45)"><span>✅ Fechados hoje</span><b id="gp-dia" style="color:#86efac">–</b><small id="gp-dia-sub"></small></div>
           <div class="g-kpi prev" id="gp-res-box" hidden style="display:none"><span>Resultado previsto</span><b id="gp-res">–</b><small>a receber − custos previstos</small></div>
         </div>
         <form class="g-lanca" id="g-form-desp">
@@ -1053,8 +1054,23 @@ async function alertaProcuracao() {
     <small style="color:var(--suave)">A pasta precisa ser movida no Drive para o advogado da procuração (manual). O botão ajusta só o CRM.</small>`;
   $$('#g-alerta-proc [data-ajp]').forEach(b => b.onclick = () => ajustarCrmProc(ruins.filter(c => c.id == b.dataset.ajp)));
 }
+// fechados hoje (admin): clientes lançados com fechamento de hoje + procurações assinadas hoje no ZapSign
+async function fechadosHoje() {
+  if (!eu || eu.papel !== 'admin' || !$('#gp-dia')) return;
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }), ini = hoje + 'T00:00:00-03:00';
+  const [{ data: cli }, { data: ass }] = await Promise.all([
+    sb.from('clientes').select('id,nome,cpf,atendente_id,data_contato,criado_em').or(`data_contato.eq.${hoje},and(data_contato.is.null,criado_em.gte."${ini}")`).limit(2000),
+    sb.from('assinaturas_zap').select('doc_token,cliente,assinado_em').eq('conta', true).gte('assinado_em', ini).limit(2000)]);
+  const porAt = {}, vistos = new Set();
+  (cli || []).forEach(c => { const k = (c.atendente_id || '') + '|' + (so(c.cpf || '') || (c.nome || '').toUpperCase().trim()); if (vistos.has(k)) return; vistos.add(k); porAt[c.atendente_id] = (porAt[c.atendente_id] || 0) + 1; });
+  const nome = id => ((equipe.find(p => p.id === id) || {}).nome || 'sem atendente').split(' ')[0];
+  const lista = Object.entries(porAt).sort((x, y) => y[1] - x[1]).map(([id, n]) => nome(id) + ' ' + n).join(' · ');
+  const assinadas = new Set((ass || []).map(a => (a.cliente || a.doc_token || '').toLowerCase())).size;
+  $('#gp-dia').textContent = vistos.size + (vistos.size === 1 ? ' cliente' : ' clientes');
+  $('#gp-dia-sub').textContent = (lista || 'nenhum lançado ainda') + ' — ' + assinadas + ' procuraç' + (assinadas === 1 ? 'ão assinada' : 'ões assinadas') + ' hoje no ZapSign';
+}
 async function calcularPrevisoes() {
-  try { alertaProcuracao(); alertaCpfMulti(); } catch (e) {}
+  try { alertaProcuracao(); alertaCpfMulti(); fechadosHoje().catch(() => {}); } catch (e) {}
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim); window.__cliMes = cli;
@@ -1426,7 +1442,7 @@ function atualizarAoVivo(espera) {
   clearTimeout(_tAoVivo);
   _tAoVivo = setTimeout(() => {
     if (!eu || document.hidden) return;
-    try { atualizarFlutuante(); carregarPendZap(); } catch (e) {}
+    try { atualizarFlutuante(); carregarPendZap(); fechadosHoje().catch(() => {}); } catch (e) {}
     // não mexe na lista se a pessoa está com o cadastro aberto ou digitando na busca
     const ocupada = !$('#modal').hidden || document.activeElement === $('#f-busca');
     if (!ocupada && !$('#aba-clientes').hidden) carregarClientes();
