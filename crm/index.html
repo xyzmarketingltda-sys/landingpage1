@@ -635,6 +635,7 @@ body.embed{background:transparent}
         <div id="c-docs-drop" class="docs-drop"><span>📎 Arraste aqui RG, comprovante, extrato, contrato…</span><button type="button" class="btn sec peq" id="c-docs-mais">+ Adicionar</button><input type="file" id="c-docs-arq" multiple hidden></div>
         <div id="c-docs-lista" class="docs-lista"></div></div>
       <div class="inteiro"><label>Observações</label><textarea id="c-obs"></textarea></div>
+      <div class="inteiro" id="c-assin" hidden></div>
       <div class="inteiro" id="c-pasta-box" hidden><label>Pasta do cliente no Google Drive (o robô acha sozinho pelo nome; se ele não achar, cole o link da pasta aqui)</label><input id="c-pasta" placeholder="https://drive.google.com/drive/folders/..."></div>
       <div class="inteiro" id="c-stadv" hidden></div>
     </div>
@@ -1190,7 +1191,8 @@ async function detalheClienteAdv(tr, item, adv) {
     return `<div style="padding:6px 0;border-top:1px dashed rgba(255,255,255,.12)"><b>${fmtData(c.data_contato)}</b> · ${esc(c.banco || '—')} · lançado por <b>${esc(_nomesEq[c.atendente_id] || '—')}</b>${c.criado_em && !importado ? ' em ' + dh(c.criado_em) : ''} · tel ${esc(fmtTel(c.telefone)) || '—'} · valor lançado <b>${brl(Number(c.valor || 0))}</b>
       <br>${pasta}${seg ? ' · ' + seg : ''}${c.adv_procuracao ? ' · procuração: <b>' + esc(c.adv_procuracao) + '</b>' : ''} · <a href="#" data-abrir="${c.id}" style="color:#67e8f9">abrir cadastro</a></div>`;
   }).join('') || '<div style="opacity:.7">Não achei o lançamento deste cliente no mês.</div>';
-  tr.insertAdjacentHTML('afterend', `<tr class="gcli-det"><td colspan="6" style="background:rgba(34,211,238,.06);font-size:13px;line-height:1.6;white-space:normal">${linhas}</td></tr>`);
+  tr.insertAdjacentHTML('afterend', `<tr class="gcli-det"><td colspan="6" style="background:rgba(34,211,238,.06);font-size:13px;line-height:1.6;white-space:normal">${linhas}${regs.length ? '<div class="gcli-assin" style="padding:6px 0;border-top:1px dashed rgba(255,255,255,.12);color:var(--suave)">✍️ procurando a assinatura…</div>' : ''}</td></tr>`);
+  if (regs.length) { const alvo = tr.nextElementSibling.querySelector('.gcli-assin'); assinaturasHtml(regs[0].id).then(h => { if (alvo && alvo.isConnected) alvo.innerHTML = h; }); }
   tr.nextElementSibling.querySelectorAll('[data-abrir]').forEach(l => l.onclick = async e => { e.preventDefault(); e.stopPropagation(); const { data } = await sb.from('clientes').select('*').eq('id', +l.dataset.abrir).maybeSingle(); if (data) abrirCliente(data); });
 }
 function baixarReceber(lista) {
@@ -1650,6 +1652,14 @@ function linhaBancoExtra() {
 }
 function bancosExtras() { return $$('#c-multi-lista .c-multi-linha').map(d => ({ banco: d.querySelector('.cm-banco').value.trim(), valor: lerValor(d.querySelector('.cm-valor').value) })).filter(x => x.banco); }
 document.addEventListener('DOMContentLoaded', () => { const b = document.getElementById('c-multi-add'); if (b) b.onclick = linhaBancoExtra; });
+// horário em que o cliente assinou no ZapSign (RPC só responde para o admin)
+async function assinaturasHtml(cid) {
+  const { data, error } = await sb.rpc('assinaturas_do_cliente', { cid });
+  if (error) return '<span style="color:var(--suave)">não consegui consultar as assinaturas</span>';
+  const dh = v => new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(', ', ' às ');
+  if (!data || !data.length) return '<span style="color:var(--suave)">✍️ nenhuma assinatura deste cliente encontrada no ZapSign</span>';
+  return data.map(a => `✍️ assinou <b style="color:#e8f1ff">${dh(a.assinado_em)}</b> — ${esc((a.nome_doc || 'documento').replace(/\.(docx?|pdf)$/i, ''))}${a.conta ? ' <small style="color:#86efac">· conta ponto</small>' : ''}${a.atendente ? ' <small style="opacity:.75">· ' + esc(a.atendente) + '</small>' : ''}${a.enviado_em ? ' <small style="opacity:.75">· enviado ' + dh(a.enviado_em) + '</small>' : ''}`).join('<br>');
+}
 function abrirCliente(c) {
   editando = c; cpfConfirmado = null; inssMexeu = false;
   $('#c-multi-lista').innerHTML = ''; $('#c-multi').hidden = !!c;
@@ -1666,6 +1676,10 @@ function abrirCliente(c) {
   $('#c-obs').value = c?.observacoes || '';
   carregarDocsCliente(c?.id);
   $('#c-pasta-box').hidden = eu.papel !== 'admin'; $('#c-pasta').value = c?.pasta_url || '';
+  // só o admin: quando o cliente assinou no ZapSign
+  { const bx = $('#c-assin'); bx.hidden = !(c && eu.papel === 'admin'); bx.innerHTML = '';
+    if (!bx.hidden) { const cid = c.id; bx.innerHTML = '<label>Assinatura no ZapSign <small style="color:var(--suave)">(só você vê)</small></label><div class="assin-l" style="padding:8px 10px;border:1px solid var(--borda);border-radius:10px;font-size:13px;line-height:1.7;color:var(--suave)">procurando…</div>';
+      assinaturasHtml(cid).then(h => { if (editando && editando.id === cid) bx.querySelector('.assin-l').innerHTML = h; }); } }
   $('#c-stadv').hidden = !c?.status_adv;
   if (c?.status_adv) $('#c-stadv').innerHTML = `<label>Status informado pelo advogado</label><div style="padding:8px 10px;border:1px solid var(--borda);border-radius:10px"><b>${esc(c.status_adv)}</b>${c.obs_adv ? ' — ' + esc(c.obs_adv) : ''} <small style="color:var(--suave)">${c.status_adv_em ? new Date(c.status_adv_em).toLocaleString('pt-BR') : ''}</small></div>`;
   $('#c-inss').value = ''; $('#c-inss').type = 'password'; $('#c-inss-ver').textContent = 'Mostrar';
