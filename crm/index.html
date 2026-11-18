@@ -417,7 +417,8 @@ body.embed{background:transparent}
           <form class="g-linha" id="gm-form" style="flex-wrap:wrap">
             <input type="date" id="gm-dia" required style="max-width:160px;color-scheme:dark">
             <input id="gm-tit" placeholder="Nome da missão (ex.: Caçador de Seguros)" required style="min-width:240px;flex:1">
-            <input id="gm-desc" placeholder="Descrição (opcional — gero sozinho)" style="min-width:240px;flex:1">
+            <input id="gm-desc" placeholder="Descrição para ESTAGIÁRIO (opcional — gero sozinho)" style="min-width:240px;flex:1">
+            <input id="gm-desc-clt" placeholder="Descrição para CLT (opcional — gero sozinho quando a meta do CLT é diferente)" style="min-width:240px;flex:1">
             <label style="font-size:12px;color:var(--suave)">Seguro prestamista <input id="gm-seg" type="number" min="0" value="0" style="width:64px"></label>
             <label style="font-size:12px;color:var(--suave)">Revisão de juros <input id="gm-rev" type="number" min="0" value="0" style="width:64px"></label>
             <label style="font-size:12px;color:var(--suave)">Aumento de margem <input id="gm-mar" type="number" min="0" value="0" style="width:64px"></label>
@@ -1180,11 +1181,11 @@ async function carregarMissoesAdm() {
   if (!$('#gm-teste').value) $('#gm-teste').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
   const { data } = await sb.from('missoes').select('*').order('dia', { ascending: false }).limit(60);
   const obj = m => [m.meta_seguro && m.meta_seguro + ' prestamista', m.meta_revisional && m.meta_revisional + ' revisão', m.meta_margem && m.meta_margem + ' aumento de margem'].filter(Boolean).join(' + ');
-  $('#gm-lista').innerHTML = (data || []).map(m => `<tr><td>${new Date(m.dia + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td><td><b>${esc(m.titulo)}</b><br><small style="color:var(--suave)">${esc(m.descricao || '')}</small></td><td>${obj(m) || '—'}${cltTxt(m)}</td><td class="num">${brl(m.recompensa)}</td>
+  $('#gm-lista').innerHTML = (data || []).map(m => `<tr><td>${new Date(m.dia + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td><td><b>${esc(m.titulo)}</b><br><small style="color:var(--suave)">${m.descricao_clt ? '<b>Estagiário:</b> ' : ''}${esc(m.descricao || '')}${m.descricao_clt ? '<br><b>CLT:</b> ' + esc(m.descricao_clt) : ''}</small></td><td>${obj(m) || '—'}${cltTxt(m)}</td><td class="num">${brl(m.recompensa)}</td>
     <td style="white-space:nowrap"><button class="btn sec peq" data-medit="${m.id}">✏️</button> <button class="btn sec peq" data-mver="${m.dia}">👁 Testar</button> <button class="x" title="Apagar" data-mdel="${m.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--suave)">Nenhuma missão cadastrada.</td></tr>';
   $$('#gm-lista [data-mver]').forEach(b => b.onclick = () => abrirTesteMissao(b.dataset.mver));
   $$('#gm-lista [data-medit]').forEach(b => b.onclick = () => { const m = data.find(x => String(x.id) === b.dataset.medit); if (!m) return;
-    gmEditando = m.id; $('#gm-dia').value = m.dia; $('#gm-tit').value = m.titulo; $('#gm-desc').value = m.descricao || ''; $('#gm-seg').value = m.meta_seguro; $('#gm-rev').value = m.meta_revisional; $('#gm-mar').value = m.meta_margem || 0; $('#gm-seg-clt').value = m.meta_seguro_clt ?? ''; $('#gm-rev-clt').value = m.meta_revisional_clt ?? ''; $('#gm-mar-clt').value = m.meta_margem_clt ?? '';
+    gmEditando = m.id; $('#gm-dia').value = m.dia; $('#gm-tit').value = m.titulo; $('#gm-desc').value = m.descricao || ''; $('#gm-desc-clt').value = m.descricao_clt || ''; $('#gm-seg').value = m.meta_seguro; $('#gm-rev').value = m.meta_revisional; $('#gm-mar').value = m.meta_margem || 0; $('#gm-seg-clt').value = m.meta_seguro_clt ?? ''; $('#gm-rev-clt').value = m.meta_revisional_clt ?? ''; $('#gm-mar-clt').value = m.meta_margem_clt ?? '';
     $('#gm-pre').value = String(m.recompensa).replace('.', ','); $('#gm-form button').textContent = '💾 Salvar alteração'; $('#gm-form').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   $$('#gm-lista [data-mdel]').forEach(b => b.onclick = async () => { if (!confirm('Apagar esta missão?')) return; const { error } = await sb.from('missoes').delete().eq('id', b.dataset.mdel); if (error) return alert(traduz(error)); carregarMissoesAdm(); });
 }
@@ -1244,11 +1245,16 @@ $('#gm-form').onsubmit = async e => {
   if (!seg && !rev && !mar) return alert('Coloque pelo menos uma quantidade.');
   const partes = [seg && seg + ' clientes de seguro prestamista', rev && rev + ' de revisão de juros', mar && mar + ' de aumento de margem'].filter(Boolean);
   const cS = cltVal('#gm-seg-clt'), cR = cltVal('#gm-rev-clt'), cM = cltVal('#gm-mar-clt'), temClt = cS != null || cR != null || cM != null;
-  const desc = $('#gm-desc').value.trim() || (temClt ? 'Bata os objetivos de hoje — veja a sua meta logo abaixo.' : 'Feche ' + partes.join(', ').replace(/, ([^,]*)$/, ' e $1') + ' hoje.');
-  const reg = { dia: $('#gm-dia').value, titulo: $('#gm-tit').value.trim(), descricao: desc, meta_seguro: seg, meta_revisional: rev, meta_margem: mar, meta_seguro_clt: cS, meta_revisional_clt: cR, meta_margem_clt: cM, recompensa: numBR($('#gm-pre').value) || 0 };
+  // descrição por tipo: estagiário usa os números normais, CLT usa os números do CLT (quando forem diferentes)
+  const frase = (a, b, c) => 'Feche ' + [a && a + ' clientes de seguro prestamista', b && b + ' de revisão de juros', c && c + ' de aumento de margem'].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' e $1') + ' hoje. Vale a procuração assinada no ZapSign.';
+  const auto = t => !t || /^(Feche |Bata os objetivos)/.test(t); // texto gerado antes: refaz com os números atuais
+  const dE = $('#gm-desc').value.trim(), dC = $('#gm-desc-clt').value.trim();
+  const desc = auto(dE) ? frase(seg, rev, mar) : dE;
+  const descClt = temClt ? (auto(dC) ? frase(cS ?? seg, cR ?? rev, cM ?? mar) : dC) : (auto(dC) ? null : dC);
+  const reg = { dia: $('#gm-dia').value, titulo: $('#gm-tit').value.trim(), descricao: desc, descricao_clt: descClt, meta_seguro: seg, meta_revisional: rev, meta_margem: mar, meta_seguro_clt: cS, meta_revisional_clt: cR, meta_margem_clt: cM, recompensa: numBR($('#gm-pre').value) || 0 };
   const { error } = gmEditando ? await sb.from('missoes').update(reg).eq('id', gmEditando) : await sb.from('missoes').insert(reg);
   if (error) return alert(traduz(error));
-  toast(gmEditando ? '📜 Missão atualizada!' : '📜 Missão criada!'); gmEditando = null; $('#gm-form button').textContent = '+ Criar missão'; $('#gm-tit').value = ''; $('#gm-desc').value = ''; ['#gm-seg-clt', '#gm-rev-clt', '#gm-mar-clt'].forEach(i => $(i).value = ''); carregarMissoesAdm();
+  toast(gmEditando ? '📜 Missão atualizada!' : '📜 Missão criada!'); gmEditando = null; $('#gm-form button').textContent = '+ Criar missão'; $('#gm-tit').value = ''; $('#gm-desc').value = ''; $('#gm-desc-clt').value = ''; ['#gm-seg-clt', '#gm-rev-clt', '#gm-mar-clt'].forEach(i => $(i).value = ''); carregarMissoesAdm();
 };
 $('#g-form-desp').onsubmit = async e => {
   e.preventDefault();
