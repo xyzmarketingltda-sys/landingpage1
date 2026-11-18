@@ -344,7 +344,7 @@ body.embed{background:transparent}
 <!-- ============ APP ============ -->
 <section id="app" hidden>
   <header>
-    <div class="marca">XYZ <span>CRM</span></div>
+    <div class="marca" id="marca-home" title="Voltar para a página inicial" style="cursor:pointer">XYZ <span>CRM</span></div>
     <div class="quem"><span class="nomeu" id="eu-box">Olá, <b id="eu-nome"></b><span id="eu-foto"></span></span><button class="btn sec peq" id="sair">Sair</button></div>
   </header>
   <nav>
@@ -487,7 +487,7 @@ body.embed{background:transparent}
         <button class="btn sec" id="rmk-atualizar">↻ Atualizar</button>
       </div>
       <div id="rmk-resumo" style="margin-bottom:10px;font-size:13px"></div>
-      <div class="g-tab"><table><thead><tr><th>Link enviado em</th><th>Nome</th><th>CPF</th><th>Telefone / e-mail</th><th>Documento</th><th id="rmk-th-at" hidden>Atendente</th><th></th></tr></thead><tbody id="rmk-lista"><tr><td colspan="7" style="opacity:.6">Carregando…</td></tr></tbody></table></div>
+      <div class="g-tab"><table><thead><tr><th>Link enviado em</th><th>Nome</th><th>CPF</th><th>Telefone / e-mail</th><th id="rmk-th-at" hidden>Atendente</th><th></th></tr></thead><tbody id="rmk-lista"><tr><td colspan="6" style="opacity:.6">Carregando…</td></tr></tbody></table></div>
       <div id="rmk-status" style="margin-top:8px;font-size:12px;opacity:.6"></div>
     </div>
 
@@ -890,7 +890,7 @@ async function contarRemarketing() {
 }
 async function carregarRemarketing(sincronizar, forcar) {
   const admin = eu && eu.papel === 'admin', st = $('#rmk-status');
-  const ler = async () => { const { data, error } = await sb.rpc('remarketing_lista', { dias: +$('#rmk-dias').value || 30 }); if (error) { $('#rmk-lista').innerHTML = `<tr><td colspan="7">Erro: ${esc(error.message)}</td></tr>`; return; } RMK = data || []; desenharRemarketing(); };
+  const ler = async () => { const { data, error } = await sb.rpc('remarketing_lista', { dias: +$('#rmk-dias').value || 30 }); if (error) { $('#rmk-lista').innerHTML = `<tr><td colspan="6">Erro: ${esc(error.message)}</td></tr>`; return; } RMK = data || []; desenharRemarketing(); };
   await ler();
   if (sincronizar) {
     st.textContent = 'Conferindo o ZapSign…';
@@ -908,25 +908,25 @@ function desenharRemarketing() {
     const sel = $('#rmk-fat'), atual = sel.value, nomes = [...new Set(RMK.map(d => d.atendente || '(sem atendente)'))].sort();
     sel.innerHTML = '<option value="">Todas</option>' + nomes.map(n => `<option${n === atual ? ' selected' : ''}>${esc(n)}</option>`).join('');
     const cont = {}; RMK.forEach(d => { const n = d.atendente || '(sem atendente)'; cont[n] = (cont[n] || 0) + 1; });
-    $('#rmk-resumo').innerHTML = Object.entries(cont).sort((a, b) => b[1] - a[1]).map(([n, q]) => `<span style="display:inline-block;margin:0 6px 6px 0;padding:4px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.15)"><b>${esc(n)}</b> ${q}</span>`).join('');
-  } else $('#rmk-resumo').innerHTML = RMK.length ? `<b>${RMK.length}</b> pessoa(s) para você chamar de novo.` : '';
+    $('#rmk-resumo').innerHTML = Object.entries(cont).sort((a, b) => b[1] - a[1]).map(([n, q]) => `<a href="#" data-rf="${esc(n)}" style="display:inline-block;margin:0 6px 6px 0;padding:4px 10px;border-radius:99px;text-decoration:none;color:inherit;border:1px solid ${n === atual ? '#f97316' : 'rgba(255,255,255,.15)'};background:${n === atual ? 'rgba(249,115,22,.15)' : 'none'}" title="Clique para ver só as desta atendente (clique de novo para ver todas)"><b>${esc(n)}</b> ${q}</a>`).join('');
+  } else $('#rmk-resumo').innerHTML = RMK.length ? `<b>${RMK.length}</b> pessoa(s) para você chamar de novo. Ao marcar <b>✔ Remarketing feito</b> a pessoa sai da lista e volta em 24h se não for lançada no CRM.` : '';
   const q = ($('#rmk-busca').value || '').trim().toLowerCase(), qd = q.replace(/\D/g, ''), fat = admin ? $('#rmk-fat').value : '';
   const lista = RMK.map((d, i) => [d, i]).filter(([d]) => (!fat || (d.atendente || '(sem atendente)') === fat) && (!q || (d.cliente || '').toLowerCase().includes(q) || (qd && ((d.cpf || '').replace(/\D/g, '').includes(qd) || (d.telefone || '').replace(/\D/g, '').includes(qd)))));
   const b = $('#rmk-qt'); if (b && +$('#rmk-dias').value === 30) { b.hidden = !RMK.length; b.textContent = RMK.length; }
-  if (!lista.length) { $('#rmk-lista').innerHTML = `<tr><td colspan="7" style="opacity:.7">${RMK.length ? 'Nada com esse filtro.' : '🎉 Ninguém pendente — todo link enviado foi assinado ou lançado.'}</td></tr>`; return; }
+  if (!lista.length) { $('#rmk-lista').innerHTML = `<tr><td colspan="6" style="opacity:.7">${RMK.length ? 'Nada com esse filtro.' : '🎉 Ninguém pendente — todo link enviado foi assinado ou lançado.'}</td></tr>`; return; }
   const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
   $('#rmk-lista').innerHTML = lista.map(([d, i]) => {
     const dt = new Date(d.criado_em), dias = Math.max(0, Math.round((hoje0 - new Date(dt.getFullYear(), dt.getMonth(), dt.getDate())) / 864e5));
     const ehMail = String(d.telefone || '').includes('@'), z = ehMail ? '' : zapDe(d.telefone), pn = (d.cliente || '').trim().split(/\s+/)[0] || '';
     const msg = encodeURIComponent(`Olá ${pn.charAt(0) + pn.slice(1).toLowerCase()}, tudo bem? Vi que ficou faltando só a assinatura do seu documento para darmos andamento. Consegue assinar agora? Qualquer dúvida estou por aqui.` + (d.link ? '\n' + d.link : ''));
-    return `<tr${d.chamado_em ? ' style="opacity:.6"' : ''}><td style="white-space:nowrap">${dt.toLocaleDateString('pt-BR')} <small style="opacity:.7">${dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : 'há ' + dias + ' dias'}</small></td>
-      <td><b>${esc(d.cliente || '—')}</b>${d.links > 1 ? ` <small title="Foram gerados ${d.links} links para esta pessoa e nenhum foi assinado" style="color:#fbbf24">· ${d.links} links</small>` : ''}${d.status === 'refused' ? ' <small style="color:#f87171">· recusou</small>' : ''}${d.chamado_em ? ` <small style="color:#86efac">· chamado em ${new Date(d.chamado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</small>` : ''}</td>
+    return `<tr><td style="white-space:nowrap">${dt.toLocaleDateString('pt-BR')} <small style="opacity:.7">${dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : 'há ' + dias + ' dias'}</small></td>
+      <td title="${esc(d.nome_doc || '')}"><b>${esc(d.cliente || '—')}</b>${d.links > 1 ? ` <small title="Foram gerados ${d.links} links para esta pessoa e nenhum foi assinado" style="color:#fbbf24">· ${d.links} links</small>` : ''}${d.status === 'refused' ? ' <small style="color:#f87171">· recusou</small>' : ''}${d.chamado_em ? ` <small style="color:#86efac">· já chamado em ${new Date(d.chamado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</small>` : ''}</td>
       <td style="white-space:nowrap">${esc(rmkCpf(d.cpf)) || '<span style="opacity:.5">—</span>'}</td>
       <td style="white-space:nowrap">${ehMail ? `<a href="mailto:${esc(d.telefone)}" style="color:#93c5fd">${esc(d.telefone)}</a>` : (esc(rmkTel(d.telefone)) || '<span style="opacity:.5">—</span>')}</td>
-      <td><small>${esc(d.nome_doc || '')}</small></td>${admin ? `<td>${esc(d.atendente || '—')}</td>` : ''}
-      <td style="white-space:nowrap">${z ? `<a class="btn peq" target="_blank" rel="noopener" href="https://wa.me/${z}?text=${msg}" data-rc="${i}">WhatsApp</a> ` : ''}${d.link ? `<button class="btn sec peq" data-rl="${i}" title="Copiar o link de assinatura">🔗</button> ` : ''}<button class="btn sec peq" data-rc="${i}" title="Marcar que já chamei">✔ Chamei</button> <button class="btn sec peq" data-ri="${i}" title="Não tem interesse / não é cliente">Desconsiderar</button></td></tr>`;
+      ${admin ? `<td><a href="#" data-rf="${esc(d.atendente || '(sem atendente)')}" style="color:inherit" title="Ver só as desta atendente">${esc(d.atendente || '—')}</a></td>` : ''}
+      <td style="white-space:nowrap">${z ? `<a class="btn peq" target="_blank" rel="noopener" href="https://wa.me/${z}?text=${msg}">WhatsApp</a> ` : ''}${d.link ? `<button class="btn sec peq" data-rl="${i}" title="Copiar o link de assinatura">🔗</button> ` : ''}<button class="btn peq" data-rc="${i}" style="background:#16a34a" title="Já chamei: some da lista e volta em 24h se não for lançado no CRM">✔ Remarketing feito</button> <button class="btn sec peq" data-ri="${i}" title="Não tem interesse / não é cliente: não volta mais">✕</button></td></tr>`;
   }).join('');
-  $$('#rmk-lista [data-rc]').forEach(b => b.addEventListener('click', async () => { const d = RMK[+b.dataset.rc]; await sb.rpc('remarketing_marcar', { tok: d.doc_token, acao: 'chamei' }); d.chamado_em = new Date().toISOString(); if (b.tagName !== 'A') desenharRemarketing(); }));
+  $$('#rmk-lista [data-rc]').forEach(b => b.onclick = async () => { const d = RMK[+b.dataset.rc]; b.disabled = true; const { error } = await sb.rpc('remarketing_marcar', { tok: d.doc_token, acao: 'chamei' }); if (error) { b.disabled = false; return alert('Não consegui marcar: ' + error.message); } RMK = RMK.filter(x => x !== d); desenharRemarketing(); });
   $$('#rmk-lista [data-rl]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(RMK[+b.dataset.rl].link); b.textContent = '✔'; setTimeout(() => b.textContent = '🔗', 1200); } catch (e) {} });
   $$('#rmk-lista [data-ri]').forEach(b => b.onclick = async () => { const d = RMK[+b.dataset.ri]; if (!confirm('Desconsiderar ' + (d.cliente || 'esta pessoa') + '? Ela some do remarketing.')) return; await sb.rpc('remarketing_marcar', { tok: d.doc_token, acao: 'ignorar' }); carregarRemarketing(false); });
 }
@@ -936,6 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
   on('rmk-atualizar', 'onclick', () => carregarRemarketing(true, true));
 });
 setInterval(() => { if (eu) contarRemarketing(); }, 300000);
+document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('#aba-remarketing [data-rf]'); if (!a) return; e.preventDefault(); const sel = $('#rmk-fat'); sel.value = sel.value === a.dataset.rf ? '' : a.dataset.rf; desenharRemarketing(); });
 
 /* ---------- gestão (admin) ---------- */
 const G = { mes: null, aba: null, resumo: [] };
@@ -1362,6 +1363,7 @@ document.addEventListener('click', e => {
 
 /* ---------- abas ---------- */
 $$('nav button, .rodape button').forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
+document.addEventListener('DOMContentLoaded', () => { const m = document.getElementById('marca-home'); if (m) m.onclick = () => { abrirAba('clientes'); scrollTo({ top: 0, behavior: 'smooth' }); }; });
 function abrirAba(aba) {
   $$('nav button, .rodape button').forEach(b => b.classList.toggle('ativa', b.dataset.aba === aba));
   ['clientes', 'ranking', 'remarketing', 'atendentes', 'conta'].forEach(a => $('#aba-' + a).hidden = a !== aba);
