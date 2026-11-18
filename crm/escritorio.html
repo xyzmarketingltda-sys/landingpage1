@@ -853,12 +853,16 @@ async function carregarDesafio(abrir) {
   desafio = (data || [])[0] || null; painelDz = [];
   if (desafio) { const { data: p } = await sb.rpc('desafio_painel', { did: desafio.id }); painelDz = p || []; }
   const b = $('#dz-btn'); b.hidden = !desafio; b.onclick = abrirDesafio;
+  // animação: só em quem recebeu algum desafio ativo (geral = todas; direcionado = só a escolhida)
+  const { data: todos } = await sb.from('desafios').select('id').lte('inicio', agora).gt('fim', agora);
+  const ps = await Promise.all((todos || []).map(d => sb.rpc('desafio_painel', { did: d.id })));
+  alvosDz = [...new Set(ps.flatMap(r => (r.data || []).filter(x => !x.cumpriu).map(x => x.atendente_id)))];
   marcadoresDesafio();
   if (abrir && desafio) abrirDesafio();
 }
 // quem está em desafio: "!" vermelho na tela do PC e fumaça saindo da cabeça
-let marcaDz = [], animDz = [];
-function emDesafio() { return desafio ? painelDz.filter(r => !r.cumpriu).map(r => r.atendente_id) : []; }
+let marcaDz = [], animDz = [], alvosDz = [];
+function emDesafio() { return alvosDz; }
 function marcadoresDesafio() {
   marcaDz.forEach(m => scene.remove(m)); marcaDz = [];
   animDz.forEach(f => { const k = animados.indexOf(f); if (k >= 0) animados.splice(k, 1); }); animDz = [];
