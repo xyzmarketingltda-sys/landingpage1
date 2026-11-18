@@ -210,7 +210,9 @@ async function carregarModelo(nome) {
   const g = new THREE.Group(); g.add(obj); g.userData.tam = box.getSize(new THREE.Vector3());
   return g;
 }
-async function por(nome, x, z, rot = 0, opc = {}) { // x,z = centro em tiles; rot em graus
+const CARREGANDO = [];
+function por(...args) { const pr = por_(...args); CARREGANDO.push(pr); return pr; }
+async function por_(nome, x, z, rot = 0, opc = {}) { // x,z = centro em tiles; rot em graus
   const g = (await carregar(nome)).clone(true);
   g.position.copy(W(x, z, opc.y || 0)); g.rotation.y = rot * Math.PI / 180;
   if (opc.cor) g.traverse(m => { if (m.isMesh) { m.material = (Array.isArray(m.material) ? m.material : [m.material]).map(x => { const k = x.clone(); if (!opc.so || opc.so.test(x.name)) k.color = new THREE.Color(opc.cor); return k; }); if (m.material.length === 1) m.material = m.material[0]; } });
@@ -608,9 +610,70 @@ function assentoDe(p, i) {
   mesaDe[p.id] = idx;
   const [x, y] = DESKS[idx]; return p.papel === 'admin' ? [x - .25, y - .5] : [x, y - .45];
 }
+/* ---------- caminho: grade de obstáculos (móveis) + A* ---------- */
+const CEL = 1, NX = (GX + VIPX) * U / CEL | 0, NZ = GY * U / CEL | 0;
+let BLOQ = null;
+function montarGrade() {
+  const g = new Uint8Array(NX * NZ), bx = new THREE.Box3(), FOLGA = 1.1;
+  scene.children.forEach(o => {
+    if (o.isLight || o.isSprite || o.isCamera) return;
+    bx.setFromObject(o); if (bx.isEmpty()) return;
+    if (bx.max.y < .6 || bx.min.y > 3.2) return;                 // chão/tapete ou coisa de parede no alto
+    const w = bx.max.x - bx.min.x, d = bx.max.z - bx.min.z;
+    if (w > NX * CEL * .8 && d > NZ * CEL * .8) return;          // peças do tamanho da sala (piso, teto)
+    const x0 = Math.max(0, Math.floor((bx.min.x - FOLGA) / CEL)), x1 = Math.min(NX - 1, Math.floor((bx.max.x + FOLGA) / CEL));
+    const z0 = Math.max(0, Math.floor((bx.min.z - FOLGA) / CEL)), z1 = Math.min(NZ - 1, Math.floor((bx.max.z + FOLGA) / CEL));
+    for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) g[z * NX + x] = 1;
+  });
+  for (let x = 0; x < NX; x++) { g[x] = 1; g[(NZ - 1) * NX + x] = 1; }
+  for (let z = 0; z < NZ; z++) { g[z * NX] = 1; g[z * NX + NX - 1] = 1; }
+  BLOQ = g;
+}
+const celDe = ([x, y]) => [Math.min(NX - 1, Math.max(0, Math.floor(x * U / CEL))), Math.min(NZ - 1, Math.max(0, Math.floor(y * U / CEL)))];
+const livre = (cx, cz) => cx >= 0 && cz >= 0 && cx < NX && cz < NZ && !BLOQ[cz * NX + cx];
+function livreMaisPerto([cx, cz]) {
+  if (livre(cx, cz)) return [cx, cz];
+  for (let r = 1; r < 25; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++)
+    if ((Math.abs(dx) === r || Math.abs(dz) === r) && livre(cx + dx, cz + dz)) return [cx + dx, cz + dz];
+  return null;
+}
+function visivel([ax, az], [bx, bz]) {
+  const n = Math.ceil(Math.hypot(bx - ax, bz - az) * 2);
+  for (let k = 1; k < n; k++) { const x = Math.round(ax + (bx - ax) * k / n), z = Math.round(az + (bz - az) * k / n); if (!livre(x, z)) return false; }
+  return true;
+}
+function aEstrela(ini, fim) {
+  const N = NX * NZ, gS = new Float32Array(N).fill(1e9), de = new Int32Array(N).fill(-1), fechado = new Uint8Array(N);
+  const id = (x, z) => z * NX + x, h = (x, z) => Math.hypot(x - fim[0], z - fim[1]);
+  const aberto = [[h(...ini), id(...ini)]]; gS[id(...ini)] = 0;
+  const viz = [[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,1.414],[1,-1,1.414],[-1,1,1.414],[-1,-1,1.414]];
+  let passos = 0;
+  while (aberto.length && passos++ < 20000) {
+    let mi = 0; for (let k = 1; k < aberto.length; k++) if (aberto[k][0] < aberto[mi][0]) mi = k;
+    const [, c] = aberto.splice(mi, 1)[0]; if (fechado[c]) continue; fechado[c] = 1;
+    const cx = c % NX, cz = c / NX | 0;
+    if (cx === fim[0] && cz === fim[1]) { const pts = []; for (let k = c; k !== -1; k = de[k]) pts.push([k % NX, k / NX | 0]); return pts.reverse(); }
+    for (const [dx, dz, cst] of viz) {
+      const nx = cx + dx, nz = cz + dz; if (!livre(nx, nz)) continue;
+      if (dx && dz && (!livre(cx + dx, cz) || !livre(cx, cz + dz))) continue;   // não corta quina
+      const n = id(nx, nz), gN = gS[c] + cst; if (gN < gS[n]) { gS[n] = gN; de[n] = c; aberto.push([gN + h(nx, nz), n]); }
+    }
+  }
+  return null;
+}
 function rota(a, alvo) {
-  const pts = [];
   if (Math.hypot(a.x - alvo[0], a.y - alvo[1]) < .05) { a.rota = []; return; }
+  if (BLOQ) {
+    const ini = livreMaisPerto(celDe([a.x, a.y])), fim = livreMaisPerto(celDe(alvo));
+    const cam = ini && fim && aEstrela(ini, fim);
+    if (cam) {
+      const enx = [cam[0]]; let k = 0;                                // suaviza: só os pontos de virada
+      while (k < cam.length - 1) { let j = cam.length - 1; while (j > k + 1 && !visivel(cam[k], cam[j])) j--; enx.push(cam[j]); k = j; }
+      const pts = enx.map(([x, z]) => [(x + .5) * CEL / U, (z + .5) * CEL / U]);
+      pts.push(alvo); a.rota = pts; return;
+    }
+  }
+  const pts = [];                                                   // reserva: pelo corredor
   if (Math.abs(a.y - CORREDOR) > .3) pts.push([a.x, CORREDOR]);
   pts.push([alvo[0], CORREDOR]); pts.push(alvo);
   a.rota = pts;
@@ -648,7 +711,7 @@ function mover(dt) {
     a.andando = !!alvo;
     if (!alvo) { a.sentado = a.est === 'mesa' && !a.livre; if (a.est === 'fora') { if (a.alpha === 1) particulas(a.id, '✨', 6); a.alpha -= dt * 2; if (a.alpha <= 0) atores.delete(a.id); } return; }
     a.sentado = false;
-    const dx = alvo[0] - a.x, dy = alvo[1] - a.y, d = Math.hypot(dx, dy), v = .65 * dt;
+    const dx = alvo[0] - a.x, dy = alvo[1] - a.y, d = Math.hypot(dx, dy), v = (a.livre ? 1.15 : .8) * dt;
     if (d <= v) { a.x = alvo[0]; a.y = alvo[1]; a.rota.shift(); } else { a.x += dx / d * v; a.y += dy / d * v; }
   });
 }
@@ -783,7 +846,7 @@ gl.addEventListener('click', e => {
   const minha = mesaDe[eu.id];
   if (minha != null) { const [px, py] = telaDe(...pcDe(minha)), dpc = Math.hypot(mx - px, my - py);
     if (dpc < 48 * ZOOM && (!melhor || melhor.id === eu.id || dpc < dmin)) { abrirPC(); return; } }
-  if (!melhor || dmin > 55 * ZOOM) {
+  if (!melhor || dmin > 34 * ZOOM) {
     if (!m.hidden) { m.hidden = true; return; }
     // clicar no chão: anda até lá
     const eu_ = atores.get(eu.id); if (!eu_) return;
@@ -791,6 +854,7 @@ gl.addEventListener('click', e => {
     const pt = new THREE.Vector3(); if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pt)) return;
     let x = pt.x / U, y = pt.z / U; const lim = y < 3 ? GX + VIPX - .25 : GX - .25;
     if (x < .2 || y < .2 || x > lim || y > GY - .2) return;
+    if (BLOQ) { const c = livreMaisPerto(celDe([x, y])); if (!c) return; if (!livre(...celDe([x, y]))) { x = (c[0] + .5) * CEL / U; y = (c[1] + .5) * CEL / U; } }
     XYZPresenca.enviar('acao', { de: eu.id, tipo: 'andar', x: +x.toFixed(2), y: +y.toFixed(2) });
     efeitos.push({ x, y, dx: 0, v: 20, emoji: '📍', ate: T + 900 });
     return;
@@ -977,6 +1041,7 @@ async function carregarEquipe() {
     venda: m => { setTimeout(carregarMetas, 800); setTimeout(carregarMissoes, 1200); setTimeout(() => carregarDesafio(false), 1300); balao(m.id, m.zapsign ? '✍️ Procuração assinada!' : '🎉 Fechei mais um!', 4000); particulas(m.id, '🎉', 6); particulas(m.id, '💰', 4); const a = atores.get(m.id); if (a) a.danca = T + 3000; },
   });
   await montarAmbiente(); await montarMoveis();
+  try { await Promise.allSettled(CARREGANDO); scene.updateMatrixWorld(true); montarGrade(); } catch (e) { console.warn('grade', e); }
   await carregarEquipe(); await carregarMetas();
   requestAnimationFrame(quadro);
   setTimeout(() => carregarMissoes(), 800);
