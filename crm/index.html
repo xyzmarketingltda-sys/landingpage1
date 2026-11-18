@@ -1395,6 +1395,21 @@ document.addEventListener('click', e => {
   document.querySelector('.barra')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
+/* ---------- atualização ao vivo: quando alguém da equipe lança um cliente, a tela se atualiza sozinha ---------- */
+let _tAoVivo = null;
+function atualizarAoVivo(espera) {
+  clearTimeout(_tAoVivo);
+  _tAoVivo = setTimeout(() => {
+    if (!eu || document.hidden) return;
+    try { atualizarFlutuante(); carregarPendZap(); } catch (e) {}
+    // não mexe na lista se a pessoa está com o cadastro aberto ou digitando na busca
+    const ocupada = !$('#modal').hidden || document.activeElement === $('#f-busca');
+    if (!ocupada && !$('#aba-clientes').hidden) carregarClientes();
+  }, espera || 0);
+}
+setInterval(() => atualizarAoVivo(0), 90000); // garantia, caso o aviso ao vivo não chegue
+document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizarAoVivo(300); });
+
 /* ---------- abas ---------- */
 $$('nav button, .rodape button').forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
 document.addEventListener('DOMContentLoaded', () => { const m = document.getElementById('marca-home'); if (m) m.onclick = () => { abrirAba('clientes'); scrollTo({ top: 0, behavior: 'smooth' }); }; });
@@ -1678,7 +1693,7 @@ async function carregarAdvogados() {
 let equipeEsc = [];
 async function iniciarCardEsc() {
   const { data } = await sb.rpc('equipe_escritorio'); equipeEsc = data || [];
-  XYZPresenca.entrar(sb, eu, { sync: st => {
+  XYZPresenca.entrar(sb, eu, { venda: m => { if (!m || m.id !== eu.id) atualizarAoVivo(1500); }, sync: st => {
     const ids = Object.keys(st), pessoas = equipeEsc.filter(p => ids.includes(p.id));
     const n = pessoas.length;
     $('#esc-dot').className = n ? 'on' : '';
