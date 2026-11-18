@@ -1119,7 +1119,7 @@ async function detalheClienteAdv(tr, item, adv) {
   const dh = v => v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
   const linhas = regs.map(c => {
     const importado = c.criado_em && /T1[5-6]:00:00(\.0+)?(\+00:00|Z)$/.test(c.criado_em);
-    const pasta = c.pasta_url ? `<a href="${esc(c.pasta_url)}" target="_blank" rel="noopener" style="color:#93c5fd">📁 abrir pasta</a>${c.pasta_lida_em ? ' <small style="opacity:.7">lida ' + dh(c.pasta_lida_em) + '</small>' : ' <small style="color:#fbbf24">robô ainda não leu</small>'}` : '<span style="color:#fbbf24">📁 sem pasta ligada — o robô procura pelo nome a cada 10 min; se não achar, cole o link no cadastro</span>';
+    const pasta = c.pasta_url ? `<a href="${esc(c.pasta_url)}" target="_blank" rel="noopener" style="color:#93c5fd">📁 abrir pasta</a>${c.pasta_lida_em ? ' <small style="opacity:.7">lida ' + dh(c.pasta_lida_em) + '</small>' : ' <small style="color:#fbbf24">robô ainda não leu</small>'}` : '<span style="color:#fbbf24">📁 sem pasta ligada — o robô procura pelo nome a cada 10 min; se não achar, o administrador cola o link no cadastro</span>';
     const seg = Number(c.seguro_det) > 0 ? `contrato lido: <b>${brl(Number(c.seguro_det))}</b> <small style="opacity:.7">${esc((c.seguro_det_fonte || '').replace(/^robô — /, ''))}</small>` : c.seguro_det_em ? `<span style="color:#f87171">robô leu em ${dh(c.seguro_det_em)} e não achou seguro</span>` : c.pasta_url ? '<span style="color:#fbbf24">⏳ contrato ainda não lido</span>' : '';
     return `<div style="padding:6px 0;border-top:1px dashed rgba(255,255,255,.12)"><b>${fmtData(c.data_contato)}</b> · ${esc(c.banco || '—')} · lançado por <b>${esc(_nomesEq[c.atendente_id] || '—')}</b>${c.criado_em && !importado ? ' em ' + dh(c.criado_em) : ''} · tel ${esc(fmtTel(c.telefone)) || '—'} · valor lançado <b>${brl(Number(c.valor || 0))}</b>
       <br>${pasta}${seg ? ' · ' + seg : ''}${c.adv_procuracao ? ' · procuração: <b>' + esc(c.adv_procuracao) + '</b>' : ''} · <a href="#" data-abrir="${c.id}" style="color:#67e8f9">abrir cadastro</a></div>`;
@@ -1581,7 +1581,7 @@ function abrirCliente(c) {
   $('#c-adv').value = c?.advogado || '';
   $('#c-obs').value = c?.observacoes || '';
   carregarDocsCliente(c?.id);
-  $('#c-pasta-box').hidden = false; $('#c-pasta').value = c?.pasta_url || '';
+  $('#c-pasta-box').hidden = eu.papel !== 'admin'; $('#c-pasta').value = c?.pasta_url || '';
   $('#c-stadv').hidden = !c?.status_adv;
   if (c?.status_adv) $('#c-stadv').innerHTML = `<label>Status informado pelo advogado</label><div style="padding:8px 10px;border:1px solid var(--borda);border-radius:10px"><b>${esc(c.status_adv)}</b>${c.obs_adv ? ' — ' + esc(c.obs_adv) : ''} <small style="color:var(--suave)">${c.status_adv_em ? new Date(c.status_adv_em).toLocaleString('pt-BR') : ''}</small></div>`;
   $('#c-inss').value = ''; $('#c-inss').type = 'password'; $('#c-inss-ver').textContent = 'Mostrar';
@@ -1623,7 +1623,7 @@ $('#form-cli').onsubmit = async e => {
   const reg = {
     nome: $('#c-nome').value.trim(), cpf, telefone: so($('#c-tel').value),
     data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
-    produto: produtoSel, banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null, ...((eu.papel === 'admin' || /drive\.google\.com\/.*folders\//.test($('#c-pasta').value)) ? { pasta_url: $('#c-pasta').value.trim() || null } : {})
+    produto: produtoSel, banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null, ...(eu.papel === 'admin' ? { pasta_url: $('#c-pasta').value.trim() || null } : {})
   };
   if (eu.papel === 'admin') reg.atendente_id = $('#c-at').value;
   const b = $('#c-salvar'); ocupado(b, true);
