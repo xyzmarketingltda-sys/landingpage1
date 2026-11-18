@@ -517,18 +517,12 @@ function desenharBonecos() {
 function telaDe(x, y, z) { const v = new THREE.Vector3(x, y, z).project(camera); return [(v.x + 1) / 2 * LARG, (1 - v.y) / 2 * ALT]; }
 
 /* ---------- bonequinhos ---------- */
-const VISUAL = {
-  luis: { cab: '#141414', est: 'bagunca', rou: '#161616', pele: '#f0c8a8' },
-  julia: { cab: '#e0263f', est: 'longo', rou: '#1e3a8a', pele: '#f1c3a1' },
-  rina: { cab: '#3b2a20', est: 'longo', rou: '#1e3a8a', pele: '#f3cdb0' },
-  naira: { cab: '#0f0f12', est: 'franja', rou: '#1e3a8a', pele: '#f2c9b5' },
-  barbara: { cab: '#24160f', est: 'cacho', rou: '#1e3a8a', pele: '#b07a55' },
-};
+const PADRAO = { cab: '#2b2018', est: 'curto', rou: '#1e3a8a', pele: '#e9b996' }; // todo mundo com o mesmo visual padrão
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(' ')[0];
 function visualDe(p) {
-  if (p.papel === 'admin' && norm(p.nome) === 'administrador') return { cab: '#2b2b2b', est: 'curto', rou: '#0d0d10', pele: '#e8b894', polo: true };
-  if (p.papel === 'admin') return { cab: '#2b2b2b', est: 'curto', rou: '#0b5ed7', pele: '#e8b894', gravata: true };
-  return VISUAL[norm(p.nome)] || { cab: ['#3b2a20', '#111', '#7c4a1e', '#c084fc'][p.nome.length % 4], est: 'curto', rou: '#1e3a8a', pele: '#e9b996' };
+  if (p.papel === 'admin' && norm(p.nome) === 'administrador') return { ...PADRAO, rou: '#0d0d10', polo: true };
+  if (p.papel === 'admin') return { ...PADRAO, rou: '#0b5ed7', gravata: true };
+  return { ...PADRAO };
 }
 const SPR_W = 28, SPR_H = 58, cacheSpr = new Map();
 function tom(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = n >> 8 & 255, b = n & 255;
