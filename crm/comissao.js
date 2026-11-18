@@ -6,19 +6,30 @@
     const grupos = {}; linhas.forEach(c => { const k = (c.cpf || '').replace(/\D/g, '') || c.nome; (grupos[k] = grupos[k] || []).push(c); });
     const itens = Object.values(grupos).map(g => {
       const seg = g.filter(c => (c.produto || 'seguro') === 'seguro'), rev = g.filter(c => c.produto === 'revisional');
-      const valor = seg.reduce((x, c) => x + (Number(c.valor) || 0), 0), facta = seg.some(c => /facta/i.test(c.banco || ''));
+      // por cliente vale o seguro de MAIOR valor (não soma os bancos); a soma só serve para saber se há algum valor
+      const maior = seg.reduce((m, c) => (Number(c.valor) || 0) > (Number(m && m.valor) || 0) ? c : m, null);
+      const valor = maior ? Number(maior.valor) || 0 : 0, facta = !!maior && /facta/i.test(maior.banco || '');
+      const faixaDe = (val, ehFacta) => { const f = regra.faixas.find(x => val >= x.min); return f ? f.v : (ehFacta && regra.facta_min && val >= regra.facta_min) ? regra.facta_v : 0; };
       let v = 0, obs = '', semValor = seg.length > 0 && !valor;
       if (!regra) obs = 'sem regra cadastrada';
       else if (regra.tipo === 'por_cliente' || regra.por_cliente) { v = regra.v; obs = 'por cliente (' + g.length + ' processo(s))'; semValor = false; }
       else if (regra.tipo === 'por_processo') { v = g.length * regra.v; obs = g.length + ' processo(s) × ' + brl(regra.v); semValor = false; }
       else if (regra.tipo === 'percentual') { obs = regra.pct + '% no êxito'; semValor = false; }
       else if (regra.tipo === 'faixas_cliente') {
-        if (seg.length && valor) { const f = regra.faixas.find(x => valor >= x.min); if (f) { v = f.v; obs = 'seguro ' + brl(valor); } else if (facta && regra.facta_min && valor >= regra.facta_min) { v = regra.facta_v; obs = 'Facta ' + brl(valor); } else obs = 'abaixo da faixa (' + brl(valor) + ')'; }
+        if (regra.cada_processo) {
+          // paga por PROCESSO: cada banco do cliente entra na faixa pelo seu próprio valor
+          const partes = [];
+          seg.forEach(c => { const val = Number(c.valor) || 0; if (!val) return; const pv = faixaDe(val, /facta/i.test(c.banco || '')); v += pv; partes.push((c.banco || 'banco') + ' ' + brl(val) + (pv ? ' → ' + brl(pv) : ' (abaixo da faixa)')); });
+          obs = partes.join(' + ');
+          semValor = seg.some(c => !(Number(c.valor) || 0));
+        } else if (seg.length && valor) { const pv = faixaDe(valor, facta); if (pv) { v = pv; obs = (seg.length > 1 ? 'maior seguro ' : 'seguro ') + brl(valor) + (seg.length > 1 ? ' (' + (maior.banco || '') + ')' : ''); } else obs = 'abaixo da faixa (' + brl(valor) + ')'; }
         if (rev.length && regra.revisional_v) { v += regra.revisional_v; obs += (obs ? ' + ' : '') + 'juros abusivos'; }
         if (semValor) {
         // mostra se o robô ainda vai ler o contrato ou se já leu e não achou
         const temInfo = seg.some(x => 'seguro_det_em' in x);
-        obs = !temInfo ? 'sem valor do seguro' : seg.every(x => !x.pasta_url) ? '📁 sem valor — ainda sem pasta no Drive' : seg.some(x => x.pasta_url && !x.seguro_det_em) ? '⏳ sem valor — robô ainda vai ler o contrato' : '❌ sem valor — robô já leu e não achou (conferir à mão)';
+        const sv = seg.filter(x => !(Number(x.valor) || 0));
+        const aviso = !temInfo ? 'sem valor do seguro' : sv.every(x => !x.pasta_url) ? '📁 sem valor — ainda sem pasta no Drive' : sv.some(x => x.pasta_url && !x.seguro_det_em) ? '⏳ sem valor — robô ainda vai ler o contrato' : '❌ sem valor — robô já leu e não achou (conferir à mão)';
+        obs = obs ? obs + ' · ' + aviso + (sv.length < seg.length ? ' (' + sv.map(x => x.banco).join(', ') + ')' : '') : aviso;
       }
       }
       return { cliente: g[0].nome, cpf: g[0].cpf, bancos: [...new Set(g.map(c => c.banco).filter(Boolean))].join(', '), processos: g.length, valor, v, obs, semValor };
