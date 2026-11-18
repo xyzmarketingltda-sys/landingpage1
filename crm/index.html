@@ -348,6 +348,7 @@ body.embed{background:transparent}
   <nav>
     <button data-aba="clientes" class="ativa">Clientes</button>
     <button data-aba="ranking">Ranking</button>
+    <button data-aba="remarketing" id="nav-rmk">📣 Remarketing <span id="rmk-qt" hidden style="margin-left:4px;padding:1px 7px;border-radius:99px;background:#f97316;color:#fff;font-size:11px;font-weight:800"></span></button>
     <a class="nav-link" href="hiscon.html" style="margin-left:auto">🔎 HISCON, contratos e seguro</a>
   </nav>
   <main>
@@ -472,6 +473,20 @@ body.embed{background:transparent}
           <tbody id="lista"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- REMARKETING -->
+    <div id="aba-remarketing" hidden>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+        <div style="flex:1;min-width:240px"><h2 style="margin:0 0 4px">📣 Remarketing</h2><small style="opacity:.75">Quem recebeu o link da procuração no ZapSign e <b>não assinou</b>. Se a pessoa assinou por outro link (ex.: refeito sem selfie) ou já foi lançada no CRM, ela não aparece aqui.</small></div>
+        <div><label>Período</label><select id="rmk-dias"><option value="7">7 dias</option><option value="15">15 dias</option><option value="30" selected>30 dias</option><option value="45">45 dias</option></select></div>
+        <div id="rmk-fat-box" hidden><label>Atendente</label><select id="rmk-fat"><option value="">Todas</option></select></div>
+        <div class="busca" style="min-width:200px"><label>Buscar</label><input id="rmk-busca" placeholder="Nome, CPF ou telefone"></div>
+        <button class="btn sec" id="rmk-atualizar">↻ Atualizar</button>
+      </div>
+      <div id="rmk-resumo" style="margin-bottom:10px;font-size:13px"></div>
+      <div class="g-tab"><table><thead><tr><th>Link enviado em</th><th>Nome</th><th>CPF</th><th>Telefone</th><th>Documento</th><th id="rmk-th-at" hidden>Atendente</th><th></th></tr></thead><tbody id="rmk-lista"><tr><td colspan="7" style="opacity:.6">Carregando…</td></tr></tbody></table></div>
+      <div id="rmk-status" style="margin-top:8px;font-size:12px;opacity:.6"></div>
     </div>
 
     <!-- RANKING -->
@@ -814,7 +829,7 @@ async function iniciar() {
   }
   await carregarAdvogados();
   abrirAba('clientes');
-  carregarPendZap();
+  carregarPendZap(); contarRemarketing();
   if (EMBED) document.body.classList.add('embed');
   if (/[?&]novo=1/.test(location.search)) setTimeout(() => abrirCliente(null), 300);
 }
@@ -853,6 +868,72 @@ async function carregarPendZap() {
   box.querySelectorAll('[data-zi]').forEach(b => b.onclick = async () => { if (!confirm('Desconsiderar esta assinatura? Ela some da lista.')) return; await sb.rpc('ignorar_assinatura', { tok: data[+b.dataset.zi].doc_token }); carregarPendZap(); });
 }
 setInterval(() => { if (eu) carregarPendZap(); }, 120000);
+
+/* ---------- remarketing: recebeu o link da procuração e não assinou ---------- */
+let RMK = [];
+const rmkCpf = c => { const d = String(c || '').replace(/\D/g, ''); return d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : (c || ''); };
+const rmkTel = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length > 11 && d.startsWith('55')) d = d.slice(2); return d.length === 11 ? d.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : d.length === 10 ? d.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3') : (t || ''); };
+const zapDe = t => { let d = String(t || '').replace(/\D/g, ''); if (!d) return ''; if (!(d.length > 11 && d.startsWith('55'))) d = '55' + d; return d; };
+async function sincronizarZap(forcar) {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) return null;
+    const r = await fetch(CFG_URL() + '/functions/v1/zapsign-sync' + (forcar ? '?forcar=1' : ''), { method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token, apikey: (window.CRM_CONFIG || {}).SUPABASE_ANON_KEY } });
+    return await r.json();
+  } catch (e) { return null; }
+}
+async function contarRemarketing() {
+  const { data } = await sb.rpc('remarketing_lista', { dias: 30 });
+  const n = (data || []).length, b = $('#rmk-qt'); if (!b) return;
+  b.hidden = !n; b.textContent = n;
+}
+async function carregarRemarketing(sincronizar, forcar) {
+  const admin = eu && eu.papel === 'admin', st = $('#rmk-status');
+  const ler = async () => { const { data, error } = await sb.rpc('remarketing_lista', { dias: +$('#rmk-dias').value || 30 }); if (error) { $('#rmk-lista').innerHTML = `<tr><td colspan="7">Erro: ${esc(error.message)}</td></tr>`; return; } RMK = data || []; desenharRemarketing(); };
+  await ler();
+  if (sincronizar) {
+    st.textContent = 'Conferindo o ZapSign…';
+    const r = await sincronizarZap(forcar);
+    if (!r) st.textContent = 'Não consegui falar com o ZapSign agora — mostrando a última leitura.';
+    else if (r.erro) st.textContent = 'ZapSign: ' + r.erro + (admin ? ' (confira o token em Gestão)' : '');
+    else st.textContent = 'ZapSign conferido às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (r.resta ? ` · ainda lendo ${r.resta} documento(s), atualize em instantes` : '') + ' · atualiza sozinho a cada 15 min';
+    await ler();
+  }
+}
+function desenharRemarketing() {
+  const admin = eu && eu.papel === 'admin';
+  $('#rmk-th-at').hidden = !admin; $('#rmk-fat-box').hidden = !admin;
+  if (admin) {
+    const sel = $('#rmk-fat'), atual = sel.value, nomes = [...new Set(RMK.map(d => d.atendente || '(sem atendente)'))].sort();
+    sel.innerHTML = '<option value="">Todas</option>' + nomes.map(n => `<option${n === atual ? ' selected' : ''}>${esc(n)}</option>`).join('');
+    const cont = {}; RMK.forEach(d => { const n = d.atendente || '(sem atendente)'; cont[n] = (cont[n] || 0) + 1; });
+    $('#rmk-resumo').innerHTML = Object.entries(cont).sort((a, b) => b[1] - a[1]).map(([n, q]) => `<span style="display:inline-block;margin:0 6px 6px 0;padding:4px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.15)"><b>${esc(n)}</b> ${q}</span>`).join('');
+  } else $('#rmk-resumo').innerHTML = RMK.length ? `<b>${RMK.length}</b> pessoa(s) para você chamar de novo.` : '';
+  const q = ($('#rmk-busca').value || '').trim().toLowerCase(), qd = q.replace(/\D/g, ''), fat = admin ? $('#rmk-fat').value : '';
+  const lista = RMK.map((d, i) => [d, i]).filter(([d]) => (!fat || (d.atendente || '(sem atendente)') === fat) && (!q || (d.cliente || '').toLowerCase().includes(q) || (qd && ((d.cpf || '').replace(/\D/g, '').includes(qd) || (d.telefone || '').replace(/\D/g, '').includes(qd)))));
+  const b = $('#rmk-qt'); if (b && +$('#rmk-dias').value === 30) { b.hidden = !RMK.length; b.textContent = RMK.length; }
+  if (!lista.length) { $('#rmk-lista').innerHTML = `<tr><td colspan="7" style="opacity:.7">${RMK.length ? 'Nada com esse filtro.' : '🎉 Ninguém pendente — todo link enviado foi assinado ou lançado.'}</td></tr>`; return; }
+  const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
+  $('#rmk-lista').innerHTML = lista.map(([d, i]) => {
+    const dt = new Date(d.criado_em), dias = Math.max(0, Math.round((hoje0 - new Date(dt.getFullYear(), dt.getMonth(), dt.getDate())) / 864e5));
+    const z = zapDe(d.telefone), pn = (d.cliente || '').trim().split(/\s+/)[0] || '';
+    const msg = encodeURIComponent(`Olá ${pn.charAt(0) + pn.slice(1).toLowerCase()}, tudo bem? Vi que ficou faltando só a assinatura do seu documento para darmos andamento. Consegue assinar agora? Qualquer dúvida estou por aqui.` + (d.link ? '\n' + d.link : ''));
+    return `<tr${d.chamado_em ? ' style="opacity:.6"' : ''}><td style="white-space:nowrap">${dt.toLocaleDateString('pt-BR')} <small style="opacity:.7">${dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : 'há ' + dias + ' dias'}</small></td>
+      <td><b>${esc(d.cliente || '—')}</b>${d.links > 1 ? ` <small title="Foram gerados ${d.links} links para esta pessoa e nenhum foi assinado" style="color:#fbbf24">· ${d.links} links</small>` : ''}${d.status === 'refused' ? ' <small style="color:#f87171">· recusou</small>' : ''}${d.chamado_em ? ` <small style="color:#86efac">· chamado em ${new Date(d.chamado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</small>` : ''}</td>
+      <td style="white-space:nowrap">${esc(rmkCpf(d.cpf)) || '<span style="opacity:.5">—</span>'}</td>
+      <td style="white-space:nowrap">${esc(rmkTel(d.telefone)) || '<span style="opacity:.5">—</span>'}</td>
+      <td><small>${esc(d.nome_doc || '')}</small></td>${admin ? `<td>${esc(d.atendente || '—')}</td>` : ''}
+      <td style="white-space:nowrap">${z ? `<a class="btn peq" target="_blank" rel="noopener" href="https://wa.me/${z}?text=${msg}" data-rc="${i}">WhatsApp</a> ` : ''}${d.link ? `<button class="btn sec peq" data-rl="${i}" title="Copiar o link de assinatura">🔗</button> ` : ''}<button class="btn sec peq" data-rc="${i}" title="Marcar que já chamei">✔ Chamei</button> <button class="btn sec peq" data-ri="${i}" title="Não tem interesse / não é cliente">Desconsiderar</button></td></tr>`;
+  }).join('');
+  $$('#rmk-lista [data-rc]').forEach(b => b.addEventListener('click', async () => { const d = RMK[+b.dataset.rc]; await sb.rpc('remarketing_marcar', { tok: d.doc_token, acao: 'chamei' }); d.chamado_em = new Date().toISOString(); if (b.tagName !== 'A') desenharRemarketing(); }));
+  $$('#rmk-lista [data-rl]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(RMK[+b.dataset.rl].link); b.textContent = '✔'; setTimeout(() => b.textContent = '🔗', 1200); } catch (e) {} });
+  $$('#rmk-lista [data-ri]').forEach(b => b.onclick = async () => { const d = RMK[+b.dataset.ri]; if (!confirm('Desconsiderar ' + (d.cliente || 'esta pessoa') + '? Ela some do remarketing.')) return; await sb.rpc('remarketing_marcar', { tok: d.doc_token, acao: 'ignorar' }); carregarRemarketing(false); });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const on = (id, ev, f) => { const e = document.getElementById(id); if (e) e[ev] = f; };
+  on('rmk-dias', 'onchange', () => carregarRemarketing(false)); on('rmk-fat', 'onchange', desenharRemarketing); on('rmk-busca', 'oninput', desenharRemarketing);
+  on('rmk-atualizar', 'onclick', () => carregarRemarketing(true, true));
+});
+setInterval(() => { if (eu) contarRemarketing(); }, 300000);
 
 /* ---------- gestão (admin) ---------- */
 const G = { mes: null, aba: null, resumo: [] };
@@ -1281,9 +1362,10 @@ document.addEventListener('click', e => {
 $$('nav button, .rodape button').forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
 function abrirAba(aba) {
   $$('nav button, .rodape button').forEach(b => b.classList.toggle('ativa', b.dataset.aba === aba));
-  ['clientes', 'ranking', 'atendentes', 'conta'].forEach(a => $('#aba-' + a).hidden = a !== aba);
+  ['clientes', 'ranking', 'remarketing', 'atendentes', 'conta'].forEach(a => $('#aba-' + a).hidden = a !== aba);
   if (aba === 'clientes') carregarClientes();
   if (aba === 'ranking') carregarRanking();
+  if (aba === 'remarketing') carregarRemarketing(true);
   if (aba === 'atendentes') { carregarEquipe(); carregarLogs(); }
 }
 
