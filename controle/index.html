@@ -44,6 +44,16 @@ main{max-width:1240px;margin:0 auto;padding:22px}
 .carteira .c-nums .tot{border-color:rgba(251,191,36,.6)}.carteira .c-nums .tot b{color:var(--ouro);font-size:28px}
 .carteira .c-meses{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--suave);align-items:center}
 .carteira .c-meses .chip b{color:var(--texto)}
+.carteira .c-nums>div{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.carteira .c-nums>div.sel{border-color:var(--ouro);box-shadow:0 0 0 1px rgba(251,191,36,.5),0 0 18px rgba(251,191,36,.18)}
+.carteira .c-bt{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:14px 0 8px;font-size:13px;color:var(--suave)}
+.carteira .c-bt b{color:var(--ouro);text-transform:uppercase;letter-spacing:.8px;font-size:12px}
+.carteira .c-bancos{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.carteira .c-bancos .bk{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--borda);border-radius:10px;background:rgba(2,8,22,.45);font-size:13px}
+.carteira .c-bancos .bk i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(251,191,36,.22),rgba(251,191,36,.05));pointer-events:none}
+.carteira .c-bancos .bk span,.carteira .c-bancos .bk b{position:relative}
+.carteira .c-bancos .bk small{display:block;color:var(--suave);font-size:11px;margin-top:1px}
+.carteira .c-bancos .bk b{white-space:nowrap}
 .barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;align-items:end}
 .tabela{overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:14px}
@@ -99,11 +109,13 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
     <div class="carteira vidro">
       <div class="c-tit"><b>💼 Carteira de seguros</b><small id="w-sub">soma do valor dos seguros (prestamista) dos clientes indicados a você</small></div>
       <div class="c-nums">
-        <div><span>Hoje</span><b id="w-dia">–</b><small id="w-dia-q"></small></div>
-        <div><span>Este mês</span><b id="w-mes">–</b><small id="w-mes-q"></small></div>
-        <div class="tot"><span>Total da carteira</span><b id="w-tot">–</b><small id="w-tot-q"></small></div>
+        <div data-w="dia" title="Clique para ver por banco só o de hoje"><span>Hoje</span><b id="w-dia">–</b><small id="w-dia-q"></small></div>
+        <div data-w="mes" title="Clique para ver por banco só o deste mês"><span>Este mês</span><b id="w-mes">–</b><small id="w-mes-q"></small></div>
+        <div class="tot sel" data-w="tot" title="Clique para ver por banco o total"><span>Total da carteira</span><b id="w-tot">–</b><small id="w-tot-q"></small></div>
       </div>
       <div class="c-meses" id="w-meses"></div>
+      <div class="c-bt"><b>Por banco</b><span id="w-bt-sub"></span></div>
+      <div class="c-bancos" id="w-bancos"></div>
     </div>
     <div class="kpis">
       <div class="kpi vidro ouro"><span>Clientes indicados</span><b id="k-cli">–</b></div>
@@ -215,7 +227,29 @@ function carteira(dados) {
   const nomeMes = m => new Date(m + '-15T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('. de ', '/').replace(' de ', '/');
   const ms = Object.keys(pm).sort().reverse().slice(0, 6);
   $('#w-meses').innerHTML = ms.length > 1 ? 'Mês a mês: ' + ms.map(m => `<span class="chip">${esc(nomeMes(m))} <b>${real(pm[m])}</b></span>`).join('') : '';
+  W = { dia: dDia, mes: dMes, tot: seg }; bancosCarteira();
 }
+// consolidado por banco (clicando em Hoje / Este mês / Total muda o recorte)
+let W = { dia: [], mes: [], tot: [] }, wEscopo = 'tot';
+function bancoNome(b) {
+  const x = String(b || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  if (!x) return 'Sem banco';
+  const R = [[/BANCO DO BRASIL|^BB$/, 'Banco do Brasil'], [/FACTA/, 'Facta'], [/PARAN/, 'Paraná Banco'], [/\bPAN\b/, 'Banco PAN'], [/C6|FICSA/, 'C6'], [/MERCANTIL/, 'Mercantil'], [/QUALI/, 'Qualibanking'], [/\bQI\b/, 'QI Sociedade de Crédito'],
+    [/PRESEN/, 'Presença'], [/CAIXA/, 'Caixa'], [/BANRISUL/, 'Banrisul'], [/\bBMG\b|\bBGM\b/, 'BMG'], [/SEGUE/, 'Segue'], [/AGIBANK/, 'Agibank'], [/\bAGIL\b/, 'Ágil'], [/PINE/, 'Pine'], [/PICPAY/, 'PicPay'], [/\bINTER\b/, 'Inter'], [/ITAU/, 'Itaú'], [/FINANTO/, 'Finanto']];
+  for (const [re, n] of R) if (re.test(x)) return n;
+  return x.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()).slice(0, 26);
+}
+function bancosCarteira() {
+  const real = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  $$('.carteira .c-nums [data-w]').forEach(d => d.classList.toggle('sel', d.dataset.w === wEscopo));
+  const l = W[wEscopo] || [], g = {};
+  l.forEach(c => { const n = bancoNome(c.banco), o = g[n] = g[n] || { n, v: 0, q: 0, sem: 0 }; const v = Number(c.valor) || 0; o.v += v; if (v > 0) o.q++; else o.sem++; });
+  const lista = Object.values(g).sort((a, b) => b.v - a.v || b.q - a.q), max = lista.length ? lista[0].v : 0, tot = lista.reduce((x, o) => x + o.v, 0);
+  $('#w-bt-sub').textContent = ({ dia: 'indicados hoje', mes: 'indicados este mês', tot: 'total da carteira' })[wEscopo] + (lista.length ? ' · ' + lista.length + (lista.length === 1 ? ' banco' : ' bancos') : '');
+  $('#w-bancos').innerHTML = lista.map(o => `<div class="bk"><i style="width:${max ? Math.max(2, o.v / max * 100) : 0}%"></i><span>${esc(o.n)}<small>${o.q} ${o.q === 1 ? 'seguro' : 'seguros'}${o.sem ? ' · ' + o.sem + ' sem valor' : ''}${tot ? ' · ' + Math.round(o.v / tot * 100) + '%' : ''}</small></span><b>${real(o.v)}</b></div>`).join('')
+    || '<span style="color:var(--suave);font-size:13px">Nenhum seguro neste período.</span>';
+}
+$$('.carteira .c-nums [data-w]').forEach(d => d.onclick = () => { wEscopo = d.dataset.w; bancosCarteira(); });
 let tb; $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(desenhar, 200); };
 ['#f-status', '#f-de', '#f-ate'].forEach(s => $(s).onchange = desenhar);
 function desenhar() {
