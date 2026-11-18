@@ -1263,7 +1263,7 @@ $('#gm-form').onsubmit = async e => {
   const partes = [seg && seg + ' clientes de seguro prestamista', rev && rev + ' de revisão de juros', mar && mar + ' de aumento de margem'].filter(Boolean);
   const cS = cltVal('#gm-seg-clt'), cR = cltVal('#gm-rev-clt'), cM = cltVal('#gm-mar-clt'), temClt = cS != null || cR != null || cM != null;
   // descrição por tipo: estagiário usa os números normais, CLT usa os números do CLT (quando forem diferentes)
-  const frase = (a, b, c) => 'Feche ' + [a && a + ' clientes de seguro prestamista', b && b + ' de revisão de juros', c && c + ' de aumento de margem'].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' e $1') + ' hoje. Vale a procuração assinada no ZapSign.';
+  const frase = (a, b, c) => 'Feche ' + [a && a + ' clientes de seguro prestamista', b && b + ' de revisão de juros', c && c + ' de aumento de margem'].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' e $1') + ' hoje. Vale a procuração assinada no ZapSign dentro do seu horário de trabalho.';
   const auto = t => !t || /^(Feche |Bata os objetivos)/.test(t); // texto gerado antes: refaz com os números atuais
   const dE = $('#gm-desc').value.trim(), dC = $('#gm-desc-clt').value.trim();
   const desc = auto(dE) ? frase(seg, rev, mar) : dE;
