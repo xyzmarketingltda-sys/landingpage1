@@ -392,13 +392,13 @@
       if (v > 0) r.seguro.push({ v, trecho: 'Quadro "Seguro Prestamista (X) SIM" · valor ' + mx[1] + ' (conferir)' });
     }
     // layout QI / VCTEX (CCB): tabela "12. Valor do Prêmio do Seguro" com uma linha por data — usa a linha da data de emissão
-    if (!r.seguro.length && /Pr[êe]mio\s+do/i.test(T) && /Seguro\s*\(\s*\*/i.test(T)) {
+    if (!r.seguro.length && /Pr[êe]mio/i.test(T) && /do\s+Seguro/i.test(T)) {
       const em = (T.match(/Data de Emiss[ãa]o:?\s*(\d{2}\/\d{2}\/\d{4})/i) || [])[1];
-      const RX = /(\d{2}\/\d{2}\/\d{4})\s+R\$\s?[\d.]+,\d{2}\s+R\$\s?[\d.]+,\d{2}\s+R\$\s?[\d.]+,\d{2}\s+R\$\s?[\d.]+,\d{2}\s+[\d.,]+\s?%\s+[\d.,]+\s?%\s+R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})/g;
+      const RX = /(\d{2}\/\d{2}\/\d{4})\s+(?:R\$\s?[\d.]+,\d{2}\s+){4,6}[\d.,]+\s?%\s+[\d.,]+\s?%\s+R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})/g;
       let mq, pri = null, certo = null;
       while ((mq = RX.exec(T))) { if (!pri) pri = mq; if (em && mq[1] === em) { certo = mq; break; } }
       const mm = certo || pri, v = mm ? Number(mm[2].replace(/\./g, '').replace(',', '.')) : 0;
-      if (v > 0) r.seguro.push({ v, trecho: 'Item 12 · Valor do Prêmio do Seguro R$ ' + mm[2] + ' (' + mm[1] + ')' });
+      if (v > 0) r.seguro.push({ v, trecho: 'Tabela · Valor do Prêmio do Seguro R$ ' + mm[2] + ' (' + mm[1] + ')' });
     }
     // PDFs que quebram palavras ("Prestam ista", "Seg uro"): tenta no texto sem espaços
     if (!r.seguro.length) {
