@@ -206,6 +206,7 @@ tbody tr:last-child td{border-bottom:0}
 .g-top h3{font-size:15px}.g-top small{color:var(--suave);font-weight:400}
 .g-mes{display:flex;align-items:center;gap:8px}.g-mes b{min-width:120px;text-align:center;text-transform:capitalize}
 .g-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.g-kpis.prev{grid-template-columns:repeat(3,1fr)}.g-kpi.prev{border-color:rgba(251,191,36,.35)}.g-kpi.prev b{color:#fde68a}
 .g-kpi{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .g-kpi span{font-size:12px;color:var(--suave)}.g-kpi b{font-size:20px}.g-kpi small{font-size:11px;color:var(--suave)}
 #g-res-box.pos b{color:var(--verde)}#g-res-box.neg b{color:var(--vermelho)}
@@ -301,6 +302,11 @@ tbody tr:last-child td{border-bottom:0}
 .docs-lista span{font-size:12px;padding:4px 8px;border-radius:99px;border:1px solid var(--borda);background:rgba(255,255,255,.03);display:inline-flex;gap:6px;align-items:center}
 .docs-lista span.ok{border-color:rgba(34,197,94,.5);color:#86efac}
 .docs-lista button{background:none;border:0;color:var(--suave);cursor:pointer;font-size:12px}
+
+.produtos{display:flex;gap:6px;flex-wrap:wrap}
+.produtos button{flex:1;min-width:150px;padding:9px 10px;border-radius:10px;border:1px solid var(--borda);background:rgba(255,255,255,.03);color:var(--texto);font:inherit;font-size:13px;cursor:pointer}
+.produtos button.sel{border-color:var(--ciano);background:rgba(0,229,255,.12);box-shadow:0 0 12px rgba(0,229,255,.25)}
+.produtos button:disabled{opacity:.45;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -346,6 +352,11 @@ tbody tr:last-child td{border-bottom:0}
           <div class="g-kpi" id="g-res-box"><span>Resultado</span><b id="g-res">–</b><small>comissões − despesas</small></div>
           <div class="g-kpi"><span>Processos</span><b id="g-proc">–</b><small id="g-proc-sub"></small></div>
         </div>
+        <div class="g-kpis prev">
+          <div class="g-kpi prev"><span>🧾 A receber dos advogados (previsto)</span><b id="gp-prev">–</b><small id="gp-prev-sub">pelas regras de cada advogado, clientes lançados no mês</small></div>
+          <div class="g-kpi prev"><span>📉 Custos previstos do mês</span><b id="gp-cus">–</b><small id="gp-cus-sub"></small></div>
+          <div class="g-kpi prev" id="gp-res-box"><span>Resultado previsto</span><b id="gp-res">–</b><small>a receber − custos previstos</small></div>
+        </div>
         <form class="g-lanca" id="g-form-desp">
           <b>Lançar despesa</b>
           <input id="gd-desc" placeholder="Descrição (ex.: Aluguel, Tráfego, Rina)" required>
@@ -359,6 +370,7 @@ tbody tr:last-child td{border-bottom:0}
           <button class="btn sec peq" data-g="com">💰 Comissões</button>
           <button class="btn sec peq" data-g="hist">📈 Histórico mensal</button>
           <button class="btn sec peq" data-g="mis">📜 Missões diárias</button>
+          <button class="btn sec peq" data-g="adv">🧾 A receber por advogado</button>
         </div>
         <div class="g-painel" id="gp-proc" hidden>
           <form class="g-linha" id="gp-form"><input id="gpn-nome" placeholder="Cliente" required><input id="gpn-adv" list="lista-adv" placeholder="Advogado(a)" required style="max-width:170px"><input id="gpn-num" placeholder="Nº do processo" style="max-width:240px"><input id="gpn-pct" placeholder="% comissão" style="max-width:110px" inputmode="decimal"><button class="btn peq">+ Adicionar</button></form>
@@ -376,6 +388,12 @@ tbody tr:last-child td{border-bottom:0}
           <div class="g-cats" id="gc-resumo"></div>
           <div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Vendedor</th><th>Tipo</th><th>Banco</th><th>Advogado</th><th style="text-align:right">Valor</th><th style="text-align:right">Comissão</th><th>Situação</th></tr></thead><tbody id="gc-lista"></tbody></table></div>
         </div>
+        <div class="g-painel" id="gp-adv" hidden>
+          <div class="g-linha"><button class="btn peq" id="ga-baixar" type="button">⬇️ Baixar relatório consolidado do mês (Excel)</button><small style="color:var(--suave)">valores previstos pelas regras — clientes sem valor de seguro aparecem como "sem valor" para conferir</small></div>
+          <div class="g-cats" id="ga-resumo"></div>
+          <div class="g-tab"><table><thead><tr><th>Advogado</th><th>Regra</th><th style="text-align:right">Clientes</th><th style="text-align:right">Processos</th><th style="text-align:right">Sem valor</th><th style="text-align:right">A receber</th><th></th></tr></thead><tbody id="ga-lista"></tbody></table></div>
+          <div id="ga-det"></div>
+        </div>
         <div class="g-painel" id="gp-mis" hidden>
           <form class="g-linha" id="gm-form" style="flex-wrap:wrap">
             <input type="date" id="gm-dia" required style="max-width:160px;color-scheme:dark">
@@ -389,6 +407,17 @@ tbody tr:last-child td{border-bottom:0}
           </form>
           <div class="g-linha"><b style="font-size:13px">🧪 Testar quest diária:</b><input type="date" id="gm-teste" style="max-width:160px;color-scheme:dark"><button class="btn sec peq" id="gm-ver" type="button">👁 Ver como fica</button><small style="color:var(--suave)">abre o escritório com a janela da missão do dia escolhido e o progresso de cada atendente</small></div>
           <div class="g-tab"><table><thead><tr><th>Dia</th><th>Missão</th><th>Objetivos</th><th style="text-align:right">Prêmio</th><th></th></tr></thead><tbody id="gm-lista"></tbody></table></div>
+          <h4 style="margin:18px 0 8px;color:#fbbf24">⚡ Desafios relâmpago <small style="color:var(--suave);font-weight:400">— toca som de dinheiro e avisa todo mundo na hora, em qualquer aba</small></h4>
+          <form class="g-linha" id="gdz-form" style="flex-wrap:wrap">
+            <input id="gdz-tit" placeholder="Nome do desafio (ex.: Corrida das 15h)" required style="min-width:240px;flex:1">
+            <label style="font-size:12px;color:var(--suave)">Seguro prestamista <input id="gdz-seg" type="number" min="0" value="3" style="width:64px"></label>
+            <label style="font-size:12px;color:var(--suave)">Revisão <input id="gdz-rev" type="number" min="0" value="0" style="width:64px"></label>
+            <label style="font-size:12px;color:var(--suave)">Aumento de margem <input id="gdz-mar" type="number" min="0" value="0" style="width:64px"></label>
+            <label style="font-size:12px;color:var(--suave)">Prêmio R$ <input id="gdz-pre" inputmode="decimal" value="30" style="width:70px"></label>
+            <label style="font-size:12px;color:var(--suave)">Vale até <input id="gdz-fim" type="time" value="18:00" style="width:100px;color-scheme:dark"></label>
+            <button class="btn peq" style="background:linear-gradient(180deg,#b45309,#78350f);border-color:#fbbf24">⚡ Lançar desafio</button>
+          </form>
+          <div class="g-tab"><table><thead><tr><th>Desafio</th><th>Prazo</th><th>Objetivos</th><th style="text-align:right">Prêmio</th><th>Quem cumpriu</th><th></th></tr></thead><tbody id="gdz-lista"></tbody></table></div>
         </div>
         <div class="g-painel" id="gp-hist" hidden>
           <div class="g-tab"><table><thead><tr><th>Mês</th><th style="text-align:right">Comissões</th><th style="text-align:right">Despesas</th><th style="text-align:right">Resultado</th><th style="width:40%"></th></tr></thead><tbody id="gh-lista"></tbody></table></div>
@@ -505,6 +534,10 @@ tbody tr:last-child td{border-bottom:0}
       <div><label>Telefone / WhatsApp</label><input id="c-tel" inputmode="tel" placeholder="(12) 99999-9999"></div>
       <div><label>Data do fechamento</label><input type="date" id="c-data"></div>
       <div><label>Valor (R$)</label><input id="c-valor" inputmode="decimal" placeholder="0,00"></div>
+      <div class="inteiro"><label>Produto *</label><div class="produtos" id="c-prod">
+        <button type="button" data-p="seguro" class="sel">🛡️ Seguro prestamista</button>
+        <button type="button" data-p="revisional">🔒 Revisão de juros</button>
+        <button type="button" data-p="margem">📈 Aumento de margem</button></div><small id="c-prod-info" style="color:var(--suave);font-size:11px"></small></div>
       <div><label>Banco *</label><input id="c-banco" placeholder="Ex.: Facta, Banrisul…" required></div>
       <div><label>Advogado (escritório) *</label><input id="c-adv" list="lista-adv" placeholder="Ex.: IGOR" required autocomplete="off"><datalist id="lista-adv"></datalist></div>
       <div id="c-at-box" hidden><label>Atendente</label><select id="c-at"></select></div>
@@ -534,7 +567,7 @@ tbody tr:last-child td{border-bottom:0}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="presenca.js"></script>
+<script src="presenca.js?v=20261117k"></script>
 <script>
 /* ================= FUNDO 3D (galáxia de partículas conectadas) ================= */
 (() => {
@@ -739,7 +772,7 @@ async function iniciar() {
   if (admin) { await carregarEquipe(); iniciarGestao(); }
   iniciarFlutuante();
   try { iniciarCardEsc(); } catch (e) {}
-  try { iniciarMissoes(); } catch (e) {}
+  try { iniciarMissoes(); avisarDesafioAtivo(); } catch (e) {}
   carregarAdvogados();
   abrirAba('clientes');
 }
@@ -766,7 +799,7 @@ $('#g-prox').onclick = () => mudaMes(1);
 $$('.g-abas button').forEach(b => b.onclick = () => {
   G.aba = G.aba === b.dataset.g ? null : b.dataset.g;
   $$('.g-abas button').forEach(x => x.classList.toggle('sel', x.dataset.g === G.aba));
-  ['proc', 'desp', 'com', 'hist', 'mis'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
+  ['proc', 'desp', 'com', 'hist', 'mis', 'adv'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
   carregarPainel();
 });
 async function carregarGestao() {
@@ -784,14 +817,87 @@ async function carregarGestao() {
   $('#g-res').textContent = brl(res); $('#g-res-box').className = 'g-kpi ' + (res >= 0 ? 'pos' : 'neg');
   $('#g-proc').textContent = np ?? 0; $('#g-proc-sub').textContent = (na ?? 0) + ' em andamento';
   carregarPainel();
+  calcularPrevisoes();
 }
 function carregarPainel() {
   if (G.aba === 'proc') carregarProcessos();
   if (G.aba === 'desp') carregarDespesas();
   if (G.aba === 'com') carregarComissoes();
   if (G.aba === 'hist') desenharHistorico();
-  if (G.aba === 'mis') carregarMissoesAdm();
+  if (G.aba === 'mis') { carregarMissoesAdm(); carregarDesafiosAdm(); }
+  if (G.aba === 'adv') desenharReceber();
 }
+
+/* ---------- comissão prevista por regra de advogado + custos previstos ---------- */
+const FIXAS = ['Salários', 'Aluguel', 'Contas', 'Sistemas'], REF_ANT = ['Tráfego/Marketing'];
+let REGRAS = null, RECEBER = [];
+const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Date(a, m, 0).toLocaleDateString('en-CA'); };
+const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
+async function clientesDoMes(ini, fim) {
+  let tudo = [], de = 0;
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,data_contato').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  return tudo;
+}
+function aplicarRegra(regra, linhas) {
+  // linhas: clientes do advogado no mês → agrupa por cliente (CPF), pois paga por cliente e não por processo
+  const grupos = {}; linhas.forEach(c => { const k = (c.cpf || '').replace(/\D/g, '') || c.nome; (grupos[k] = grupos[k] || []).push(c); });
+  const itens = Object.values(grupos).map(g => {
+    const seg = g.filter(c => (c.produto || 'seguro') === 'seguro'), rev = g.filter(c => c.produto === 'revisional');
+    const valor = seg.reduce((x, c) => x + (Number(c.valor) || 0), 0), facta = seg.some(c => /facta/i.test(c.banco || ''));
+    let v = 0, obs = '', semValor = seg.length > 0 && !valor;
+    if (!regra) obs = 'sem regra cadastrada';
+    else if (regra.tipo === 'por_processo') { v = g.length * regra.v; obs = g.length + ' processo(s) × ' + brl(regra.v); semValor = false; }
+    else if (regra.tipo === 'percentual') { obs = regra.pct + '% no êxito'; semValor = false; }
+    else if (regra.tipo === 'faixas_cliente') {
+      if (seg.length && valor) { const f = regra.faixas.find(x => valor >= x.min); if (f) { v = f.v; obs = 'seguro ' + brl(valor); } else if (facta && regra.facta_min && valor >= regra.facta_min) { v = regra.facta_v; obs = 'Facta ' + brl(valor); } else obs = 'abaixo da faixa (' + brl(valor) + ')'; }
+      if (rev.length && regra.revisional_v) { v += regra.revisional_v; obs += (obs ? ' + ' : '') + 'juros abusivos'; }
+      if (semValor) obs = 'sem valor do seguro';
+    }
+    return { cliente: g[0].nome, cpf: g[0].cpf, bancos: [...new Set(g.map(c => c.banco).filter(Boolean))].join(', '), processos: g.length, valor, v, obs, semValor };
+  });
+  return itens;
+}
+async function calcularPrevisoes() {
+  try {
+    if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
+    const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim);
+    const porAdv = {}; cli.forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
+    RECEBER = Object.entries(porAdv).map(([adv, l]) => { const r = REGRAS[adv]; const itens = aplicarRegra(r?.regra, l); return { adv, obs: r?.obs || 'sem regra', itens, total: itens.reduce((x, i) => x + i.v, 0), semValor: itens.filter(i => i.semValor).length, processos: l.length }; }).sort((a, b) => b.total - a.total);
+    const prev = RECEBER.reduce((x, a) => x + a.total, 0);
+    $('#gp-prev').textContent = brl(prev); $('#gp-prev-sub').textContent = cli.length + ' lançamentos · ' + RECEBER.reduce((x, a) => x + a.semValor, 0) + ' cliente(s) sem valor de seguro';
+    // custos previstos: fixos e tráfego repetem o mês anterior quando ainda não foram lançados; variáveis só o lançado
+    const [{ data: d1 }, { data: d0 }] = await Promise.all([sb.from('despesas').select('categoria,valor').eq('mes_ref', G.mes), sb.from('despesas').select('categoria,valor').eq('mes_ref', mesAnt(G.mes))]);
+    const soma = (l, c) => (l || []).filter(x => (x.categoria || 'Outros') === c).reduce((x, y) => x + Number(y.valor), 0);
+    const cats = [...new Set([...(d1 || []), ...(d0 || [])].map(x => x.categoria || 'Outros'))];
+    let cus = 0, repetidos = [];
+    cats.forEach(c => { const agora = soma(d1, c), antes = soma(d0, c);
+      if ((FIXAS.includes(c) || REF_ANT.includes(c)) && !agora && antes) { cus += antes; repetidos.push(c); } else cus += agora; });
+    const corrente = G.mes === mesIso(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    $('#gp-cus').textContent = brl(cus); $('#gp-cus-sub').textContent = repetidos.length ? 'usando mês anterior p/ ' + repetidos.join(', ') + (corrente ? '' : '') : 'tudo já lançado';
+    const res = prev - cus; $('#gp-res').textContent = brl(res); $('#gp-res-box').style.borderColor = res >= 0 ? 'rgba(34,197,94,.5)' : 'rgba(239,68,68,.5)';
+    if (G.aba === 'adv') desenharReceber();
+  } catch (e) { console.warn(e); }
+}
+function desenharReceber() {
+  $('#ga-resumo').innerHTML = `<span>Total a receber em ${mesNome(G.mes)}: <b>${brl(RECEBER.reduce((x, a) => x + a.total, 0))}</b></span>`;
+  $('#ga-lista').innerHTML = RECEBER.map((a, i) => `<tr><td><b>${esc(a.adv)}</b></td><td><small>${esc(a.obs)}</small></td><td class="num">${a.itens.length}</td><td class="num">${a.processos}</td><td class="num" style="${a.semValor ? 'color:#fbbf24' : ''}">${a.semValor || ''}</td><td class="num"><b>${brl(a.total)}</b></td>
+    <td style="white-space:nowrap"><button class="btn sec peq" data-gdet="${i}">Ver clientes</button> <button class="btn sec peq" data-gcsv="${i}" title="Baixar só deste advogado">⬇️</button></td></tr>`).join('') || '<tr><td colspan="7" style="color:var(--suave)">Nenhum cliente lançado neste mês.</td></tr>';
+  $$('#ga-lista [data-gdet]').forEach(b => b.onclick = () => { const a = RECEBER[+b.dataset.gdet];
+    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px">${esc(a.adv)} — ${a.itens.length} cliente(s)</h4><div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th style="text-align:right">Processos</th><th>Base</th><th style="text-align:right">A receber</th></tr></thead><tbody>${a.itens.sort((x, y) => y.v - x.v).map(i => `<tr><td>${esc(i.cliente)}</td><td>${esc(i.cpf || '')}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num">${brl(i.v)}</td></tr>`).join('')}</tbody></table></div>`;
+    $('#ga-det').scrollIntoView({ behavior: 'smooth' }); });
+  $$('#ga-lista [data-gcsv]').forEach(b => b.onclick = () => baixarReceber([RECEBER[+b.dataset.gcsv]]));
+}
+function baixarReceber(lista) {
+  const L = [['Advogado', 'Regra', 'Cliente', 'CPF', 'Bancos', 'Processos', 'Valor do seguro', 'Base do cálculo', 'A receber']];
+  lista.forEach(a => a.itens.forEach(i => L.push([a.adv, a.obs, i.cliente, i.cpf || '', i.bancos, i.processos, i.valor ? i.valor.toFixed(2).replace('.', ',') : '', i.obs, i.v.toFixed(2).replace('.', ',')])));
+  L.push([]); lista.forEach(a => L.push([a.adv, 'TOTAL', '', '', '', a.processos, '', a.semValor ? a.semValor + ' sem valor' : '', a.total.toFixed(2).replace('.', ',')]));
+  const csv = '﻿' + L.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'a_receber_' + (lista.length === 1 ? lista[0].adv.toLowerCase() + '_' : '') + G.mes.slice(0, 7) + '.csv'; a.click();
+}
+$('#ga-baixar').onclick = () => baixarReceber(RECEBER);
+
+let gmEditando = null;
 const abrirTesteMissao = d => window.open('escritorio.html?missao=1&teste=1&dia=' + d, '_blank');
 async function carregarMissoesAdm() {
   if (!$('#gm-dia').value) { const a = new Date(); a.setDate(a.getDate() + 1); $('#gm-dia').value = a.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
@@ -799,20 +905,52 @@ async function carregarMissoesAdm() {
   const { data } = await sb.from('missoes').select('*').order('dia', { ascending: false }).limit(60);
   const obj = m => [m.meta_seguro && m.meta_seguro + ' prestamista', m.meta_revisional && m.meta_revisional + ' revisão', m.meta_margem && m.meta_margem + ' aumento de margem'].filter(Boolean).join(' + ');
   $('#gm-lista').innerHTML = (data || []).map(m => `<tr><td>${new Date(m.dia + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td><td><b>${esc(m.titulo)}</b><br><small style="color:var(--suave)">${esc(m.descricao || '')}</small></td><td>${obj(m) || '—'}</td><td class="num">${brl(m.recompensa)}</td>
-    <td style="white-space:nowrap"><button class="btn sec peq" data-mver="${m.dia}">👁 Testar</button> <button class="x" title="Apagar" data-mdel="${m.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--suave)">Nenhuma missão cadastrada.</td></tr>';
+    <td style="white-space:nowrap"><button class="btn sec peq" data-medit="${m.id}">✏️</button> <button class="btn sec peq" data-mver="${m.dia}">👁 Testar</button> <button class="x" title="Apagar" data-mdel="${m.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--suave)">Nenhuma missão cadastrada.</td></tr>';
   $$('#gm-lista [data-mver]').forEach(b => b.onclick = () => abrirTesteMissao(b.dataset.mver));
+  $$('#gm-lista [data-medit]').forEach(b => b.onclick = () => { const m = data.find(x => String(x.id) === b.dataset.medit); if (!m) return;
+    gmEditando = m.id; $('#gm-dia').value = m.dia; $('#gm-tit').value = m.titulo; $('#gm-desc').value = m.descricao || ''; $('#gm-seg').value = m.meta_seguro; $('#gm-rev').value = m.meta_revisional; $('#gm-mar').value = m.meta_margem || 0;
+    $('#gm-pre').value = String(m.recompensa).replace('.', ','); $('#gm-form button').textContent = '💾 Salvar alteração'; $('#gm-form').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   $$('#gm-lista [data-mdel]').forEach(b => b.onclick = async () => { if (!confirm('Apagar esta missão?')) return; const { error } = await sb.from('missoes').delete().eq('id', b.dataset.mdel); if (error) return alert(traduz(error)); carregarMissoesAdm(); });
 }
 $('#gm-ver').onclick = () => abrirTesteMissao($('#gm-teste').value);
+async function carregarDesafiosAdm() {
+  const { data } = await sb.from('desafios').select('*').order('inicio', { ascending: false }).limit(20);
+  const linhas = [];
+  for (const d of data || []) {
+    const { data: p } = await sb.rpc('desafio_painel', { did: d.id });
+    const ok = (p || []).filter(r => r.cumpriu).sort((a, b) => new Date(a.concluiu_em) - new Date(b.concluiu_em)).map(r => r.atendente);
+    const ativo = new Date(d.fim) > new Date();
+    const obj = [d.meta_seguro && d.meta_seguro + ' prestamista', d.meta_revisional && d.meta_revisional + ' revisão', d.meta_margem && d.meta_margem + ' margem'].filter(Boolean).join(' + ');
+    linhas.push(`<tr><td><b>${esc(d.titulo)}</b> ${ativo ? '<span class="pill ok">ao vivo</span>' : ''}</td><td>${new Date(d.inicio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} → ${new Date(d.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td>${obj}</td><td class="num">${brl(d.premio)}</td><td>${ok.length ? esc(ok.join(', ')) : '—'}</td>
+      <td style="white-space:nowrap">${ativo ? `<button class="btn sec peq" data-dzen="${d.id}" title="Encerrar agora">⏹</button>` : ''} <button class="x" data-dzdel="${d.id}" title="Apagar">✕</button></td></tr>`);
+  }
+  $('#gdz-lista').innerHTML = linhas.join('') || '<tr><td colspan="6" style="color:var(--suave)">Nenhum desafio ainda.</td></tr>';
+  $$('#gdz-lista [data-dzen]').forEach(b => b.onclick = async () => { await sb.from('desafios').update({ fim: new Date().toISOString() }).eq('id', b.dataset.dzen); carregarDesafiosAdm(); });
+  $$('#gdz-lista [data-dzdel]').forEach(b => b.onclick = async () => { if (!confirm('Apagar este desafio?')) return; await sb.from('desafios').delete().eq('id', b.dataset.dzdel); carregarDesafiosAdm(); });
+}
+$('#gdz-form').onsubmit = async e => {
+  e.preventDefault();
+  const n = id => Math.max(0, parseInt($(id).value) || 0), seg = n('#gdz-seg'), rev = n('#gdz-rev'), mar = n('#gdz-mar');
+  if (!seg && !rev && !mar) return alert('Coloque pelo menos uma quantidade.');
+  const [hh, mm] = ($('#gdz-fim').value || '23:59').split(':').map(Number), fim = new Date(); fim.setHours(hh, mm, 0, 0);
+  if (fim <= new Date()) return alert('O horário de término já passou.');
+  const partes = [seg && seg + ' seguro(s) prestamista', rev && rev + ' revisão(ões)', mar && mar + ' aumento(s) de margem'].filter(Boolean);
+  const reg = { titulo: $('#gdz-tit').value.trim(), descricao: 'Feche ' + partes.join(' + ') + ' até ' + $('#gdz-fim').value + '.', meta_seguro: seg, meta_revisional: rev, meta_margem: mar, premio: numBR($('#gdz-pre').value) || 0, fim: fim.toISOString() };
+  const { data, error } = await sb.from('desafios').insert(reg).select('id').single();
+  if (error) return alert(traduz(error));
+  try { XYZPresenca.enviar('desafio', { id: data.id, ...reg }); } catch (e) {}
+  toast('⚡ Desafio lançado! A equipe foi avisada.'); $('#gdz-tit').value = ''; carregarDesafiosAdm();
+};
 $('#gm-form').onsubmit = async e => {
   e.preventDefault();
   const n = id => Math.max(0, parseInt($(id).value) || 0), seg = n('#gm-seg'), rev = n('#gm-rev'), mar = n('#gm-mar');
   if (!seg && !rev && !mar) return alert('Coloque pelo menos uma quantidade.');
   const partes = [seg && seg + ' clientes de seguro prestamista', rev && rev + ' de revisão de juros', mar && mar + ' de aumento de margem'].filter(Boolean);
   const desc = $('#gm-desc').value.trim() || 'Feche ' + partes.join(', ').replace(/, ([^,]*)$/, ' e $1') + ' hoje.';
-  const { error } = await sb.from('missoes').insert({ dia: $('#gm-dia').value, titulo: $('#gm-tit').value.trim(), descricao: desc, meta_seguro: seg, meta_revisional: rev, meta_margem: mar, recompensa: numBR($('#gm-pre').value) || 0 });
+  const reg = { dia: $('#gm-dia').value, titulo: $('#gm-tit').value.trim(), descricao: desc, meta_seguro: seg, meta_revisional: rev, meta_margem: mar, recompensa: numBR($('#gm-pre').value) || 0 };
+  const { error } = gmEditando ? await sb.from('missoes').update(reg).eq('id', gmEditando) : await sb.from('missoes').insert(reg);
   if (error) return alert(traduz(error));
-  toast('📜 Missão criada!'); $('#gm-tit').value = ''; $('#gm-desc').value = ''; carregarMissoesAdm();
+  toast(gmEditando ? '📜 Missão atualizada!' : '📜 Missão criada!'); gmEditando = null; $('#gm-form button').textContent = '+ Criar missão'; $('#gm-tit').value = ''; $('#gm-desc').value = ''; carregarMissoesAdm();
 };
 $('#g-form-desp').onsubmit = async e => {
   e.preventDefault();
@@ -1043,6 +1181,21 @@ async function enviarDocs(id) {
   return ok;
 }
 
+
+/* ---------- produto (revisão travada pela missão do dia) ---------- */
+let produtoSel = 'seguro';
+function marcarProduto(p) { produtoSel = p; $$('#c-prod button').forEach(b => b.classList.toggle('sel', b.dataset.p === p)); }
+$$('#c-prod button').forEach(b => b.onclick = () => { if (!b.disabled) marcarProduto(b.dataset.p); });
+async function prepararProduto(c) {
+  marcarProduto(c?.produto || 'seguro');
+  const rev = $('#c-prod [data-p="revisional"]'); rev.disabled = false; rev.textContent = '⚖️ Revisão de juros'; $('#c-prod-info').textContent = '';
+  if (eu.papel === 'admin' || c?.produto === 'revisional') return;
+  const { data } = await sb.rpc('limite_revisional', { at: eu.id }); const l = (data || [])[0] || { permitido: 0, feitos: 0 };
+  if (!l.permitido) { rev.disabled = true; rev.textContent = '🔒 Revisão de juros'; $('#c-prod-info').textContent = 'Revisão de juros fica travada — só libera quando a missão do dia ou um desafio pedir revisão.'; }
+  else if (l.feitos >= l.permitido) { rev.disabled = true; rev.textContent = '🔒 Revisão de juros'; $('#c-prod-info').textContent = `Limite de revisões de hoje atingido (${l.feitos}/${l.permitido}).`; }
+  else { rev.textContent = `🔓 Revisão de juros (${l.feitos}/${l.permitido})`; $('#c-prod-info').textContent = `Liberada pela missão de hoje: pode cadastrar mais ${l.permitido - l.feitos}.`; }
+}
+
 function abrirCliente(c) {
   editando = c; cpfConfirmado = null; inssMexeu = false;
   $('#m-titulo').textContent = c ? 'Editar cliente' : 'Novo cliente fechado';
@@ -1053,6 +1206,7 @@ function abrirCliente(c) {
   $('#c-data').value = c?.data_contato || hoje();
   $('#c-valor').value = c && Number(c.valor) ? Number(c.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
   $('#c-banco').value = c?.banco || '';
+  prepararProduto(c);
   $('#c-adv').value = c?.advogado || '';
   $('#c-obs').value = c?.observacoes || '';
   carregarDocsCliente(c?.id);
@@ -1086,7 +1240,7 @@ $('#form-cli').onsubmit = async e => {
   const reg = {
     nome: $('#c-nome').value.trim(), cpf, telefone: so($('#c-tel').value),
     data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
-    banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null, ...(eu.papel === 'admin' ? { pasta_url: $('#c-pasta').value.trim() || null } : {})
+    produto: produtoSel, banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null, ...(eu.papel === 'admin' ? { pasta_url: $('#c-pasta').value.trim() || null } : {})
   };
   if (eu.papel === 'admin') reg.atendente_id = $('#c-at').value;
   const b = $('#c-salvar'); ocupado(b, true);
@@ -1161,7 +1315,8 @@ const diaSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/
 let premiosMissao = {};
 async function iniciarMissoes() {
   const { data } = await sb.rpc('missoes_painel', { d: diaSP() });
-  const q = $('#quest'); if (!data || !data.length) { q.hidden = true; return; }
+  const q = $('#quest'); q.hidden = false; q.onclick = () => location.href = 'escritorio.html?missao=1';
+  if (!data || !data.length) { q.querySelector('b').textContent = '!'; q.classList.remove('nova', 'feita'); q.title = 'Missão diária (nenhuma hoje)'; return; }
   const meus = eu.papel === 'atendente' ? data.filter(r => r.atendente_id === eu.id) : [];
   q.hidden = false; q.querySelector('.bolha')?.remove();
   const feita = meus.length && meus.every(r => r.cumpriu);
@@ -1174,6 +1329,13 @@ async function iniciarMissoes() {
   }
   q.onclick = () => { guardar(chave, '1'); location.href = 'escritorio.html?missao=1'; };
   if (eu.papel === 'admin') q.title = 'Missão de hoje: ' + data[0].titulo + ' — ' + data.filter(r => r.cumpriu).length + ' de ' + data.length + ' cumpriram';
+}
+async function avisarDesafioAtivo() {
+  if (eu.papel !== 'atendente') return;
+  const { data } = await sb.from('desafios').select('*').gt('fim', new Date().toISOString()).lte('inicio', new Date().toISOString()).order('inicio', { ascending: false }).limit(1);
+  const d = (data || [])[0]; if (!d) return;
+  const k = 'crm-desafio-visto-' + eu.id + '-' + d.id; if (ler(k)) return; guardar(k, '1');
+  try { XYZAlertaDesafio(d); } catch (e) {}
 }
 async function carregarPremiosMissao(ini, fim) {
   const { data } = await sb.rpc('missoes_premios', { inicio: ini, fim });
