@@ -429,6 +429,8 @@ body.embed{background:transparent}
           <h4 style="margin:18px 0 8px;color:#fbbf24">⚡ Desafios relâmpago <small style="color:var(--suave);font-weight:400">— toca som de dinheiro e avisa todo mundo na hora, em qualquer aba</small></h4>
           <form class="g-linha" id="gdz-form" style="flex-wrap:wrap">
             <input id="gdz-tit" placeholder="Nome do desafio (ex.: Corrida das 15h)" required style="min-width:240px;flex:1">
+            <label style="font-size:12px;color:var(--suave)">Modo <select id="gdz-modo"><option value="meta">🎯 Meta (quem bater ganha)</option><option value="competicao">🏆 Competição (quem fechar mais ganha)</option></select></label>
+            <small id="gdz-dica" style="flex-basis:100%;color:var(--suave)"></small>
             <label style="font-size:12px;color:var(--suave)">Seguro prestamista <input id="gdz-seg" type="number" min="0" value="3" style="width:64px"></label>
             <label style="font-size:12px;color:var(--suave)">Revisão <input id="gdz-rev" type="number" min="0" value="0" style="width:64px"></label>
             <label style="font-size:12px;color:var(--suave)">Aumento de margem <input id="gdz-mar" type="number" min="0" value="0" style="width:64px"></label>
@@ -1009,6 +1011,13 @@ async function carregarDesafiosAdm() {
     const { data: p } = await sb.rpc('desafio_painel', { did: d.id });
     const ok = (p || []).filter(r => r.cumpriu).sort((a, b) => new Date(a.concluiu_em) - new Date(b.concluiu_em)).map(r => r.atendente);
     const ativo = new Date(d.fim) > new Date();
+    const pontos = r => d.meta_seguro + d.meta_revisional + d.meta_margem === 0 ? r.seguros + r.revisionais + r.margens : (d.meta_seguro ? r.seguros : 0) + (d.meta_revisional ? r.revisionais : 0) + (d.meta_margem ? r.margens : 0);
+    if (d.modo === 'competicao') {
+      const rk = (p || []).map(r => [r.atendente, pontos(r)]).sort((a, b) => b[1] - a[1]);
+      linhas.push(`<tr><td><b>🏆 ${esc(d.titulo)}</b> ${ativo ? '<span class="pill ok">ao vivo</span>' : ''}<br><small style="color:var(--suave)">competição</small></td><td>${new Date(d.inicio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} → ${new Date(d.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td><small>${rk.map(([n, v], i) => (i === 0 && v ? '👑 ' : '') + esc(n) + ' ' + v).join(' · ')}</small></td><td class="num">${brl(d.premio)}</td><td>${ok.length ? '🏆 ' + esc(ok.join(', ')) : ativo ? 'em andamento' : '—'}</td>
+      <td style="white-space:nowrap">${ativo ? `<button class="btn sec peq" data-dzen="${d.id}" title="Encerrar agora">⏹</button>` : ''} <button class="x" data-dzdel="${d.id}" title="Apagar">✕</button></td></tr>`);
+      continue;
+    }
     const obj = [d.meta_seguro && d.meta_seguro + ' prestamista', d.meta_revisional && d.meta_revisional + ' revisão', d.meta_margem && d.meta_margem + ' margem'].filter(Boolean).join(' + ');
     const alvo = d.atendente_id ? (equipe.find(p => p.id === d.atendente_id) || {}).nome : null;
     linhas.push(`<tr><td><b>${esc(d.titulo)}</b> ${ativo ? '<span class="pill ok">ao vivo</span>' : ''}${alvo ? `<br><small style="color:#fbbf24">🎯 só ${esc(alvo)}</small>` : ''}</td><td>${new Date(d.inicio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} → ${new Date(d.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td>${obj}</td><td class="num">${brl(d.premio)}</td><td>${ok.length ? esc(ok.join(', ')) : '—'}</td>
@@ -1018,15 +1027,24 @@ async function carregarDesafiosAdm() {
   $$('#gdz-lista [data-dzen]').forEach(b => b.onclick = async () => { await sb.from('desafios').update({ fim: new Date().toISOString() }).eq('id', b.dataset.dzen); carregarDesafiosAdm(); });
   $$('#gdz-lista [data-dzdel]').forEach(b => b.onclick = async () => { if (!confirm('Apagar este desafio?')) return; await sb.from('desafios').delete().eq('id', b.dataset.dzdel); carregarDesafiosAdm(); });
 }
+function dicaModoDz() {
+  const comp = $('#gdz-modo').value === 'competicao';
+  $('#gdz-dica').textContent = comp ? '🏆 Competição: no horário final, quem tiver fechado mais leva o prêmio. Coloque 1 nos produtos que contam e 0 nos que não contam (tudo 0 = conta tudo). Empate: todos os empatados ganham.' : '🎯 Meta: cada uma que bater as quantidades até o horário ganha o prêmio.';
+  if (comp) ['#gdz-seg', '#gdz-rev', '#gdz-mar'].forEach(id => { if (+$(id).value > 1) $(id).value = 1; });
+}
+$('#gdz-modo').onchange = dicaModoDz; dicaModoDz();
 $('#gdz-form').onsubmit = async e => {
   e.preventDefault();
+  const comp = $('#gdz-modo').value === 'competicao';
   const n = id => Math.max(0, parseInt($(id).value) || 0), seg = n('#gdz-seg'), rev = n('#gdz-rev'), mar = n('#gdz-mar');
-  if (!seg && !rev && !mar) return alert('Coloque pelo menos uma quantidade.');
+  if (!comp && !seg && !rev && !mar) return alert('Coloque pelo menos uma quantidade.');
   const [hh, mm] = ($('#gdz-fim').value || '23:59').split(':').map(Number), fim = new Date(); fim.setHours(hh, mm, 0, 0);
   if (fim <= new Date()) return alert('O horário de término já passou.');
   const partes = [seg && seg + ' seguro(s) prestamista', rev && rev + ' revisão(ões)', mar && mar + ' aumento(s) de margem'].filter(Boolean);
+  const conta = [seg && 'seguro prestamista', rev && 'revisão', mar && 'aumento de margem'].filter(Boolean);
   const para = $('#gdz-para').value || null;
-  const reg = { atendente_id: para, titulo: $('#gdz-tit').value.trim(), descricao: 'Feche ' + partes.join(' + ') + ' até ' + $('#gdz-fim').value + '.', meta_seguro: seg, meta_revisional: rev, meta_margem: mar, premio: numBR($('#gdz-pre').value) || 0, fim: fim.toISOString() };
+  const desc = comp ? '🏆 Competição: quem fechar mais' + (conta.length ? ' (' + conta.join(' + ') + ')' : '') + ' até ' + $('#gdz-fim').value + ' leva o prêmio!' : 'Feche ' + partes.join(' + ') + ' até ' + $('#gdz-fim').value + '.';
+  const reg = { atendente_id: para, modo: comp ? 'competicao' : 'meta', titulo: $('#gdz-tit').value.trim(), descricao: desc, meta_seguro: comp ? Math.min(seg, 1) : seg, meta_revisional: comp ? Math.min(rev, 1) : rev, meta_margem: comp ? Math.min(mar, 1) : mar, premio: numBR($('#gdz-pre').value) || 0, fim: fim.toISOString() };
   const { data, error } = await sb.from('desafios').insert(reg).select('id').single();
   if (error) return alert(traduz(error));
   try { XYZPresenca.enviar('desafio', { id: data.id, ...reg }); } catch (e) {}
