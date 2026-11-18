@@ -862,14 +862,16 @@ const KIT = [['rg', 'RG'], ['comprovante', 'Comprovante'], ['hiscon', 'HISCON'],
 const KIT_DESDE = new Date('2026-11-17T00:00:00-03:00');
 function kitChips(c) {
   if ((c.data_contato || (c.criado_em || '').slice(0, 10)) < '2026-11-18') return '<small style="color:var(--suave)" title="o checklist vale para clientes fechados a partir de 18/11">—</small>';
+  const rev = !!(c.kit && c.kit.rev), nomeItem = (k, n) => rev && k === 'contrato' ? 'Contratos (mais de 1)' : n;
+  const notaRev = rev ? 'Revisão de juros: não procuro seguro; só confiro se há mais de 1 contrato na pasta — achei ' + (c.kit.contratos || 0) + '.' : '';
   const manual = (c.kit && c.kit.manual || []).map(k => (KIT.find(x => x[0] === k) || [])[1]).filter(Boolean);
-  if (c.kit_ok_em) return '<span style="color:#86efac;font-size:12px;white-space:nowrap" title="tudo conferido na pasta em ' + new Date(c.kit_ok_em).toLocaleString('pt-BR') + (manual.length ? ' · marcado à mão pelo admin: ' + manual.join(', ') : '') + '">✔ completo' + (manual.length ? ' ✍' : '') + '</span>';
+  if (c.kit_ok_em) return '<span style="color:#86efac;font-size:12px;white-space:nowrap" title="tudo conferido na pasta em ' + new Date(c.kit_ok_em).toLocaleString('pt-BR') + (manual.length ? ' · marcado à mão pelo admin: ' + manual.join(', ') : '') + (rev ? ' · ' + notaRev : '') + '">✔ completo' + (manual.length ? ' ✍' : '') + '</span>';
   if (!c.pasta_url) return '<span style="color:#93c5fd;font-size:12px;white-space:nowrap" title="o robô procura a pasta a cada 10 minutos">⏳ aguardando a pasta no Drive</span>';
   if (!c.kit) return '<small style="color:var(--suave)" title="o robô vai ler a pasta na próxima rodada (10 min)">lendo a pasta…</small>';
   const falta = KIT.filter(([k]) => !c.kit[k]);
-  const tip = KIT.map(([k, n]) => (c.kit[k] ? '✔ ' : '✖ ') + n).join('\n') + '\n\n"Contrato do banco" é o contrato do empréstimo (onde aparece o seguro), não o contrato assinado pelo cliente no ZapSign.' + (c.kit_em ? '\nconferido em ' + new Date(c.kit_em).toLocaleString('pt-BR') + ' · o robô confere de novo a cada 10 min' : '');
+  const tip = KIT.map(([k, n]) => (c.kit[k] ? '✔ ' : '✖ ') + nomeItem(k, n)).join('\n') + '\n\n' + (rev ? notaRev : '"Contrato do banco" é o contrato do empréstimo (onde aparece o seguro), não o contrato assinado pelo cliente no ZapSign.') + (c.kit_em ? '\nconferido em ' + new Date(c.kit_em).toLocaleString('pt-BR') + ' · o robô confere de novo a cada 10 min' : '');
   const admin = eu && eu.papel === 'admin';
-  const itens = admin ? falta.map(f => `<a href="#" data-kitm="${c.id}:${f[0]}" title="Está na pasta e o robô não reconheceu? Clique para marcar ${f[1]} como conferido por você" style="color:#fde68a;text-decoration:underline dotted">${f[1]}</a>`).join(', ') : esc(falta.map(f => f[1]).join(', '));
+  const itens = admin ? falta.map(f => `<a href="#" data-kitm="${c.id}:${f[0]}" title="Está na pasta e o robô não reconheceu? Clique para marcar ${f[1]} como conferido por você" style="color:#fde68a;text-decoration:underline dotted">${nomeItem(f[0], f[1])}</a>`).join(', ') : esc(falta.map(f => nomeItem(f[0], f[1])).join(', '));
   return `<span title="${esc(tip)}" style="white-space:nowrap;color:#fde68a;font-size:12px">⚠️ falta ${itens}</span>`;
 }
 // admin conferiu com os próprios olhos: marca o item (o robô não desmarca depois)
@@ -1030,7 +1032,7 @@ const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Da
 const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
 async function clientesDoMes(ini, fim) {
   let tudo = [], de = 0;
-  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,atendente_id,criado_em,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,pasta_lida_em,seguro_det,seguro_det_fonte,seguro_det_em').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,atendente_id,criado_em,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,pasta_lida_em,seguro_det,seguro_det_fonte,seguro_det_em,kit').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
 function aplicarRegra(regra, linhas) { return XYZComissao.aplicarRegra(regra, linhas); }
@@ -1155,7 +1157,7 @@ async function detalheClienteAdv(tr, item, adv) {
   const linhas = regs.map(c => {
     const importado = c.criado_em && /T1[5-6]:00:00(\.0+)?(\+00:00|Z)$/.test(c.criado_em);
     const pasta = c.pasta_url ? `<a href="${esc(c.pasta_url)}" target="_blank" rel="noopener" style="color:#93c5fd">📁 abrir pasta</a>${c.pasta_lida_em ? ' <small style="opacity:.7">lida ' + dh(c.pasta_lida_em) + '</small>' : ' <small style="color:#fbbf24">robô ainda não leu</small>'}` : '<span style="color:#fbbf24">📁 sem pasta ligada — o robô procura pelo nome a cada 10 min; se não achar, o administrador cola o link no cadastro</span>';
-    const seg = Number(c.seguro_det) > 0 ? `contrato lido: <b>${brl(Number(c.seguro_det))}</b> <small style="opacity:.7">${esc((c.seguro_det_fonte || '').replace(/^robô — /, ''))}</small>` : c.seguro_det_em ? `<span style="color:#f87171">robô leu em ${dh(c.seguro_det_em)} e não achou seguro</span>` : c.pasta_url ? '<span style="color:#fbbf24">⏳ contrato ainda não lido</span>' : '';
+    const seg = c.produto === 'revisional' ? (c.kit && c.kit.contratos != null ? `revisão de juros · <b>${c.kit.contratos}</b> contrato(s) na pasta${c.kit.contratos > 1 ? ' ✔' : ' <span style="color:#fbbf24">(precisa de mais de 1)</span>'}` : 'revisão de juros <small style="opacity:.7">(não tem seguro para ler)</small>') : Number(c.seguro_det) > 0 ? `contrato lido: <b>${brl(Number(c.seguro_det))}</b> <small style="opacity:.7">${esc((c.seguro_det_fonte || '').replace(/^robô — /, ''))}</small>` : c.seguro_det_em ? `<span style="color:#f87171">robô leu em ${dh(c.seguro_det_em)} e não achou seguro</span>` : c.pasta_url ? '<span style="color:#fbbf24">⏳ contrato ainda não lido</span>' : '';
     return `<div style="padding:6px 0;border-top:1px dashed rgba(255,255,255,.12)"><b>${fmtData(c.data_contato)}</b> · ${esc(c.banco || '—')} · lançado por <b>${esc(_nomesEq[c.atendente_id] || '—')}</b>${c.criado_em && !importado ? ' em ' + dh(c.criado_em) : ''} · tel ${esc(fmtTel(c.telefone)) || '—'} · valor lançado <b>${brl(Number(c.valor || 0))}</b>
       <br>${pasta}${seg ? ' · ' + seg : ''}${c.adv_procuracao ? ' · procuração: <b>' + esc(c.adv_procuracao) + '</b>' : ''} · <a href="#" data-abrir="${c.id}" style="color:#67e8f9">abrir cadastro</a></div>`;
   }).join('') || '<div style="opacity:.7">Não achei o lançamento deste cliente no mês.</div>';
