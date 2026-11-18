@@ -460,8 +460,8 @@ function atualizarDinheiro() {
 /* notinhas soltas: 1 nota a cada R$ 10 ganhos em desafios e missões no mês; a mesa enche e o resto cai no chão em volta.
    Cada cadeado da meta destravado (os bolinhos acima) também derruba mais notas no chão. */
 let premiosMes = {};
-const GEO_NOTA = new THREE.BoxGeometry(1.15, .035, .56), GEO_FAIXA = new THREE.BoxGeometry(.2, .04, .57);
-const MAT_NOTA = new THREE.MeshStandardMaterial({ color: '#34d399', emissive: '#065f46', emissiveIntensity: .35, roughness: .8 }), MAT_FAIXA = new THREE.MeshStandardMaterial({ color: '#ecfdf5', roughness: .8 });
+const GEO_NOTA = new THREE.BoxGeometry(1.7, .07, .85), GEO_FAIXA = new THREE.BoxGeometry(.3, .08, .86);
+const MAT_NOTA = new THREE.MeshStandardMaterial({ color: '#4ade80', emissive: '#16a34a', emissiveIntensity: .55, roughness: .7 }), MAT_FAIXA = new THREE.MeshStandardMaterial({ color: '#ecfdf5', roughness: .8 });
 function espalharNotas() {
   const donoDaMesa = {}; Object.entries(mesaDe).forEach(([id, i]) => { const p = equipe.find(q => q.id === id); if (p && p.papel === 'atendente') donoDaMesa[i] = id; });
   DESKS.forEach(([x, z], i) => {
@@ -474,7 +474,12 @@ function espalharNotas() {
       const g = new THREE.Group(); g.add(new THREE.Mesh(GEO_NOTA, MAT_NOTA)); g.add(new THREE.Mesh(GEO_FAIXA, MAT_FAIXA));
       g.position.set(px, py, pz); g.rotation.set(incl || 0, rot, 0); scene.add(g); pilhas.push(g);
     };
-    for (let k = 0; k < naMesa; k++) nota(x * U - 3 + rnd() * 3.6, 3.87 + k * .04, z * U - .7 + rnd() * 1.5, rnd() * 3.14);
+    // na beirada da frente/direita da mesa (o lado que a câmera enxerga), levemente empilhadas
+    for (let k = 0; k < naMesa; k++) nota(x * U + .9 + (k % 3) * 1.05 + rnd() * .3, 3.9 + Math.floor(k / 3) * .09 + (k % 3) * .01, z * U + 1.15 + rnd() * .35, (rnd() - .5) * .9);
+    if (total > 0) { // etiqueta com o valor ganho no mês, flutuando sobre a mesa
+      const et = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto('💵 ' + Number(total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }), 256, 64, '800 34px Inter, sans-serif', '#bbf7d0', '#052e16'), transparent: true, depthTest: false }));
+      et.scale.set(5.2, 1.3, 1); et.position.set(x * U + 1.9, 5.2, z * U + 1.3); scene.add(et); pilhas.push(et);
+    }
     for (let k = 0; k < noChao; k++) { const a = rnd() * 6.283, r = 3.6 + rnd() * 2.6; nota(x * U + Math.cos(a) * r * 1.25, .06 + (k % 5) * .012, z * U + Math.sin(a) * r * .8, rnd() * 3.14, (rnd() - .5) * .12); }
   });
 }
