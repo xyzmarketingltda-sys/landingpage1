@@ -392,7 +392,7 @@
       if (v > 0) r.seguro.push({ v, trecho: 'Quadro "Seguro Prestamista (X) SIM" · valor ' + mx[1] + ' (conferir)' });
     }
     // layout QI / VCTEX (CCB): tabela "12. Valor do Prêmio do Seguro" com uma linha por data — usa a linha da data de emissão
-    if (!r.seguro.length && /Pr[êe]mio\s+do.{0,80}Seguro\s*\(\*/i.test(T)) {
+    if (!r.seguro.length && /Pr[êe]mio\s+do/i.test(T) && /Seguro\s*\(\s*\*/i.test(T)) {
       const em = (T.match(/Data de Emiss[ãa]o:?\s*(\d{2}\/\d{2}\/\d{4})/i) || [])[1];
       const RX = /(\d{2}\/\d{2}\/\d{4})\s+R\$\s?[\d.]+,\d{2}\s+R\$\s?[\d.]+,\d{2}\s+R\$\s?[\d.]+,\d{2}\s+R\$\s?[\d.]+,\d{2}\s+[\d.,]+\s?%\s+[\d.,]+\s?%\s+R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})/g;
       let mq, pri = null, certo = null;
