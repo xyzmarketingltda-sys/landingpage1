@@ -455,6 +455,28 @@ function atualizarDinheiro() {
     cifrao.scale.set(1.8, 1.8, 1); cifrao.position.set(x * U + 2.2, 7.2, z * U); scene.add(cifrao); pilhas.push(cifrao);
     animados.push(t => { cifrao.position.y = 7.2 + Math.sin(t / 300) * .3; });
   });
+  espalharNotas();
+}
+/* notinhas soltas: 1 nota a cada R$ 10 ganhos em desafios e missões no mês; a mesa enche e o resto cai no chão em volta.
+   Cada cadeado da meta destravado (os bolinhos acima) também derruba mais notas no chão. */
+let premiosMes = {};
+const GEO_NOTA = new THREE.BoxGeometry(1.15, .035, .56), GEO_FAIXA = new THREE.BoxGeometry(.2, .04, .57);
+const MAT_NOTA = new THREE.MeshStandardMaterial({ color: '#34d399', emissive: '#065f46', emissiveIntensity: .35, roughness: .8 }), MAT_FAIXA = new THREE.MeshStandardMaterial({ color: '#ecfdf5', roughness: .8 });
+function espalharNotas() {
+  const donoDaMesa = {}; Object.entries(mesaDe).forEach(([id, i]) => { const p = equipe.find(q => q.id === id); if (p && p.papel === 'atendente') donoDaMesa[i] = id; });
+  DESKS.forEach(([x, z], i) => {
+    if (i === DESKS.length - 1) return;
+    const total = Number(premiosMes[donoDaMesa[i]] || 0), nv = nivelMesa[i] || 0;
+    const notas = Math.min(60, Math.round(total / 10)), naMesa = Math.min(notas, 9);
+    const noChao = Math.min(45, Math.max(0, notas - 9) + (nv >= 2 ? (nv - 1) * 7 : 0));
+    let sem = (i + 1) * 9973; const rnd = () => { sem = (sem * 16807) % 2147483647; return sem / 2147483647; };
+    const nota = (px, py, pz, rot, incl) => {
+      const g = new THREE.Group(); g.add(new THREE.Mesh(GEO_NOTA, MAT_NOTA)); g.add(new THREE.Mesh(GEO_FAIXA, MAT_FAIXA));
+      g.position.set(px, py, pz); g.rotation.set(incl || 0, rot, 0); scene.add(g); pilhas.push(g);
+    };
+    for (let k = 0; k < naMesa; k++) nota(x * U - 3 + rnd() * 3.6, 3.87 + k * .04, z * U - .7 + rnd() * 1.5, rnd() * 3.14);
+    for (let k = 0; k < noChao; k++) { const a = rnd() * 6.283, r = 3.6 + rnd() * 2.6; nota(x * U + Math.cos(a) * r * 1.25, .06 + (k % 5) * .012, z * U + Math.sin(a) * r * .8, rnd() * 3.14, (rnd() - .5) * .12); }
+  });
 }
 
 /* ---------- layout ---------- */
@@ -1166,6 +1188,7 @@ async function carregarMetas() {
   const [y, m] = hoje.split('-').map(Number), ini = `${y}-${String(m).padStart(2, '0')}-01`;
   const fim = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   const { data } = await sb.rpc('metas_mes', { inicio: ini, fim });
+  try { const { data: pr } = await sb.rpc('missoes_premios', { inicio: ini, fim }); if (pr) premiosMes = Object.fromEntries(pr.map(r => [r.atendente_id, Number(r.total) || 0])); } catch (e) {}
   if (data) { vendasMes = data; const top = [...data].filter(r => (equipe.find(p => p.id === r.id) || {}).papel === 'atendente' && Number(r.vendas) > 0).sort((a, b) => Number(b.vendas) - Number(a.vendas))[0]; liderId = top ? top.id : null; desenharLista(); aplicarMetas(); atualizarDinheiro(); desenharTelao(); }
 }
 setInterval(carregarMetas, 60000);
