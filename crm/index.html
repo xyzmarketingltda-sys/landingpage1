@@ -1079,8 +1079,28 @@ async function carregarDespesas() {
   const cats = {};
   (data || []).forEach(d => cats[d.categoria || 'Outros'] = (cats[d.categoria || 'Outros'] || 0) + Number(d.valor));
   $('#gd-cats').innerHTML = Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<span>${esc(c)}: <b>${brl(v)}</b></span>`).join('');
-  $('#gd-lista').innerHTML = (data || []).map(d => `<tr><td>${esc(d.descricao)}</td><td>${esc(d.categoria || '')}</td><td class="num">${brl(d.valor)}</td>
-    <td><button class="x" title="Apagar" data-del="${d.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--suave)">Nenhuma despesa lançada neste mês.</td></tr>';
+  const temFixa = (data || []).some(d => FIXAS.includes(d.categoria) || REF_ANT.includes(d.categoria));
+  const catOpts = c => [...new Set([...FIXAS, ...REF_ANT, 'Equipamentos', 'Outros', c || 'Outros'])].map(x => `<option ${x === (c || 'Outros') ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  $('#gd-lista').innerHTML = (temFixa ? '' : `<tr><td colspan="4"><button class="btn sec peq" id="gd-copiar">📋 Trazer as despesas fixas do mês anterior (salários, aluguel, contas, sistemas, tráfego) para editar</button></td></tr>`) +
+    ((data || []).map(d => `<tr data-id="${d.id}"><td><input class="gd-ed" data-campo="descricao" value="${esc(d.descricao)}" style="width:100%;min-width:140px"></td>
+      <td><select class="gd-ed" data-campo="categoria">${catOpts(d.categoria)}</select></td>
+      <td class="num"><input class="gd-ed" data-campo="valor" inputmode="decimal" value="${Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}" style="width:110px;text-align:right"></td>
+      <td><button class="x" title="Apagar" data-del="${d.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--suave)">Nenhuma despesa lançada neste mês.</td></tr>');
+  $$('#gd-lista .gd-ed').forEach(el => el.onchange = async () => {
+    const id = el.closest('tr').dataset.id, campo = el.dataset.campo;
+    const v = campo === 'valor' ? numBR(el.value) : el.value.trim();
+    if (campo === 'valor' && !(v >= 0)) return alert('Valor inválido.');
+    const { error } = await sb.from('despesas').update({ [campo]: v }).eq('id', id);
+    if (error) return alert(traduz(error));
+    toast('Despesa atualizada.'); carregarGestao();
+  });
+  const bc = $('#gd-copiar'); if (bc) bc.onclick = async () => {
+    const { data: ant } = await sb.from('despesas').select('categoria,descricao,valor').eq('mes_ref', mesAnt(G.mes)).in('categoria', [...FIXAS, ...REF_ANT]);
+    if (!ant || !ant.length) return alert('O mês anterior não tem despesas fixas lançadas.');
+    const { error } = await sb.from('despesas').insert(ant.map(d => ({ ...d, mes_ref: G.mes })));
+    if (error) return alert(traduz(error));
+    toast(ant.length + ' despesa(s) fixa(s) trazidas — ajuste os valores se mudou algo.'); carregarGestao();
+  };
   $$('#gd-lista [data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Apagar esta despesa?')) return;
     const { error } = await sb.from('despesas').delete().eq('id', b.dataset.del);
