@@ -523,6 +523,7 @@ function visualDe(p) {
   if (p.papel === 'admin' && norm(p.nome) === 'administrador') return { ...PADRAO, rou: '#0d0d10', polo: true };
   if (p.papel === 'admin') return { ...PADRAO, rou: '#0b5ed7', gravata: true };
   if (norm(p.nome) === 'julia') return { ...PADRAO, cab: '#e0263f', est: 'longo' }; // pedido do chefe: Júlia de cabelo vermelho
+  if (norm(p.nome) === 'julia') return { ...PADRAO, cab: '#e0263f', est: 'longo' };
   return { ...PADRAO };
 }
 const SPR_W = 28, SPR_H = 58, cacheSpr = new Map();
