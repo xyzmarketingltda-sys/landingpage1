@@ -657,7 +657,6 @@ const sombraGeo = new THREE.CircleGeometry(1.8, 20), sombraMat = new THREE.MeshB
 function objetoDe(a) {
   if (a.vx) return a.vx;
   const vx = criarVoxel(a.vis);
-  if (a.p && a.p.foto_url) colarFoto(vx.cabeca, a.p.foto_url);
   const sombra = new THREE.Mesh(sombraGeo, sombraMat); sombra.rotation.x = -Math.PI / 2; sombra.position.y = .06; vx.raiz.add(sombra);
   scene.add(vx.raiz); a.vx = vx; a.dir = 0; return vx;
 }
@@ -689,11 +688,13 @@ function telaDe(x, y, z) { const v = new THREE.Vector3(x, y, z).project(camera);
 /* ---------- bonequinhos ---------- */
 const PADRAO = { cab: '#2b2018', est: 'curto', rou: '#1e3a8a', pele: '#e9b996' }; // todo mundo com o mesmo visual padrão
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(' ')[0];
+const MULHERES = ['barbara', 'julia', 'rina', 'naira', 'andressa'];
+const ehMulher = p => MULHERES.includes(norm(p.nome)) || (p.papel === 'advogado' && DRAS.includes(norm(p.nome)));
 function visualDe(p) {
   if (p.papel === 'admin' && ['administrador', 'lucas'].includes(norm(p.nome))) return { ...PADRAO, rou: '#0d0d10', polo: true };
-  if (p.papel === 'admin') return { ...PADRAO, rou: '#0b5ed7', gravata: true };
+  if (p.papel === 'admin') return ehMulher(p) ? { ...PADRAO, rou: '#0b5ed7', est: 'longo' } : { ...PADRAO, rou: '#0b5ed7', gravata: true };
   if (norm(p.nome) === 'julia') return { ...PADRAO, cab: '#e0263f', est: 'longo' }; // pedido do chefe: Júlia de cabelo vermelho
-  if (norm(p.nome) === 'julia') return { ...PADRAO, cab: '#e0263f', est: 'longo' };
+  if (ehMulher(p)) return { ...PADRAO, est: 'longo' }; // só diferencia feminino (cabelo comprido) e masculino (curto); pele e cor iguais
   return { ...PADRAO };
 }
 const SPR_W = 28, SPR_H = 58, cacheSpr = new Map();
