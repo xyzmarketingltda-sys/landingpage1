@@ -823,7 +823,7 @@ async function iniciar() {
 const KIT = [['rg', 'RG'], ['comprovante', 'Comprovante'], ['hiscon', 'HISCON'], ['contrato', 'Contrato'], ['procuracao', 'Procuração']];
 const KIT_DESDE = new Date('2026-11-17T00:00:00-03:00');
 function kitChips(c) {
-  if (!c.criado_em || new Date(c.criado_em) < KIT_DESDE) return '<small style="color:var(--suave)" title="o checklist vale para clientes lançados a partir de 17/11">—</small>';
+  if ((c.data_contato || (c.criado_em || '').slice(0, 10)) < '2026-11-17') return '<small style="color:var(--suave)" title="o checklist vale para clientes lançados a partir de 17/11">—</small>';
   if (c.kit_ok_em) return '<span style="color:#86efac;font-size:12px;white-space:nowrap" title="tudo conferido na pasta em ' + new Date(c.kit_ok_em).toLocaleString('pt-BR') + '">✔ completo</span>';
   if (!c.pasta_url) return '<span style="color:#93c5fd;font-size:12px;white-space:nowrap" title="o robô procura a pasta a cada 10 minutos">⏳ aguardando a pasta no Drive</span>';
   if (!c.kit) return '<small style="color:var(--suave)" title="o robô vai ler a pasta na próxima rodada (10 min)">lendo a pasta…</small>';
