@@ -113,7 +113,7 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="presenca.js?v=20261117m"></script>
+<script src="presenca.js?v=20261117n"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -847,7 +847,9 @@ function abrirDesafio() {
 }
 async function carregarDesafio(abrir) {
   const agora = new Date().toISOString();
-  const { data } = await sb.from('desafios').select('*').lte('inicio', agora).gt('fim', agora).order('inicio', { ascending: false }).limit(1);
+  let qd = sb.from('desafios').select('*').lte('inicio', agora).gt('fim', agora);
+  if (eu.papel !== 'admin') qd = qd.or('atendente_id.is.null,atendente_id.eq.' + eu.id);
+  const { data } = await qd.order('inicio', { ascending: false }).limit(1);
   desafio = (data || [])[0] || null; painelDz = [];
   if (desafio) { const { data: p } = await sb.rpc('desafio_painel', { did: desafio.id }); painelDz = p || []; }
   const b = $('#dz-btn'); b.hidden = !desafio; b.onclick = abrirDesafio;

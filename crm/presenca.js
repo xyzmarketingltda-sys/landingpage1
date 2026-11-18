@@ -4,6 +4,7 @@ window.XYZPresenca = (() => {
   return {
     entrar(sb, eu, h) {
       if (h) ouvintes = h;
+      window.__xyzEu = eu;
       if (canal) return canal;
       canal = sb.channel('escritorio-xyz', { config: { presence: { key: eu.id }, broadcast: { self: true } } });
       canal.on('presence', { event: 'sync' }, () => ouvintes.sync && ouvintes.sync(canal.presenceState()));
@@ -42,6 +43,7 @@ window.XYZSomDinheiro = () => {
 };
 window.XYZAlertaDesafio = d => {
   if (!d || location.pathname.includes('/controle')) return;
+  const me = window.__xyzEu; if (d.atendente_id && me && me.papel !== 'admin' && d.atendente_id !== me.id) return;
   window.XYZSomDinheiro();
   const msg = `⚡ DESAFIO: ${d.titulo} — prêmio R$ ${Number(d.premio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
   try { if ('Notification' in window && Notification.permission === 'granted') { const n = new Notification('⚡ Novo desafio no escritório XYZ!', { body: msg.replace('⚡ DESAFIO: ', ''), requireInteraction: true }); n.onclick = () => { window.focus(); location.href = (location.pathname.includes('/controle') ? '../crm/' : '') + 'escritorio.html?desafio=1'; }; } } catch (e) {}
@@ -69,7 +71,10 @@ window.XYZLembretes = async sb => {
   if (location.pathname.includes('/controle')) return;
   try {
     const agora = new Date().toISOString();
-    const { data } = await sb.from('desafios').select('id,titulo,premio,fim').lte('inicio', agora).gt('fim', agora);
+    const me = window.__xyzEu; if (me && me.papel === 'admin') return;
+    let q = sb.from('desafios').select('id,titulo,premio,fim').lte('inicio', agora).gt('fim', agora);
+    if (me) q = q.or('atendente_id.is.null,atendente_id.eq.' + me.id);
+    const { data } = await q;
     (data || []).forEach(d => [60, 15].forEach(min => {
       const chave = d.id + '-' + min, quando = new Date(d.fim).getTime() - min * 60000 - Date.now();
       if (lembretesAgendados[chave] || quando < -60000) return;
