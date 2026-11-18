@@ -1262,7 +1262,7 @@ function abrirDesafio() {
     q.innerHTML = `<div class="q" style="border-color:rgba(251,191,36,.8);box-shadow:0 0 0 4px rgba(2,8,22,.9),0 0 0 5px rgba(251,191,36,.45),0 0 50px rgba(251,191,36,.35)"><div class="selo" style="background:linear-gradient(160deg,#fef3c7,#f59e0b 45%,#78350f)"><span style="color:#fff">🏆</span></div>
       <div class="tipo" style="color:#fde68a">Competição · termina em ${hh ? hh + 'h ' : ''}${mm}min</div><h2>${esc(d.titulo)}</h2><div class="desc">${esc(d.descricao || '')}</div>
       <h4>Placar ao vivo</h4>${rk.map((r, i) => `<div class="obj ${r.p && r.p === top ? 'ok' : ''}" style="${r.atendente_id === eu.id ? 'background:rgba(30,144,255,.15);border-radius:6px;padding:2px 6px' : ''}"><span>${med(i)} ${esc(r.atendente)}${r.p && r.p === top ? ' 👑' : ''}</span><b>${r.p}</b></div><div class="barra"><i style="width:${top ? r.p / top * 100 : 0}%"></i></div>`).join('')}
-      <h4>Prêmio</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(d.premio)}</b><small>vai pra quem tiver mais no horário final · empate: todos os empatados ganham</small></div></div>
+      <h4>Prêmio</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(d.premio)}</b><small>vai pra quem tiver mais <b>procurações assinadas no ZapSign</b> dentro do horário · empate: todos os empatados ganham</small></div></div>
       <div class="acoes"><button data-q="fechar">Bora!</button></div></div>`;
     q.onclick = e => { if (e.target.closest('[data-q]') || e.target === q) q.hidden = true; };
     return;
@@ -1271,7 +1271,7 @@ function abrirDesafio() {
     <div class="tipo" style="color:#fca5a5">Desafio relâmpago · termina em ${hh ? hh + 'h ' : ''}${mm}min</div><h2>${esc(d.titulo)}</h2><div class="desc">${esc(d.descricao || '')}</div>
     ${eu.papel === 'atendente' && meu ? `<h4>Objetivos</h4>${obj('Seguros prestamistas', meu.seguros, meu.meta_seguro ?? d.meta_seguro)}${obj('Revisões de juros', meu.revisionais, meu.meta_revisional ?? d.meta_revisional)}${obj('Aumentos de margem', meu.margens, meu.meta_margem ?? d.meta_margem)}`
       : `<h4>Equipe</h4>${painelDz.map(r => `<div class="obj ${r.cumpriu ? 'ok' : ''}"><span>${r.cumpriu ? '✔' : '◇'} ${esc(r.atendente)}</span><b>${r.seguros}/${r.meta_seguro ?? d.meta_seguro}${(r.meta_revisional ?? d.meta_revisional) ? ' · ' + r.revisionais + '/' + (r.meta_revisional ?? d.meta_revisional) : ''}${(r.meta_margem ?? d.meta_margem) ? ' · ' + r.margens + '/' + (r.meta_margem ?? d.meta_margem) : ''}</b></div>`).join('')}`}
-    <h4>Prêmio</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(d.premio)}</b><small>soma nas premiações do mês · pago junto com a meta</small></div></div>
+    <h4>Prêmio</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(d.premio)}</b><small>só conta <b>procuração assinada no ZapSign</b> dentro do horário · soma nas premiações do mês, pago junto com a meta</small></div></div>
     ${meu?.cumpriu ? '<div class="completa">✦ DESAFIO CUMPRIDO ✦</div>' : ''}<div class="acoes"><button data-q="fechar">${meu?.cumpriu ? 'Fechar' : 'Bora!'}</button></div></div>`;
   q.onclick = e => { if (e.target.closest('[data-q]') || e.target === q) q.hidden = true; };
 }
