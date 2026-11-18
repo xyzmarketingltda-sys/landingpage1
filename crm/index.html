@@ -630,7 +630,11 @@ body.embed{background:transparent}
   const cv = document.getElementById('fundo'), ctx = cv.getContext('2d');
   const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W, H, DPR, pts = [], mx = 0, my = 0, rx = 0, ry = 0, t = 0;
-  const N = innerWidth < 700 ? 140 : 240;
+  // PC fraco (até 4 núcleos ou até 4 GB): menos pontos e menos quadros por segundo
+  const LEVE = (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 8) <= 4;
+  const N = innerWidth < 700 ? 140 : LEVE ? 150 : 240;
+  let ultMexeu = performance.now(), ultQuadro = 0;
+  ['pointermove', 'keydown', 'wheel', 'pointerdown'].forEach(ev => addEventListener(ev, () => { ultMexeu = performance.now(); }, { passive: true }));
   function tamanhoBase() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
   let cidade, anel;
   function rnd(i) { const x = Math.sin(i * 9301 + 49297) * 233280; return x - Math.floor(x); }
@@ -689,8 +693,13 @@ body.embed{background:transparent}
   addEventListener('pointermove', e => { mx = e.clientX / W - .5; my = e.clientY / H - .5; });
   const cor = [[234, 243, 255], [90, 170, 255], [0, 229, 255]];
   const proj = [];
-  function quadro() {
-    t += reduz ? 0 : .0016;
+  function quadro(agora) {
+    agora = agora || performance.now();
+    // limita os quadros: 24/s (12/s em PC fraco) e só 2/s quando ninguém mexe há 20 s; aba escondida não desenha
+    const parado = agora - ultMexeu > 20000, passo = parado ? 500 : LEVE ? 83 : 41;
+    if (document.hidden || agora - ultQuadro < passo) { requestAnimationFrame(quadro); return; }
+    const fator = ultQuadro ? Math.min(40, (agora - ultQuadro) / 16.7) : 1; ultQuadro = agora;
+    t += reduz ? 0 : .0016 * fator;
     rx += ((.42 + my * .25) - rx) * .04; ry += (mx * .4 - ry) * .04;
     ctx.clearRect(0, 0, W, H);
     const g = ctx.createRadialGradient(W / 2, H * .45, 0, W / 2, H * .45, Math.max(W, H) * .5);

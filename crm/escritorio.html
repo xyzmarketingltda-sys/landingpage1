@@ -176,8 +176,12 @@ const U = 10;                       // 1 "tile" lógico = 10 unidades Kenney ≈
 const GX = 7, GY = 6, ALT_PAREDE = 12.9;
 const palco = $('#palco'), gl = $('#cv'), cv = $('#hud'), mctx = cv.getContext('2d');
 const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// PC fraco (até 4 núcleos ou até 4 GB): resolução menor, sombra simples e menos quadros por segundo
+const LEVE = (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 8) <= 4;
+renderer.setPixelRatio(Math.min(devicePixelRatio, LEVE ? 1 : 1.5));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = LEVE ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+let ultMexeu = performance.now(), ultQuadroEsc = 0;
+['pointermove', 'keydown', 'wheel', 'pointerdown'].forEach(ev => addEventListener(ev, () => { ultMexeu = performance.now(); }, { passive: true }));
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
 const scene = new THREE.Scene();
 const VIPX = 1;                     // largura do hall dos advogados (à direita)
@@ -938,7 +942,11 @@ function textos() {
   mctx.globalAlpha = 1;
 }
 function quadro(agora) {
-  const dt = Math.min(.05, (agora - t0) / 1000); t0 = agora; T = agora;
+  // 30 quadros/s (20 em PC fraco) e 10/s quando ninguém mexe há 30 s; aba escondida não desenha
+  const passoQ = agora - ultMexeu > 30000 ? 100 : LEVE ? 50 : 33;
+  if (document.hidden || agora - ultQuadroEsc < passoQ - 2) { requestAnimationFrame(quadro); return; }
+  ultQuadroEsc = agora;
+  const dt = Math.min(.12, (agora - t0) / 1000); t0 = agora; T = agora;
   mover(dt);
   animados.forEach(f => f(T));
   desenharBonecos();
