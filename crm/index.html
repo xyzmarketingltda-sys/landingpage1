@@ -307,6 +307,17 @@ tbody tr:last-child td{border-bottom:0}
 .produtos button{flex:1;min-width:150px;padding:9px 10px;border-radius:10px;border:1px solid var(--borda);background:rgba(255,255,255,.03);color:var(--texto);font:inherit;font-size:13px;cursor:pointer}
 .produtos button.sel{border-color:var(--ciano);background:rgba(0,229,255,.12);box-shadow:0 0 12px rgba(0,229,255,.25)}
 .produtos button:disabled{opacity:.45;cursor:not-allowed}
+
+#missao-aviso{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;width:min(380px,92vw);padding:34px 22px 18px;text-align:center;background:linear-gradient(180deg,rgba(6,18,46,.98),rgba(2,8,22,.98));border:1px solid rgba(251,191,36,.6);border-radius:6px;box-shadow:0 0 0 4px rgba(2,8,22,.9),0 0 0 5px rgba(251,191,36,.35),0 0 60px rgba(30,144,255,.4);animation:maEntra .5s cubic-bezier(.2,.9,.2,1.2)}
+#missao-aviso .ma-selo{position:absolute;top:-28px;left:50%;transform:translateX(-50%);width:54px;height:54px;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);background:linear-gradient(160deg,#fde68a,#f59e0b 45%,#b45309);display:flex;align-items:center;justify-content:center}
+#missao-aviso .ma-selo span{width:46px;height:46px;clip-path:inherit;background:radial-gradient(circle at 50% 30%,#0b2a5c,#050d22 70%);display:flex;align-items:center;justify-content:center;font:900 26px Inter,sans-serif;color:#fde047;text-shadow:0 0 12px #fbbf24}
+#missao-aviso .ma-tipo{font-size:10px;letter-spacing:3px;color:#7dd3fc}
+#missao-aviso b{display:block;margin:6px 0 10px;font:800 20px Inter,sans-serif;text-transform:uppercase;letter-spacing:1px;background:linear-gradient(90deg,#f59e0b,#fde68a,#fbbf24);-webkit-background-clip:text;background-clip:text;color:transparent}
+#missao-aviso .ma-obj{font-size:14px;color:#cfe3ff}#missao-aviso .ma-pre{margin-top:8px;font-size:14px;color:#fde68a;font-weight:700}
+#missao-aviso .ma-acoes{display:flex;gap:10px;justify-content:center;margin-top:16px}
+#missao-aviso button{font:700 12px Inter,sans-serif;letter-spacing:1px;text-transform:uppercase;padding:10px 18px;border-radius:4px;cursor:pointer;border:1px solid #fbbf24;background:linear-gradient(180deg,#b45309,#78350f);color:#fff7d6}
+#missao-aviso .ma-dep{background:transparent;border-color:rgba(125,211,252,.4);color:#cfe3ff}
+@keyframes maEntra{from{transform:translate(-50%,-40%) scale(.9);opacity:0}to{transform:translate(-50%,-50%);opacity:1}}
 </style>
 </head>
 <body>
@@ -1382,6 +1393,7 @@ async function iniciarCardEsc() {
 const diaSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 let premiosMissao = {};
 async function iniciarMissoes() {
+  if (document.readyState === 'loading') await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
   const { data } = await sb.rpc('missoes_painel', { d: diaSP() });
   const q = $('#quest'); q.hidden = false; q.onclick = () => location.href = 'escritorio.html?missao=1';
   if (!data || !data.length) { q.querySelector('b').textContent = '!'; q.classList.remove('nova', 'feita'); q.title = 'Missão diária (nenhuma hoje)'; return; }
@@ -1390,15 +1402,25 @@ async function iniciarMissoes() {
   const feita = meus.length && meus.every(r => r.cumpriu);
   q.classList.toggle('feita', !!feita); q.querySelector('b').textContent = feita ? '✓' : '!';
   const chave = 'crm-missao-vista-' + eu.id + '-' + diaSP();
-  if (!ler(chave) && eu.papel === 'atendente') {
+  q.onclick = () => { guardar(chave, '1'); location.href = 'escritorio.html?missao=1'; };
+  if (!ler(chave) && !feita) {
     q.classList.add('nova');
     q.insertAdjacentHTML('beforeend', '<span class="bolha">📜 Nova missão diária!</span>');
-    toast('📜 Você tem uma nova missão diária! Clique no ❗ no canto da tela.');
+    const m = data[0], meu = meus[0];
+    const obj = [m.meta_seguro && `${meu ? meu.seguros + '/' : ''}${m.meta_seguro} seguro(s) prestamista`, m.meta_revisional && `${meu ? meu.revisionais + '/' : ''}${m.meta_revisional} revisão(ões)`, m.meta_margem && `${meu ? meu.margens + '/' : ''}${m.meta_margem} aumento(s) de margem`].filter(Boolean).join(' · ');
+    let c = document.getElementById('missao-aviso'); if (c) c.remove();
+    c = document.createElement('div'); c.id = 'missao-aviso';
+    c.innerHTML = `<div class="ma-selo"><span>!</span></div><div class="ma-tipo">NOVA MISSÃO DIÁRIA</div><b>${esc(m.titulo)}</b><div class="ma-obj">${esc(obj)}</div><div class="ma-pre">💰 Recompensa: ${brl(m.recompensa)}</div>
+      <div class="ma-acoes"><button class="ma-ir">Ver no escritório ➜</button><button class="ma-dep">Depois</button></div>`;
+    document.body.appendChild(c);
+    c.querySelector('.ma-ir').onclick = () => { guardar(chave, '1'); location.href = 'escritorio.html?missao=1'; };
+    c.querySelector('.ma-dep').onclick = () => c.remove();
+    try { XYZNotificar && XYZNotificar('📜 Nova missão diária: ' + m.titulo, obj + ' — recompensa ' + brl(m.recompensa), 'missao-' + diaSP()); } catch (e) {}
   }
-  q.onclick = () => { guardar(chave, '1'); location.href = 'escritorio.html?missao=1'; };
   if (eu.papel === 'admin') q.title = 'Missão de hoje: ' + data[0].titulo + ' — ' + data.filter(r => r.cumpriu).length + ' de ' + data.length + ' cumpriram';
 }
 async function avisarDesafioAtivo() {
+  if (document.readyState === 'loading') await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
   if (eu.papel !== 'atendente') return;
   const { data } = await sb.from('desafios').select('*').gt('fim', new Date().toISOString()).lte('inicio', new Date().toISOString()).or('atendente_id.is.null,atendente_id.eq.' + eu.id).order('inicio', { ascending: false }).limit(1);
   const d = (data || [])[0]; if (!d) return;

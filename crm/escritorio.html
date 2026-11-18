@@ -828,7 +828,7 @@ async function carregarMissoes() {
   const meu = missoes.find(r => r.atendente_id === eu.id); b.classList.toggle('feita', !!meu?.cumpriu); b.querySelector('b').textContent = meu?.cumpriu ? '✓' : '!';
   b.onclick = abrirMissao;
   marcadoresMissao();
-  if (!abriuMissao && missoes.length && /missao=1/.test(location.search)) { abriuMissao = true; setTimeout(() => { if (meu) { balao(eu.id, '💻 Nova missão no seu PC!', 2500); } abrirMissao(); }, 1400); }
+  if (!abriuMissao && /missao=1/.test(location.search)) { abriuMissao = true; setTimeout(() => { if (meu) { balao(eu.id, '💻 Nova missão no seu PC!', 2500); } abrirMissao(); }, 1400); }
 }
 setInterval(carregarMissoes, 60000);
 let desafio = null, painelDz = [];
