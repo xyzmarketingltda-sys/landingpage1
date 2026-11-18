@@ -1214,7 +1214,7 @@ async function carregarDesafiosAdm() {
 }
 function dicaModoDz() {
   const comp = $('#gdz-modo').value === 'competicao';
-  $('#gdz-dica').textContent = comp ? '🏆 Competição: no horário final, quem tiver fechado mais leva o prêmio. Coloque 1 nos produtos que contam e 0 nos que não contam (tudo 0 = conta tudo). Empate: todos os empatados ganham.' : '🎯 Meta: cada uma que bater as quantidades até o horário ganha o prêmio.';
+  $('#gdz-dica').textContent = comp ? '🏆 Competição: no horário final, quem tiver mais procurações assinadas no ZapSign leva o prêmio. Coloque 1 nos produtos que contam e 0 nos que não contam (tudo 0 = conta tudo). Empate: o prêmio é dividido entre os empatados. Se ninguém pontuar, ninguém ganha.' : '🎯 Meta: cada uma que bater as quantidades até o horário ganha o prêmio.';
   if (comp) ['#gdz-seg', '#gdz-rev', '#gdz-mar'].forEach(id => { if (+$(id).value > 1) $(id).value = 1; });
 }
 $('#gdz-modo').onchange = dicaModoDz; dicaModoDz();
