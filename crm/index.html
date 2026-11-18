@@ -209,7 +209,7 @@ tbody tr:last-child td{border-bottom:0}
 .g-kpis.prev{grid-template-columns:repeat(3,1fr)}.g-kpi.prev{border-color:rgba(251,191,36,.35)}.g-kpi.prev b{color:#fde68a}
 .g-kpi{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .g-kpi span{font-size:12px;color:var(--suave)}.g-kpi b{font-size:20px}.g-kpi small{font-size:11px;color:var(--suave)}
-#g-res-box.pos b{color:var(--verde)}#g-res-box.neg b{color:var(--vermelho)}
+#g-res-box.pos b{color:var(--verde)}#g-res-box.neg b{color:#fbbf24}
 .g-lanca{display:grid;grid-template-columns:auto 2fr 1fr 120px auto;gap:8px;align-items:center;margin-bottom:12px}
 .g-lanca b{font-size:13px;color:var(--roxo2)}
 .g-lanca input,.g-lanca select,.g-linha input,.g-linha select{padding:8px 10px}
@@ -365,7 +365,7 @@ body.embed{background:transparent}
         <div class="g-kpis">
           <div class="g-kpi"><span>Comissões do mês</span><b id="g-com">–</b><small id="g-com-q"></small></div>
           <div class="g-kpi"><span>Despesas do mês</span><b id="g-desp">–</b><small id="g-desp-q"></small></div>
-          <div class="g-kpi" id="g-res-box"><span>Resultado</span><b id="g-res">–</b><small>comissões − despesas</small></div>
+          <div class="g-kpi" id="g-res-box"><span id="g-res-rot">Resultado</span><b id="g-res">–</b><small id="g-res-sub">comissões − despesas</small></div>
           <div class="g-kpi"><span>Processos</span><b id="g-proc">–</b><small id="g-proc-sub"></small></div>
         </div>
         <div id="g-alerta-pix" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.6);background:rgba(251,191,36,.08);font-size:13px"></div>
@@ -990,7 +990,7 @@ async function carregarGestao() {
   const res = Number(x.comissoes) - Number(x.despesas);
   $('#g-com').textContent = brl(x.comissoes); $('#g-com-q').textContent = x.qtd_com + ' lançamentos';
   $('#g-desp').textContent = brl(x.despesas); $('#g-desp-q').textContent = x.qtd_desp + ' itens';
-  $('#g-res').textContent = brl(res); $('#g-res-box').className = 'g-kpi ' + (res >= 0 ? 'pos' : 'neg');
+  G.real = { com: Number(x.comissoes), desp: Number(x.despesas) }; pintarResultado();
   $('#g-proc').textContent = np ?? 0; $('#g-proc-sub').textContent = (na ?? 0) + ' em andamento';
   carregarPainel();
   calcularPrevisoes();
@@ -1054,7 +1054,8 @@ async function calcularPrevisoes() {
       if ((FIXAS.includes(c) || REF_ANT.includes(c)) && !agora && antes) { cus += antes; repetidos.push(c); } else cus += agora; });
     const corrente = G.mes === mesIso(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     $('#gp-cus').textContent = brl(cus); $('#gp-cus-sub').textContent = repetidos.length ? 'usando mês anterior p/ ' + repetidos.join(', ') + (corrente ? '' : '') : 'tudo já lançado';
-    const res = prev - cus; $('#gp-res').textContent = brl(res); $('#gp-res-box').style.borderColor = res >= 0 ? 'rgba(34,197,94,.5)' : 'rgba(239,68,68,.5)';
+    const res = prev - cus; $('#gp-res').textContent = res >= 0 ? brl(res) : 'faltam ' + brl(-res); $('#gp-res').style.color = res >= 0 ? '' : '#fbbf24'; $('#gp-res-box').style.borderColor = res >= 0 ? 'rgba(34,197,94,.5)' : 'rgba(251,191,36,.5)';
+    G.prevMes = { mes: G.mes, prev, cus }; pintarResultado();
     await carregarCobrancas();
     if (G.aba === 'adv') desenharReceber();
   } catch (e) { console.warn(e); }
@@ -1377,7 +1378,7 @@ function desenharHistorico() {
   $('#gh-lista').innerHTML = G.resumo.map(r => {
     const c = Number(r.comissoes), d = Number(r.despesas), res = c - d;
     return `<tr><td>${mesCurto(r.mes)}</td><td class="num">${brl(c)}</td><td class="num">${brl(d)}</td>
-      <td class="num" style="color:${res >= 0 ? 'var(--verde)' : 'var(--vermelho)'}">${brl(res)}</td>
+      <td class="num" style="color:${res >= 0 ? 'var(--verde)' : '#fbbf24'}" title="${res >= 0 ? '' : 'comissões lançadas ainda não cobriram as despesas'}">${res >= 0 ? brl(res) : 'faltam ' + brl(-res)}</td>
       <td><div class="g-barra" title="azul = comissões · vermelho = despesas"><i style="width:${c / max * 100}%;background:var(--ciano)"></i></div>
       <div class="g-barra" style="margin-top:3px"><i style="width:${d / max * 100}%;background:var(--vermelho)"></i></div></td></tr>`;
   }).join('');
@@ -1410,6 +1411,18 @@ function atualizarAoVivo(espera) {
 }
 setInterval(() => atualizarAoVivo(0), 90000); // garantia, caso o aviso ao vivo não chegue
 document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizarAoVivo(300); });
+
+/* Resultado do mês sem número negativo: enquanto a comissão não caiu, mostra o resultado PRÉVIO (o que está previsto receber − despesas).
+   Se nem o previsto cobre, mostra "faltam R$ X" em vez de um valor com sinal de menos. */
+function pintarResultado() {
+  const r = G.real; if (!r) return;
+  const real = r.com - r.desp, pv = G.prevMes && G.prevMes.mes === G.mes ? G.prevMes : null;
+  let rot = 'Resultado', val = real, sub = 'comissões − despesas';
+  if (real < 0 && pv) { rot = 'Resultado prévio'; val = Math.max(pv.prev, r.com) - Math.max(pv.cus, r.desp); sub = 'previsto a receber − despesas · já recebido ' + brl(r.com); }
+  $('#g-res-rot').textContent = rot; $('#g-res-sub').textContent = val < 0 ? 'para cobrir as despesas do mês' : sub;
+  $('#g-res').textContent = val >= 0 ? brl(val) : 'faltam ' + brl(-val);
+  $('#g-res-box').className = 'g-kpi ' + (val >= 0 ? 'pos' : 'neg');
+}
 
 /* ---------- abas ---------- */
 $$('nav button, .rodape button').forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
