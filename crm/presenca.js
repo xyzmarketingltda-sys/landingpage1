@@ -9,11 +9,12 @@ window.XYZPresenca = (() => {
       canal.on('presence', { event: 'sync' }, () => ouvintes.sync && ouvintes.sync(canal.presenceState()));
       canal.on('broadcast', { event: 'acao' }, ({ payload }) => ouvintes.acao && ouvintes.acao(payload));
       canal.on('broadcast', { event: 'venda' }, ({ payload }) => ouvintes.venda && ouvintes.venda(payload));
-      canal.on('broadcast', { event: 'desafio' }, ({ payload }) => { try { window.XYZAlertaDesafio(payload); } catch (e) {} ouvintes.desafio && ouvintes.desafio(payload); });
+      canal.on('broadcast', { event: 'desafio' }, ({ payload }) => { try { window.XYZAlertaDesafio(payload); setTimeout(() => window.XYZLembretes(sb), 2000); } catch (e) {} ouvintes.desafio && ouvintes.desafio(payload); });
       canal.subscribe(async st => {
         if (st !== 'SUBSCRIBED') return;
         pronto = true;
         await canal.track({ id: eu.id, nome: eu.nome, desde: Date.now() });
+        try { window.XYZLembretes(sb); window.XYZPedirAviso(); } catch (e) {}
         fila.splice(0).forEach(m => canal.send(m));
       });
       return canal;
@@ -53,3 +54,39 @@ window.XYZAlertaDesafio = d => {
 };
 // pede permissão de notificação no primeiro clique (exigência do navegador)
 document.addEventListener('click', () => { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }, { once: true });
+
+// ---------- notificação do Windows (perto do relógio) + lembretes de 1h e 15min antes do fim ----------
+window.XYZNotificar = (titulo, corpo, tag) => {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+    const n = new Notification(titulo, { body: corpo, tag: tag || undefined, requireInteraction: true, renotify: !!tag });
+    n.onclick = () => { window.focus(); location.href = (location.pathname.includes('/controle') ? '../crm/' : '') + 'escritorio.html?desafio=1'; };
+    return true;
+  } catch (e) { return false; }
+};
+const lembretesAgendados = {};
+window.XYZLembretes = async sb => {
+  if (location.pathname.includes('/controle')) return;
+  try {
+    const agora = new Date().toISOString();
+    const { data } = await sb.from('desafios').select('id,titulo,premio,fim').lte('inicio', agora).gt('fim', agora);
+    (data || []).forEach(d => [60, 15].forEach(min => {
+      const chave = d.id + '-' + min, quando = new Date(d.fim).getTime() - min * 60000 - Date.now();
+      if (lembretesAgendados[chave] || quando < -60000) return;
+      lembretesAgendados[chave] = setTimeout(() => {
+        const k = 'xyz-lembrete-' + chave; try { if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch (e) {}
+        const txt = min === 60 ? 'Falta 1 hora' : 'Faltam 15 minutos';
+        window.XYZNotificar(`⏰ ${txt} — desafio "${d.titulo}"`, `Prêmio R$ ${Number(d.premio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Lance seus clientes no CRM agora pra contar!`, 'desafio-' + d.id);
+        window.XYZSomDinheiro();
+      }, Math.max(0, quando));
+    }));
+  } catch (e) {}
+};
+// convite para ativar os avisos do Windows (o navegador só deixa pedir com um clique)
+window.XYZPedirAviso = () => {
+  if (location.pathname.includes('/controle') || !('Notification' in window) || Notification.permission !== 'default' || document.getElementById('xyz-pedir-aviso')) return;
+  const b = document.createElement('button'); b.id = 'xyz-pedir-aviso'; b.textContent = '🔔 Ativar avisos dos desafios';
+  b.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:998;background:linear-gradient(180deg,#b45309,#78350f);color:#fff7d6;border:1px solid #fbbf24;border-radius:99px;padding:9px 18px;font:700 13px Inter,sans-serif;cursor:pointer;box-shadow:0 0 20px rgba(251,191,36,.45)';
+  b.onclick = async () => { const r = await Notification.requestPermission(); b.remove(); if (r === 'granted') window.XYZNotificar('✅ Avisos ativados', 'Você vai receber os desafios relâmpago aqui, perto do relógio do Windows.', 'teste'); };
+  document.body.appendChild(b);
+};
