@@ -875,7 +875,7 @@ function aplicarRegra(regra, linhas) {
     const valor = seg.reduce((x, c) => x + (Number(c.valor) || 0), 0), facta = seg.some(c => /facta/i.test(c.banco || ''));
     let v = 0, obs = '', semValor = seg.length > 0 && !valor;
     if (!regra) obs = 'sem regra cadastrada';
-    else if (regra.tipo === 'por_cliente') { v = regra.v; obs = 'por cliente (' + g.length + ' processo(s))'; semValor = false; }
+    else if (regra.tipo === 'por_cliente' || regra.por_cliente) { v = regra.v; obs = 'por cliente (' + g.length + ' processo(s))'; semValor = false; }
     else if (regra.tipo === 'por_processo') { v = g.length * regra.v; obs = g.length + ' processo(s) × ' + brl(regra.v); semValor = false; }
     else if (regra.tipo === 'percentual') { obs = regra.pct + '% no êxito'; semValor = false; }
     else if (regra.tipo === 'faixas_cliente') {
