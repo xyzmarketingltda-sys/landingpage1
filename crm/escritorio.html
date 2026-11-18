@@ -107,6 +107,20 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
 #pc .inicio button small{color:#94a3b8;font-size:12px}
 #pc .carregando{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7dd3fc;font-size:14px;letter-spacing:.1em}
 #pc-dica{position:fixed;z-index:7;pointer-events:none;background:rgba(3,10,26,.92);border:1px solid #7dd3fc;color:#e0f2fe;border-radius:9px;padding:5px 10px;font-size:12px;font-weight:700;box-shadow:0 0 18px rgba(30,144,255,.45)}
+#terraco{position:fixed;inset:0;z-index:30;overflow:hidden;background:#02040b}
+#terraco canvas{position:absolute;inset:0;width:100%;height:100%}
+#terraco .flash{position:absolute;inset:0;background:radial-gradient(circle,#e0f7ff,#38bdf8 40%,transparent 70%);animation:trFlash .9s ease-out forwards;pointer-events:none}
+@keyframes trFlash{0%{opacity:1;transform:scale(.2)}60%{opacity:.9;transform:scale(1.6)}100%{opacity:0;transform:scale(2)}}
+#terraco .letreiro{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);text-align:center;padding:26px 44px;border:3px solid #22d3ee;border-radius:14px;background:rgba(2,8,22,.55);box-shadow:0 0 30px rgba(34,211,238,.6),inset 0 0 30px rgba(34,211,238,.25);animation:trNeon 2.4s ease-in-out infinite}
+#terraco .letreiro small{display:block;letter-spacing:6px;color:#7dd3fc;font-size:13px;margin-bottom:8px}
+#terraco .letreiro b{display:block;font-size:clamp(36px,7vw,92px);font-weight:800;color:#fff7d6;text-shadow:0 0 12px #fbbf24,0 0 40px #f59e0b,0 0 80px #f97316;letter-spacing:2px}
+#terraco .letreiro span{display:block;margin-top:10px;color:#cfe3ff;font-size:15px}
+@keyframes trNeon{0%,100%{filter:brightness(1)}48%{filter:brightness(1.15)}50%{filter:brightness(.8)}52%{filter:brightness(1.2)}}
+#terraco .piso{position:absolute;left:0;right:0;bottom:0;height:20%;background:linear-gradient(180deg,#141a26,#05070c);border-top:4px solid #334155;display:flex;justify-content:space-around;align-items:flex-start}
+#terraco .piso i{width:10px;height:10px;border-radius:50%;margin-top:-8px;background:#f87171;box-shadow:0 0 14px #ef4444;animation:trPisca 1.6s infinite}
+#terraco .piso i:nth-child(even){animation-delay:.8s}
+@keyframes trPisca{0%,60%{opacity:1}80%{opacity:.25}}
+#tr-voltar{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);background:linear-gradient(180deg,#1e90ff,#1565c0);color:#fff;border:1px solid #7dd3fc;border-radius:12px;padding:12px 22px;font:inherit;font-weight:700;cursor:pointer;z-index:2}
 </style>
 </head>
 <body>
@@ -126,6 +140,10 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
     <button class="x" data-pc="fechar">⏻ Sair do PC</button></div>
   <div class="tela" id="pc-tela"></div>
 </div></div>
+<div id="terraco" hidden><canvas id="tr-ceu"></canvas><div class="flash"></div>
+  <div class="letreiro"><small>TERRAÇO · XYZ</small><b>VAMOS PRODUZIR!</b><span id="tr-sub"></span></div>
+  <div class="piso"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <button id="tr-voltar">⬇ Descer pro escritório</button></div>
 <div id="menu" hidden></div><div id="pc-dica" hidden>💻 Usar meu computador</div>
 <div id="foto-hover" hidden><img alt=""><b></b><small></small></div>
 <div id="modal" hidden>
@@ -329,29 +347,58 @@ async function montarAmbiente() {
 }
 
 /* ---------- aquário futurista (feito por nós) ---------- */
+let AQ = null, racao = { ate: 0, x: 0 };
 function montarAquario(x0, z0, larg, prof) {
-  const X = x0 * U, Z = z0 * U, L = larg * U, P = prof * U;
-  caixa3(L, 3.6, P, '#111827', X + L / 2, 0, Z + P / 2, { metalness: .4 });
-  caixa3(L, 6, P, '#7dd3fc', X + L / 2, 3.6, Z + P / 2, { transparent: true, opacity: .22, roughness: .05, metalness: .1, emissive: '#0369a1', emissiveIntensity: .35 });
-  caixa3(L - .3, .5, P - .3, '#fde68a', X + L / 2, 3.65, Z + P / 2);
-  caixa3(L + .3, .5, P + .3, '#0f172a', X + L / 2, 9.6, Z + P / 2);
-  const tira = caixa3(L - .4, .15, .15, '#00e5ff', X + L / 2, 10.1, Z + P - .1, { emissive: '#00e5ff', emissiveIntensity: 2 });
-  animados.push(t => tira.material.emissiveIntensity = 1.4 + Math.sin(t / 500) * .8);
-  const luz = new THREE.PointLight(0x22d3ee, 30, 40); luz.position.set(X + L / 2, 7, Z + P + 2); scene.add(luz);
-  for (let k = 0; k < 7; k++) { const alga = new THREE.Mesh(new THREE.ConeGeometry(.35, 2.5 + (k % 3), 6), new THREE.MeshStandardMaterial({ color: k % 2 ? '#22c55e' : '#10b981' }));
-    alga.position.set(X + 1 + k * (L - 2) / 6, 5.3 + (k % 3) * .5, Z + P / 2 + (k % 2 ? .8 : -.8)); scene.add(alga); animados.push(t => alga.rotation.z = Math.sin(t / 600 + k) * .15); }
-  const cores = [0xf97316, 0xfacc15, 0x22d3ee, 0xf472b6, 0xa3e635];
-  for (let k = 0; k < 9; k++) {
-    const peixe = new THREE.Group(), cor = new THREE.MeshStandardMaterial({ color: cores[k % 5], emissive: cores[k % 5], emissiveIntensity: .25 });
-    const corpo = new THREE.Mesh(new THREE.SphereGeometry(.45, 10, 8), cor); corpo.scale.set(1.5, .9, .6);
-    const rabo = new THREE.Mesh(new THREE.ConeGeometry(.35, .6, 4), cor); rabo.rotation.z = Math.PI / 2; rabo.position.x = -.85;
-    peixe.add(corpo, rabo); scene.add(peixe);
-    const fase = Math.random() * 6, alt = 4.8 + Math.random() * 3.6, vel = .0004 + Math.random() * .0004, pz = Z + 1 + Math.random() * (P - 2);
-    animados.push(t => { const u = Math.sin(t * vel + fase); peixe.position.set(X + L / 2 + u * (L / 2 - 1.2), alt + Math.sin(t / 400 + k) * .3, pz); peixe.rotation.y = Math.cos(t * vel + fase) > 0 ? 0 : Math.PI; });
+  const X = x0 * U, Z = z0 * U, L = larg * U, P = prof * U, M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .6, ...o });
+  AQ = { X, Z, L, P };
+  caixa3(L + .4, 3.6, P + .4, '#0b1020', X + L / 2, 0, Z + P / 2, { metalness: .5, roughness: .35 });                       // móvel
+  caixa3(L, .12, .12, '#22d3ee', X + L / 2, 3.2, Z + P + .2, { emissive: '#22d3ee', emissiveIntensity: 1.6 });                // filete de LED no móvel
+  caixa3(L, 6.4, P, '#38bdf8', X + L / 2, 3.6, Z + P / 2, { transparent: true, opacity: .16, roughness: .02, metalness: .1, emissive: '#0ea5e9', emissiveIntensity: .25, depthWrite: false });   // água
+  for (const [dx, dz] of [[0, 0], [L, 0], [0, P], [L, P]]) caixa3(.22, 6.4, .22, '#0f172a', X + dx, 3.6, Z + dz, { metalness: .7 });   // quinas
+  caixa3(L + .4, .6, P + .4, '#0f172a', X + L / 2, 10, Z + P / 2, { metalness: .6 });                                      // tampa
+  const tira = caixa3(L - .6, .12, P - .6, '#a5f3fc', X + L / 2, 9.9, Z + P / 2, { emissive: '#67e8f9', emissiveIntensity: 2 });
+  animados.push(t => tira.material.emissiveIntensity = 1.6 + Math.sin(t / 700) * .5);
+  const luz = new THREE.PointLight(0x38bdf8, 34, 42); luz.position.set(X + L / 2, 7, Z + P + 2); scene.add(luz);
+  // areia em dunas, pedras e corais
+  caixa3(L - .2, .45, P - .2, '#e8d5a3', X + L / 2, 3.6, Z + P / 2);
+  for (let k = 0; k < 6; k++) { const d = new THREE.Mesh(new THREE.SphereGeometry(1 + (k % 3) * .4, 10, 6), M('#ead9aa')); d.scale.y = .28; d.position.set(X + 1.4 + k * (L - 2.8) / 5, 4.05, Z + P / 2 + (k % 2 ? .7 : -.6)); scene.add(d); }
+  for (let k = 0; k < 5; k++) { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(.5 + (k % 3) * .28, 0), M(['#475569', '#64748b', '#334155'][k % 3], { flatShading: true })); r.position.set(X + 1.2 + (k * 3.7) % (L - 2.4), 4.3, Z + .9 + (k * 1.3) % (P - 1.8)); r.rotation.set(k, k * 2, k); scene.add(r); }
+  const CORAL = ['#fb7185', '#f97316', '#e879f9', '#fbbf24'];
+  for (let k = 0; k < 6; k++) { const g = new THREE.Group(), m = M(CORAL[k % 4], { emissive: CORAL[k % 4], emissiveIntensity: .25 });
+    for (let j = 0; j < 4; j++) { const r = new THREE.Mesh(new THREE.CylinderGeometry(.09, .16, 1 + j * .28, 6), m); r.position.y = (1 + j * .28) / 2; r.rotation.z = (j - 1.5) * .42; r.rotation.x = (j % 2 ? .3 : -.3); g.add(r); }
+    g.position.set(X + 1 + (k * 2.9) % (L - 2), 4.05, Z + .8 + (k * 1.7) % (P - 1.6)); scene.add(g); }
+  for (let k = 0; k < 8; k++) { const alga = new THREE.Group(), m = M(k % 2 ? '#22c55e' : '#059669'); const n = 4 + k % 3;
+    for (let j = 0; j < n; j++) { const s = new THREE.Mesh(new THREE.BoxGeometry(.18, .7, .08), m); s.position.y = j * .65; alga.add(s); }
+    alga.position.set(X + .8 + k * (L - 1.6) / 7, 4.1, Z + (k % 2 ? P - .8 : .8)); scene.add(alga);
+    animados.push(t => alga.children.forEach((s, j) => { s.position.x = Math.sin(t / 700 + k + j * .5) * .08 * j; })); }
+  // peixes: corpo, rabo que abana, nadadeira e olho; quando tem ração, sobem para comer
+  const cores = [0xf97316, 0xfacc15, 0x22d3ee, 0xf472b6, 0xa3e635, 0xfb7185, 0x60a5fa];
+  for (let k = 0; k < 14; k++) {
+    const tam = k < 9 ? .75 + (k % 3) * .22 : .42, peixe = new THREE.Group(), cor = M(cores[k % 7], { emissive: cores[k % 7], emissiveIntensity: .3, roughness: .35 });
+    const corpo = new THREE.Mesh(new THREE.SphereGeometry(.45, 12, 10), cor); corpo.scale.set(1.55, .95, .55);
+    const rabo = new THREE.Mesh(new THREE.ConeGeometry(.38, .65, 4), cor); rabo.rotation.z = Math.PI / 2; rabo.position.x = -.9; rabo.scale.z = .35;
+    const nad = new THREE.Mesh(new THREE.ConeGeometry(.2, .45, 3), cor); nad.position.set(0, .5, 0); nad.scale.z = .3;
+    const olho = new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 6), new THREE.MeshBasicMaterial({ color: '#0b0b0b' })); olho.position.set(.42, .1, .22); const olho2 = olho.clone(); olho2.position.z = -.22;
+    peixe.add(corpo, rabo, nad, olho, olho2); peixe.scale.setScalar(tam); scene.add(peixe);
+    const fase = Math.random() * 6, alt = 4.9 + Math.random() * 3.6, vel = (.00035 + Math.random() * .0004) * (k < 9 ? 1 : 1.6), pz = Z + .9 + Math.random() * (P - 1.8);
+    let px = X + L / 2, py = alt, ant = px;
+    animados.push(t => { const com = racao.ate > T; const u = Math.sin(t * vel + fase);
+      const tx = com ? racao.x + Math.sin(t / 300 + k) * 1.6 : X + L / 2 + u * (L / 2 - 1.3), ty = com ? 8.7 + Math.sin(t / 250 + k) * .35 : alt + Math.sin(t / 400 + k) * .3;
+      px += (tx - px) * (com ? .05 : .08); py += (ty - py) * .05; peixe.position.set(px, py, pz);
+      if (Math.abs(px - ant) > .002) peixe.rotation.y = px > ant ? 0 : Math.PI; ant = px; rabo.rotation.y = Math.sin(t / (com ? 60 : 130) + k) * .5; });
   }
-  for (let k = 0; k < 10; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(.12 + (k % 3) * .05, 8, 6), new THREE.MeshBasicMaterial({ color: '#e0f7ff', transparent: true, opacity: .7 }));
-    const bx = X + 1 + Math.random() * (L - 2), bz = Z + 1 + Math.random() * (P - 2), off = Math.random() * 6; scene.add(b);
-    animados.push(t => { b.position.set(bx, 4.2 + ((t / 900 + off) % 1) * 5.2, bz); }); }
+  // bolhas saindo de um aerador
+  const aer = caixa3(.6, .3, .6, '#1e293b', X + L - 1.4, 4.05, Z + P / 2);
+  for (let k = 0; k < 14; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(.09 + (k % 3) * .05, 8, 6), new THREE.MeshBasicMaterial({ color: '#e0f7ff', transparent: true, opacity: .75 }));
+    const off = k / 14; scene.add(b);
+    animados.push(t => { const f = (t / 2600 + off) % 1; b.position.set(X + L - 1.4 + Math.sin(f * 9 + k) * .25, 4.4 + f * 5.3, Z + P / 2 + Math.cos(f * 7 + k) * .2); }); }
+}
+function alimentarPeixes() {
+  if (!AQ) return; racao = { ate: T + 6500, x: AQ.X + 2 + Math.random() * (AQ.L - 4) };
+  for (let k = 0; k < 16; k++) { const p = new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 6), new THREE.MeshBasicMaterial({ color: '#b45309' })); scene.add(p);
+    const x = racao.x + (Math.random() - .5) * 2.4, z = AQ.Z + .8 + Math.random() * (AQ.P - 1.6), t0 = T + k * 90, some = 2800 + Math.random() * 2600;
+    const f = () => { const d = T - t0; if (d < 0) return; if (d > some) { scene.remove(p); const i = animados.indexOf(f); if (i >= 0) animados.splice(i, 1); return; } p.position.set(x + Math.sin(d / 300 + k) * .1, 9.6 - Math.min(1, d / 5000) * 4.6, z); };
+    animados.push(f); }
 }
 
 /* ---------- portal de teletransporte ---------- */
@@ -408,21 +455,30 @@ function atualizarDinheiro() {
 // mesas (centro em tiles); a pessoa senta atrás, de frente para quem olha
 const DESKS = [[3.1, 2.25], [4.2, 2.25], [5.3, 2.25], [3.1, 3.95], [4.2, 3.95], [6.15, 5.35]]; // último = chefe
 /* ---------- sofá original XYZ: capitonê azul-marinho, almofadas ciano, base com LED ---------- */
-function montarSofaXYZ(x, z, rot) {
+function montarSofaXYZ(x, z, rot, L = 10.5, esc_ = 1) {
   const g = new THREE.Group(), M = (c, e = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .55, ...e });
   const azul = M('#2547a3'), azulE = M('#1c3a8a'), botao = M('#7dd3fc', { emissive: '#38bdf8', emissiveIntensity: .6 }), ciano = M('#22d3ee', { roughness: .4 }), base = M('#0b0f17', { metalness: .6, roughness: .3 });
   const B = (w, h, d, m, px, py, pz) => { const k = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); k.position.set(px, py + h / 2, pz); k.castShadow = k.receiveShadow = true; g.add(k); return k; };
-  const L = 10.5, P = 5;                                   // largura e profundidade
+  const P = 5;
   B(L, .5, P, base, 0, 0, 0);                              // base
   const led = B(L - .4, .12, P - .4, M('#0ea5e9', { emissive: '#22d3ee', emissiveIntensity: 1.6 }), 0, .05, 0);
   animados.push(t => led.material.emissiveIntensity = 1.3 + Math.sin(t / 700) * .4);
   for (const i of [-1, 1]) B((L - 2.4) / 2 - .1, 1.3, P - 1.6, azul, i * (L - 2.4) / 4, .5, .4);   // assentos
   B(L - 2.4, 3.2, 1.3, azulE, 0, .5, -P / 2 + .65);        // encosto
   for (const i of [-1, 1]) B(1.2, 2.4, P, azulE, i * (L / 2 - .6), .5, 0);   // braços
-  for (let c = -3; c <= 3; c++) for (const r of [2.3, 3.2]) B(.22, .22, .12, botao, c * 1.1, r, -P / 2 + 1.33);  // capitonê
-  for (const i of [-1, 1]) for (const k of [0, 1]) { const q = B(1.5, 1.5, .5, ciano, i * (L / 2 - 2) + (k ? -i * 1.6 : 0), 1.7, -P / 2 + 1.6); q.rotation.z = i * .12; }  // almofadas
-  g.position.copy(W(x, z)); g.rotation.y = rot * Math.PI / 180; scene.add(g); return g;
+  { const nb = Math.max(1, Math.floor((L - 3.2) / 2.2)); for (let c = -nb; c <= nb; c++) for (const r of [2.3, 3.2]) B(.22, .22, .12, botao, c * 1.1, r, -P / 2 + 1.33); }  // capitonê
+  if (L > 8) for (const i of [-1, 1]) for (const k of [0, 1]) { const q = B(1.5, 1.5, .5, ciano, i * (L / 2 - 2) + (k ? -i * 1.6 : 0), 1.7, -P / 2 + 1.6); q.rotation.z = i * .12; }  // almofadas
+  g.scale.setScalar(esc_); g.position.copy(W(x, z)); g.rotation.y = rot * Math.PI / 180; scene.add(g); return g;
 }
+function abrirTerraco() {
+  const t = $('#terraco'), c = $('#tr-ceu'); c.width = innerWidth; c.height = innerHeight; pintarCidade(c.getContext('2d'), c.width, c.height, 23, ehDia());
+  const tot = vendasMes.reduce((x, r) => x + Number(r.vendas || 0), 0);
+  $('#tr-sub').textContent = tot ? 'A equipe já fechou ' + tot + ' este mês. Bora buscar o próximo! 🚀' : 'O mês está só começando. Bora buscar o primeiro! 🚀';
+  t.hidden = false; t.querySelector('.flash').style.animation = 'none'; void t.offsetWidth; t.querySelector('.flash').style.animation = '';
+  try { particulas(eu.id, '✨', 10); enviar('falar', null, '🚀 Subi pro terraço!'); } catch (e) {}
+  $('#tr-voltar').onclick = () => { t.hidden = true; try { particulas(eu.id, '✨', 8); } catch (e) {} };
+}
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') $('#terraco').hidden = true; });
 function pintarCeu() { const c = document.getElementById('ceu'); if (!c) return; c.width = innerWidth; c.height = innerHeight; pintarCidade(c.getContext('2d'), c.width, c.height, 11, ehDia()); }
 setInterval(pintarCeu, 30 * 60000);
 pintarCeu(); addEventListener('resize', pintarCeu);
@@ -465,7 +521,7 @@ async function montarMoveis() {
 const VIP_SEATS = [[7.55, .75, -90], [7.55, 1.5, -90], [7.55, 2.25, -90]];
 async function montarSalaVip() {
   const X0 = GX * U, X1 = (GX + VIPX) * U, Z1 = 3 * U;
-  for (let z = 0; z < 3; z++) por('floorFull', GX + .5, z + .5, 0, { cor: '#0b0d12' });
+  for (let z = 0; z < 3; z++) por('floorFull', GX + .5, z + .5, 0, { cor: '#46505f' });
   por('wall', GX + .5, -.025, 0, { cor: '#1c1530' });
   const vidro = { color: '#fde68a', transparent: true, opacity: .16, roughness: .05, metalness: .3, depthWrite: false }, ouro = { color: '#b8860b', metalness: .9, roughness: .25 };
   const h = 10.5;
@@ -475,7 +531,7 @@ async function montarSalaVip() {
   animados.push(t => led.material.emissiveIntensity = 1.5 + Math.sin(t / 900) * .5);
   const placa = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.6), new THREE.MeshBasicMaterial({ map: texturaTexto('HALL', 384, 124, '800 84px Inter, sans-serif', '#fff3c4', '#f59e0b'), transparent: true }));
   placa.position.set((X0 + X1) / 2, 9.4, .6); scene.add(placa);
-  VIP_SEATS.forEach(([x, z, r]) => por('loungeChair', x, z, r, { cor: '#1f1b2e', so: /carpet/i }));
+  VIP_SEATS.forEach(([x, z, r]) => montarSofaXYZ(x + .05, z, r, 5.2, .8));
   por('pottedPlant', 7.75, 2.75);
 }
 
@@ -782,7 +838,7 @@ function mover(dt) {
     if (a.alpha < 1 && a.est !== 'fora') a.alpha = Math.min(1, a.alpha + dt * 2);
     const alvo = a.rota[0];
     a.andando = !!alvo;
-    if (!alvo) { a.sentado = a.est === 'mesa' && !a.livre; if (a.est === 'fora') { if (a.alpha === 1) particulas(a.id, '✨', 6); a.alpha -= dt * 2; if (a.alpha <= 0) atores.delete(a.id); } return; }
+    if (!alvo) { a.sentado = (a.est === 'mesa' && !a.livre) || !!a.cafe; if (a.est === 'fora') { if (a.alpha === 1) particulas(a.id, '✨', 6); a.alpha -= dt * 2; if (a.alpha <= 0) atores.delete(a.id); } return; }
     a.sentado = false;
     const dx = alvo[0] - a.x, dy = alvo[1] - a.y, d = Math.hypot(dx, dy), v = (a.livre ? 1.15 : .8) * dt;
     if (d <= v) { a.x = alvo[0]; a.y = alvo[1]; a.rota.shift(); } else { a.x += dx / d * v; a.y += dy / d * v; }
@@ -807,6 +863,7 @@ function textos() {
     mctx.fillStyle = a.id === eu.id ? 'rgba(30,144,255,.92)' : 'rgba(3,10,26,.8)';
     mctx.beginPath(); mctx.roundRect(X - w / 2, Y - h, w, h, 7); mctx.fill();
     mctx.fillStyle = '#fff'; mctx.fillText(nome, X, Y - h / 2);
+    if (a.cafe && !a.andando) { mctx.font = `${Math.round(20 * esc2)}px serif`; mctx.fillText('☕', X + w / 2 + 12 * esc2, Y - h / 2 + Math.sin(T / 500) * 1.5); }
     if (a.id === liderId) { mctx.font = `${Math.round(22 * esc2)}px serif`; mctx.fillText('👑', X, Y - h - 13 * esc2 + Math.sin(T / 400) * 1.5); }
     if (a.balao && a.balao.ate > T) {
       mctx.font = `600 ${Math.round(13 * esc2)}px Inter, sans-serif`;
@@ -855,8 +912,10 @@ const ACOES = {
 function executar(m) {
   const de = atores.get(m.de), para = m.para ? atores.get(m.para) : null;
   if (!de) return;
-  if (m.tipo === 'andar' && m.x != null) { de.livre = true; rota(de, [m.x, m.y]); return; }
-  if (m.tipo === 'sentar') { de.livre = false; const i = equipe.filter(q => q.papel === 'atendente').indexOf(de.p); rota(de, assentoDe(de.p, Math.max(0, i))); return; }
+  if (m.tipo === 'andar' && m.x != null) { de.livre = true; de.cafe = false; rota(de, [m.x, m.y]); return; }
+  if (m.tipo === 'tomarcafe') { de.livre = true; de.cafe = true; const k = [...String(de.id)].reduce((s, c) => s + c.charCodeAt(0), 0) % 3; rota(de, [[1.0, 1.45, 1.9][k], 1.92]); balao(m.de, '☕ Pausa pro café', 3000); return; }
+  if (m.tipo === 'peixes') { alimentarPeixes(); balao(m.de, '🐟 Alimentei os peixes!', 3500); return; }
+  if (m.tipo === 'sentar') { de.livre = false; de.cafe = false; const i = equipe.filter(q => q.papel === 'atendente').indexOf(de.p); rota(de, assentoDe(de.p, Math.max(0, i))); return; }
   const nomePara = para ? nomeExib(para.p) : '';
   if (m.tipo === 'falar') return balao(m.de, m.texto, 5000);
   const a = ACOES[m.tipo]; if (!a) return;
@@ -919,6 +978,10 @@ gl.addEventListener('click', e => {
   atores.forEach(a => { const [x, y] = telaDe(a.x * U, (a.sentado && !a.andando ? SENTA : 0) + AV_ALT / 2, a.y * U), d = Math.hypot(mx - x, my - y); if (d < dmin) { dmin = d; melhor = a; } });
   const m = $('#menu');
   { const [tx, ty] = telaDe(TELAO[0], TELAO[1], .75); if (Math.abs(mx - tx) < 70 * ZOOM && Math.abs(my - ty) < 45 * ZOOM) { abrirRanking(); return; } }
+  if (AQ) { const [ax, ay] = telaDe(AQ.X + AQ.L / 2, 6.8, AQ.Z + AQ.P); if (Math.abs(mx - ax) < 95 * ZOOM && Math.abs(my - ay) < 40 * ZOOM) {
+    m.innerHTML = '<b>🐠 Aquário</b><button data-aq="1">🐟 Alimentar os peixes</button>'; m.style.left = Math.min(innerWidth - 190, e.clientX + 8) + 'px'; m.style.top = e.clientY + 8 + 'px'; m.hidden = false;
+    m.querySelector('[data-aq]').onclick = () => { m.hidden = true; enviar('peixes'); }; return; } }
+  { const [tx, ty] = telaDe(64.5, 6.5, 5); if (Math.abs(mx - tx) < 34 * ZOOM && Math.abs(my - ty) < 70 * ZOOM) { abrirTerraco(); return; } }
   const minha = mesaDe[eu.id];
   if (minha != null) { const [px, py] = telaDe(...pcDe(minha)), dpc = Math.hypot(mx - px, my - py);
     if (dpc < 48 * ZOOM && (!melhor || melhor.id === eu.id || dpc < dmin)) { abrirPC(); return; } }
@@ -936,7 +999,7 @@ gl.addEventListener('click', e => {
     return;
   }
   const eh = melhor.id === eu.id, nome = nomeExib(melhor.p);
-  const ops = eh ? [['pc', '💻 Usar meu computador'], ...(atores.get(eu.id)?.livre ? [['sentar', '🪑 Voltar pra minha mesa']] : []), ['acenar', '👋 Acenar para todos'], ['dancar', '💃 Dançar'], ['cafe', '☕ Chamar pro café'], ['palmas', '👏 Bater palmas']]
+  const ops = eh ? [['pc', '💻 Usar meu computador'], ['tomarcafe', '☕ Tomar um café na bancada'], ...(atores.get(eu.id)?.livre ? [['sentar', '🪑 Voltar pra minha mesa']] : []), ['acenar', '👋 Acenar para todos'], ['dancar', '💃 Dançar'], ['cafe', '☕ Chamar pro café'], ['palmas', '👏 Bater palmas']]
                  : [['acenar', `👋 Acenar para ${nome}`], ['highfive', '✋ Toca aqui!'], ['coracao', '❤️ Mandar coração'], ['palmas', '👏 Aplaudir']];
   m.innerHTML = `<b>${esc(melhor.p.papel === 'advogado' ? nomeExib(melhor.p) : melhor.p.nome)}${eh ? ' (você)' : ''}</b>` + ops.map(([k, t]) => `<button data-a="${k}">${t}</button>`).join('') +
     `<form id="f-falar"><input id="i-falar" maxlength="80" placeholder="Dizer algo…"><button class="btn" style="padding:6px 10px">➤</button></form>`;
