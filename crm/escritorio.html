@@ -159,7 +159,7 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="presenca.js?v=20261117n"></script>
+<script src="presenca.js?v=20261118c"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -570,6 +570,29 @@ const caixaGeo = (w, h, d) => { const k = w + '|' + h + '|' + d; if (!geoCache.h
 function bloco(pai, w, h, d, cor, x, y, z, mats) {
   const m = new THREE.Mesh(caixaGeo(w, h, d), mats.get(cor)); m.position.set(x, y, z); m.castShadow = true; pai.add(m); return m;
 }
+// rosto do avatar = a foto de perfil da pessoa (recorte redondo); sem foto, fica o rosto padrão
+const _fotoTex = new Map();
+function colarFoto(cabeca, url) {
+  const aplicar = tex => {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(1.42, 40), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    m.position.set(0, 1.55, 1.36); m.name = 'foto'; cabeca.add(m);
+    const aro = new THREE.Mesh(new THREE.RingGeometry(1.42, 1.56, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+    aro.position.set(0, 1.55, 1.355); cabeca.add(aro);
+  };
+  if (_fotoTex.has(url)) { const t = _fotoTex.get(url); if (t) aplicar(t); return; }
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const L = 256, c = document.createElement('canvas'); c.width = c.height = L;
+      const g = c.getContext('2d'), lado = Math.min(img.naturalWidth, img.naturalHeight);
+      g.drawImage(img, (img.naturalWidth - lado) / 2, Math.max(0, (img.naturalHeight - lado) * .25), lado, lado, 0, 0, L, L);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+      _fotoTex.set(url, t); aplicar(t);
+    } catch (e) { _fotoTex.set(url, null); }
+  };
+  img.onerror = () => _fotoTex.set(url, null);
+  img.src = url;
+}
 function criarVoxel(v) {
   const mats = new Map(), cache = cor => { if (!mats.has(cor)) mats.set(cor, new THREE.MeshStandardMaterial({ color: cor, roughness: .75, transparent: true })); return mats.get(cor); };
   const M = { get: cache };
@@ -634,6 +657,7 @@ const sombraGeo = new THREE.CircleGeometry(1.8, 20), sombraMat = new THREE.MeshB
 function objetoDe(a) {
   if (a.vx) return a.vx;
   const vx = criarVoxel(a.vis);
+  if (a.p && a.p.foto_url) colarFoto(vx.cabeca, a.p.foto_url);
   const sombra = new THREE.Mesh(sombraGeo, sombraMat); sombra.rotation.x = -Math.PI / 2; sombra.position.y = .06; vx.raiz.add(sombra);
   scene.add(vx.raiz); a.vx = vx; a.dir = 0; return vx;
 }
@@ -666,7 +690,7 @@ function telaDe(x, y, z) { const v = new THREE.Vector3(x, y, z).project(camera);
 const PADRAO = { cab: '#2b2018', est: 'curto', rou: '#1e3a8a', pele: '#e9b996' }; // todo mundo com o mesmo visual padrão
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(' ')[0];
 function visualDe(p) {
-  if (p.papel === 'admin' && norm(p.nome) === 'administrador') return { ...PADRAO, rou: '#0d0d10', polo: true };
+  if (p.papel === 'admin' && ['administrador', 'lucas'].includes(norm(p.nome))) return { ...PADRAO, rou: '#0d0d10', polo: true };
   if (p.papel === 'admin') return { ...PADRAO, rou: '#0b5ed7', gravata: true };
   if (norm(p.nome) === 'julia') return { ...PADRAO, cab: '#e0263f', est: 'longo' }; // pedido do chefe: Júlia de cabelo vermelho
   if (norm(p.nome) === 'julia') return { ...PADRAO, cab: '#e0263f', est: 'longo' };
