@@ -205,7 +205,7 @@ tbody tr:last-child td{border-bottom:0}
 .g-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .g-top h3{font-size:15px}.g-top small{color:var(--suave);font-weight:400}
 .g-mes{display:flex;align-items:center;gap:8px}.g-mes b{min-width:120px;text-align:center;text-transform:capitalize}
-.g-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.g-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
 .g-kpis.prev{grid-template-columns:repeat(3,1fr)}.g-kpi.prev{border-color:rgba(251,191,36,.35)}.g-kpi.prev b{color:#fde68a}
 .g-kpi{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .g-kpi span{font-size:12px;color:var(--suave)}.g-kpi b{font-size:20px}.g-kpi small{font-size:11px;color:var(--suave)}
@@ -370,7 +370,6 @@ body.embed{background:transparent}
           <div class="g-kpi"><span>Comissões do mês</span><b id="g-com">–</b><small id="g-com-q"></small></div>
           <div class="g-kpi"><span>Despesas do mês</span><b id="g-desp">–</b><small id="g-desp-q"></small></div>
           <div class="g-kpi" id="g-res-box"><span id="g-res-rot">Resultado</span><b id="g-res">–</b><small id="g-res-sub">comissões − despesas</small></div>
-          <div class="g-kpi"><span>Processos</span><b id="g-proc">–</b><small id="g-proc-sub"></small></div>
         </div>
         <div id="g-alerta-pix" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.6);background:rgba(251,191,36,.08);font-size:13px"></div>
         <div id="g-alerta-cpf" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,146,60,.6);background:rgba(251,146,60,.08);font-size:13px"></div>
@@ -398,9 +397,9 @@ body.embed{background:transparent}
         </div>
         <div class="g-painel" id="gp-proc" hidden>
           <form class="g-linha" id="gp-form"><input id="gpn-nome" placeholder="Cliente" required><input id="gpn-adv" list="lista-adv" placeholder="Advogado(a)" required style="max-width:170px"><input id="gpn-num" placeholder="Nº do processo" style="max-width:240px"><input id="gpn-pct" placeholder="% comissão" style="max-width:110px" inputmode="decimal"><button class="btn peq">+ Adicionar</button></form>
-          <div class="g-linha"><input id="gp-busca" placeholder="Buscar nome, nº do processo ou advogado"></div>
+          <div class="g-linha"><input id="gp-busca" placeholder="Buscar nome, nº do processo, advogado ou observação (ex.: ⚠, sentença, Facta)"></div>
           <div class="g-cats" id="gp-advs"></div>
-          <div class="g-tab"><table><thead><tr><th>Cliente</th><th>Advogado</th><th>Nº do processo</th><th>Comissão</th><th>Status</th><th></th></tr></thead><tbody id="gp-lista"></tbody></table></div>
+          <div class="g-tab"><table><thead><tr><th>Cliente</th><th>Advogado</th><th>Nº do processo</th><th>Comissão</th><th>Status</th><th>Observação</th><th></th></tr></thead><tbody id="gp-lista"></tbody></table></div>
         </div>
         <div class="g-painel" id="gp-desp" hidden>
           <div class="g-cats" id="gd-meses" style="margin-bottom:6px"></div>
@@ -1012,7 +1011,7 @@ async function carregarGestao() {
   $('#g-com').textContent = brl(x.comissoes); $('#g-com-q').textContent = x.qtd_com + ' lançamentos';
   $('#g-desp').textContent = brl(x.despesas); $('#g-desp-q').textContent = x.qtd_desp + ' itens';
   G.real = { com: Number(x.comissoes), desp: Number(x.despesas) }; pintarResultado();
-  $('#g-proc').textContent = np ?? 0; $('#g-proc-sub').textContent = (na ?? 0) + ' em andamento';
+  /* o total de processos fica só na aba Processos */
   carregarPainel();
   calcularPrevisoes();
 }
@@ -1342,7 +1341,7 @@ let tgp; $('#gp-busca').oninput = () => { clearTimeout(tgp); tgp = setTimeout(ca
 async function carregarProcessos() {
   let q = sb.from('processos').select('*').order('nome');
   const t = $('#gp-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
-  if (t) q = q.or(`nome.ilike.*${t}*,numero.ilike.*${t}*,advogado.ilike.*${t}*`);
+  if (t) q = q.or(`nome.ilike.*${t}*,numero.ilike.*${t}*,advogado.ilike.*${t}*,observacoes.ilike.*${t}*`);
   const { data: todos } = await q;
   const contAdv = {}; (todos || []).forEach(p => { const a = p.advogado || 'Sem advogado'; contAdv[a] = (contAdv[a] || 0) + 1; });
   $('#gp-advs').innerHTML = `<span data-adv="" style="cursor:pointer;${gpAdv ? '' : 'border-color:var(--ciano);color:var(--ciano)'}">Todos: <b>${(todos || []).length}</b></span>` +
@@ -1356,7 +1355,8 @@ async function carregarProcessos() {
     <td><input class="ed" data-f="numero" value="${esc(p.numero || '')}"></td>
     <td><input class="ed" data-f="comissao_pct" value="${p.comissao_pct ?? ''}" style="max-width:70px" title="% de comissão"></td>
     <td><select class="ed" data-f="status">${st.map(s => `<option${s === p.status ? ' selected' : ''}>${s}</option>`).join('')}</select></td>
-    <td><button class="x" title="Apagar" data-del="${p.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="6" style="color:var(--suave)">Nenhum processo.</td></tr>';
+    <td><input class="ed" data-f="observacoes" value="${esc(p.observacoes || '')}" title="${esc(p.observacoes || '')}" placeholder="banco, sentença, pendência…" style="min-width:220px${/⚠/.test(p.observacoes || '') ? ';border-color:rgba(251,191,36,.7)' : ''}"></td>
+    <td><button class="x" title="Apagar" data-del="${p.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="7" style="color:var(--suave)">Nenhum processo.</td></tr>';
   $$('#gp-lista .ed').forEach(i => i.onchange = async () => {
     const id = i.closest('tr').dataset.id, f = i.dataset.f;
     let v = i.value.trim(); if (f === 'comissao_pct') v = v === '' ? null : numBR(v);
