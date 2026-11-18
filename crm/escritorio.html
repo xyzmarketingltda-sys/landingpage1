@@ -823,7 +823,7 @@ function pcApp(app) {
   if (app === 'desafio') { fecharPC(); return abrirDesafio(); }
   const ap = PC_APPS[app]; if (!ap) return;
   tela.innerHTML = '<div class="carregando">INICIANDO…</div><iframe src="' + ap.url + '" allow="clipboard-write"></iframe>';
-  const fr = tela.querySelector('iframe'); fr.style.opacity = 0; fr.onload = () => { fr.style.transition = 'opacity .2s'; fr.style.opacity = 1; };
+  const fr = tela.querySelector('iframe'); fr.style.opacity = 0; fr.onload = () => { fr.style.transition = 'opacity .2s'; fr.style.opacity = 1; const c = tela.querySelector('.carregando'); if (c) c.remove(); };
   enviar('falar', null, ap.bal);
 }
 function fecharPC() { $('#pc').hidden = true; $('#pc-tela').innerHTML = ''; }
