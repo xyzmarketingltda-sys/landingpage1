@@ -857,7 +857,7 @@ async function iniciar() {
 }
 
 /* ---------- checklist do kit (o robô lê a pasta do Drive) ---------- */
-const KIT = [['rg', 'RG'], ['comprovante', 'Comprovante'], ['hiscon', 'HISCON'], ['contrato', 'Contrato'], ['procuracao', 'Procuração']];
+const KIT = [['rg', 'RG'], ['comprovante', 'Comprovante'], ['hiscon', 'HISCON'], ['contrato', 'Contrato do banco'], ['procuracao', 'Procuração']];
 const KIT_DESDE = new Date('2026-11-17T00:00:00-03:00');
 function kitChips(c) {
   if ((c.data_contato || (c.criado_em || '').slice(0, 10)) < '2026-11-18') return '<small style="color:var(--suave)" title="o checklist vale para clientes fechados a partir de 18/11">—</small>';
@@ -866,7 +866,7 @@ function kitChips(c) {
   if (!c.pasta_url) return '<span style="color:#93c5fd;font-size:12px;white-space:nowrap" title="o robô procura a pasta a cada 10 minutos">⏳ aguardando a pasta no Drive</span>';
   if (!c.kit) return '<small style="color:var(--suave)" title="o robô vai ler a pasta na próxima rodada (10 min)">lendo a pasta…</small>';
   const falta = KIT.filter(([k]) => !c.kit[k]);
-  const tip = KIT.map(([k, n]) => (c.kit[k] ? '✔ ' : '✖ ') + n).join('\n') + (c.kit_em ? '\nconferido em ' + new Date(c.kit_em).toLocaleString('pt-BR') + ' · o robô confere de novo a cada 10 min' : '');
+  const tip = KIT.map(([k, n]) => (c.kit[k] ? '✔ ' : '✖ ') + n).join('\n') + '\n\n"Contrato do banco" é o contrato do empréstimo (onde aparece o seguro), não o contrato assinado pelo cliente no ZapSign.' + (c.kit_em ? '\nconferido em ' + new Date(c.kit_em).toLocaleString('pt-BR') + ' · o robô confere de novo a cada 10 min' : '');
   const admin = eu && eu.papel === 'admin';
   const itens = admin ? falta.map(f => `<a href="#" data-kitm="${c.id}:${f[0]}" title="Está na pasta e o robô não reconheceu? Clique para marcar ${f[1]} como conferido por você" style="color:#fde68a;text-decoration:underline dotted">${f[1]}</a>`).join(', ') : esc(falta.map(f => f[1]).join(', '));
   return `<span title="${esc(tip)}" style="white-space:nowrap;color:#fde68a;font-size:12px">⚠️ falta ${itens}</span>`;
@@ -876,7 +876,7 @@ document.addEventListener('click', async e => {
   const a = e.target.closest && e.target.closest('[data-kitm]'); if (!a) return;
   e.preventDefault(); e.stopPropagation();
   const [id, item] = a.dataset.kitm.split(':'), c = clientesAtuais.find(x => x.id == id), nome = (KIT.find(k => k[0] === item) || [])[1];
-  if (!confirm('Marcar ' + nome + ' de ' + (c ? c.nome : 'cliente') + ' como conferido por você?\n\nUse só quando o documento está na pasta e o robô não reconheceu.')) return;
+  if (!confirm('Marcar ' + nome + ' de ' + (c ? c.nome : 'cliente') + ' como conferido por você?\n\nUse quando o documento está na pasta e o robô não reconheceu, ou quando esse cliente não precisa dele.')) return;
   const { error } = await sb.rpc('kit_marcar', { cid: +id, item, valor: true });
   if (error) return alert('Não deu para marcar: ' + error.message);
   carregarClientes();
