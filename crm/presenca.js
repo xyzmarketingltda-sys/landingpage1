@@ -41,18 +41,36 @@ window.XYZSomDinheiro = () => {
     [0, .12, .24].forEach(d => tom(1046, 1.1 + d, .12, 'square', .06));
   } catch (e) {}
 };
+// faixa no topo: desce, fica ~5 s e sobe sozinha (não precisa fechar)
+window.XYZFaixaTemp = (b, ms) => {
+  clearTimeout(b._t); clearTimeout(b._t2);
+  b.style.transition = 'none'; b.style.transform = 'translate(-50%,-160%)'; b.style.opacity = '0';
+  requestAnimationFrame(() => requestAnimationFrame(() => { b.style.transition = 'transform .45s cubic-bezier(.2,.9,.3,1.2), opacity .3s'; b.style.transform = 'translate(-50%,0)'; b.style.opacity = '1'; }));
+  b._t = setTimeout(() => { b.style.transition = 'transform .4s ease-in, opacity .4s'; b.style.transform = 'translate(-50%,-160%)'; b.style.opacity = '0'; b._t2 = setTimeout(() => b.remove(), 450); }, ms || 5000);
+};
+// aviso do Windows que some sozinho em ~5 s
+window.XYZAvisoWin = (titulo, corpo, tag, aoClicar) => {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+    const n = new Notification(titulo, { body: corpo, tag: tag || undefined, renotify: !!tag });
+    n.onclick = () => { window.focus(); try { aoClicar && aoClicar(); } catch (e) {} n.close(); };
+    setTimeout(() => { try { n.close(); } catch (e) {} }, 5000);
+    return true;
+  } catch (e) { return false; }
+};
 window.XYZAlertaDesafio = d => {
   if (!d || location.pathname.includes('/controle')) return;
   const me = window.__xyzEu; if (d.atendente_id && me && me.papel !== 'admin' && d.atendente_id !== me.id) return;
   window.XYZSomDinheiro();
   const msg = `⚡ DESAFIO: ${d.titulo} — prêmio R$ ${Number(d.premio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-  try { if ('Notification' in window && Notification.permission === 'granted') { const n = new Notification('⚡ Novo desafio no escritório XYZ!', { body: msg.replace('⚡ DESAFIO: ', ''), requireInteraction: true }); n.onclick = () => { window.focus(); location.href = (location.pathname.includes('/controle') ? '../crm/' : '') + 'escritorio.html?desafio=1'; }; } } catch (e) {}
+  window.XYZAvisoWin('⚡ Novo desafio no escritório XYZ!', msg.replace('⚡ DESAFIO: ', ''), 'desafio-' + (d.id || d.titulo), () => { location.href = (location.pathname.includes('/controle') ? '../crm/' : '') + 'escritorio.html?desafio=1'; });
   if (document.hidden) { const orig = document.title; let k = 0; const it = setInterval(() => { document.title = k++ % 2 ? orig : '💰 NOVO DESAFIO!'; if (!document.hidden && k > 4) { clearInterval(it); document.title = orig; } }, 900); }
   if (/escritorio\.html/.test(location.pathname)) return;
   let b = document.getElementById('xyz-desafio-alerta');
   if (!b) { b = document.createElement('div'); b.id = 'xyz-desafio-alerta'; document.body.appendChild(b);
     b.style.cssText = 'position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:999;background:linear-gradient(180deg,#1a1205,#0b0b14);border:1px solid #fbbf24;box-shadow:0 0 30px rgba(251,191,36,.5);color:#fde68a;padding:14px 18px;border-radius:8px;font:600 14px Inter,sans-serif;display:flex;gap:14px;align-items:center;max-width:92vw'; }
   b.innerHTML = `<span style="font-size:26px">💰</span><div><div style="letter-spacing:2px;font-size:11px;color:#fbbf24">NOVO DESAFIO</div><b style="font-size:16px;color:#fff7d6">${String(d.titulo).replace(/</g, '&lt;')}</b><div style="font-size:12px;color:#cfe3ff">Prêmio: R$ ${Number(d.premio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div></div><a href="escritorio.html?desafio=1" style="background:linear-gradient(180deg,#b45309,#78350f);color:#fff;border:1px solid #fbbf24;padding:8px 14px;border-radius:4px;text-decoration:none;font-weight:800;letter-spacing:1px;font-size:12px">IR PRO ESCRITÓRIO</a><button style="background:none;border:0;color:#93a9c9;font-size:18px;cursor:pointer" onclick="this.parentNode.remove()">✕</button>`;
+  window.XYZFaixaTemp(b, 5000);
 };
 // ---------- cliente assinou a procuração no ZapSign: som + notificação do Windows + faixa na tela (para a atendente dona e para o admin) ----------
 const _assinVistas = {};
@@ -62,14 +80,14 @@ window.XYZAlertaAssinatura = d => {
   const chave = d.tok || (d.cliente || '') + '|' + (d.id || ''); if (_assinVistas[chave]) return; _assinVistas[chave] = 1;
   const nome = String(d.cliente || 'Cliente').trim(), quem = me.papel === 'admin' && d.atendente ? ' (' + d.atendente + ')' : '';
   window.XYZSomDinheiro();
-  try { if ('Notification' in window && Notification.permission === 'granted') { const n = new Notification('✍️ Procuração assinada!', { body: nome + ' assinou no ZapSign' + quem + '. Lance no CRM.', tag: 'zap-' + chave, requireInteraction: true }); n.onclick = () => { window.focus(); if (/escritorio\.html|hiscon\.html/.test(location.pathname)) location.href = './'; n.close(); }; } } catch (e) {}
+  window.XYZAvisoWin('✍️ Procuração assinada!', nome + ' assinou no ZapSign' + quem + '. Lance no CRM.', 'zap-' + chave, () => { if (/escritorio\.html|hiscon\.html/.test(location.pathname)) location.href = './'; });
   if (document.hidden) { const orig = document.title; let k = 0; const it = setInterval(() => { document.title = k++ % 2 ? orig : '✍️ ASSINOU!'; if (!document.hidden && k > 4) { clearInterval(it); document.title = orig; } }, 900); }
   let b = document.getElementById('xyz-assinou-alerta');
   if (!b) { b = document.createElement('div'); b.id = 'xyz-assinou-alerta'; document.body.appendChild(b);
     b.style.cssText = 'position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:998;background:linear-gradient(180deg,#052e1b,#0b0b14);border:1px solid #34d399;box-shadow:0 0 30px rgba(52,211,153,.45);color:#d1fae5;padding:12px 16px;border-radius:8px;font:600 14px Inter,sans-serif;display:flex;gap:12px;align-items:center;max-width:92vw;cursor:pointer'; b.onclick = () => b.remove(); }
-  b.innerHTML = '<span style="font-size:24px">✍️</span><div><div style="letter-spacing:2px;font-size:11px;color:#34d399">PROCURAÇÃO ASSINADA</div><b style="font-size:15px;color:#fff"></b><div style="font-size:12px;color:#a7f3d0">assinou no ZapSign' + quem.replace(/</g, '&lt;') + ' · clique para fechar</div></div>';
+  b.innerHTML = '<span style="font-size:24px">✍️</span><div><div style="letter-spacing:2px;font-size:11px;color:#34d399">PROCURAÇÃO ASSINADA</div><b style="font-size:15px;color:#fff"></b><div style="font-size:12px;color:#a7f3d0">assinou no ZapSign' + quem.replace(/</g, '&lt;') + '</div></div>';
   b.querySelector('b').textContent = nome;
-  clearTimeout(b._t); b._t = setTimeout(() => b.remove(), 20000);
+  window.XYZFaixaTemp(b, 5000);
 };
 // pede permissão de notificação no primeiro clique (exigência do navegador)
 document.addEventListener('click', () => { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }, { once: true });
@@ -78,8 +96,9 @@ document.addEventListener('click', () => { try { if ('Notification' in window &&
 window.XYZNotificar = (titulo, corpo, tag) => {
   try {
     if (!('Notification' in window) || Notification.permission !== 'granted') return false;
-    const n = new Notification(titulo, { body: corpo, tag: tag || undefined, requireInteraction: true, renotify: !!tag });
-    n.onclick = () => { window.focus(); location.href = (location.pathname.includes('/controle') ? '../crm/' : '') + 'escritorio.html?desafio=1'; };
+    const n = new Notification(titulo, { body: corpo, tag: tag || undefined, renotify: !!tag });
+    n.onclick = () => { window.focus(); location.href = (location.pathname.includes('/controle') ? '../crm/' : '') + 'escritorio.html?desafio=1'; n.close(); };
+    setTimeout(() => { try { n.close(); } catch (e) {} }, 5000);
     return true;
   } catch (e) { return false; }
 };
