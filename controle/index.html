@@ -256,7 +256,7 @@ let W = { dia: [], mes: [], tot: [] }, wEscopo = 'tot';
 function bancoNome(b) {
   const x = String(b || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
   if (!x) return 'Sem banco';
-  const R = [[/BANCO DO BRASIL|^BB$/, 'Banco do Brasil'], [/FACTA/, 'Facta'], [/PARAN/, 'Paraná Banco'], [/\bPAN\b/, 'Banco PAN'], [/C6|FICSA/, 'C6'], [/MERCANTIL/, 'Mercantil'], [/QUALI/, 'Qualibanking'], [/\bQI\b/, 'QI Sociedade de Crédito'],
+  const R = [[/BANCO DO BRASIL|^BB$/, 'Banco do Brasil'], [/FACTA/, 'Facta'], [/PARAN|^PB\b/, 'Paraná Banco'], [/\bPAN\b/, 'Banco PAN'], [/C6|FICSA/, 'C6'], [/MERCANTIL/, 'Mercantil'], [/QUALI/, 'Qualibanking'], [/\bQI\b/, 'QI Sociedade de Crédito'],
     [/PRESEN/, 'Presença'], [/CAIXA/, 'Caixa'], [/BANRISUL/, 'Banrisul'], [/\bBMG\b|\bBGM\b/, 'BMG'], [/SEGUE/, 'Segue'], [/AGIBANK/, 'Agibank'], [/\bAGIL\b/, 'Ágil'], [/PINE/, 'Pine'], [/PICPAY/, 'PicPay'], [/\bINTER\b/, 'Inter'], [/ITAU/, 'Itaú'], [/FINANTO/, 'Finanto']];
   for (const [re, n] of R) if (re.test(x)) return n;
   return x.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()).slice(0, 26);
