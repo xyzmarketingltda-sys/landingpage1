@@ -857,13 +857,26 @@ const KIT = [['rg', 'RG'], ['comprovante', 'Comprovante'], ['hiscon', 'HISCON'],
 const KIT_DESDE = new Date('2026-11-17T00:00:00-03:00');
 function kitChips(c) {
   if ((c.data_contato || (c.criado_em || '').slice(0, 10)) < '2026-11-18') return '<small style="color:var(--suave)" title="o checklist vale para clientes fechados a partir de 18/11">—</small>';
-  if (c.kit_ok_em) return '<span style="color:#86efac;font-size:12px;white-space:nowrap" title="tudo conferido na pasta em ' + new Date(c.kit_ok_em).toLocaleString('pt-BR') + '">✔ completo</span>';
+  const manual = (c.kit && c.kit.manual || []).map(k => (KIT.find(x => x[0] === k) || [])[1]).filter(Boolean);
+  if (c.kit_ok_em) return '<span style="color:#86efac;font-size:12px;white-space:nowrap" title="tudo conferido na pasta em ' + new Date(c.kit_ok_em).toLocaleString('pt-BR') + (manual.length ? ' · marcado à mão pelo admin: ' + manual.join(', ') : '') + '">✔ completo' + (manual.length ? ' ✍' : '') + '</span>';
   if (!c.pasta_url) return '<span style="color:#93c5fd;font-size:12px;white-space:nowrap" title="o robô procura a pasta a cada 10 minutos">⏳ aguardando a pasta no Drive</span>';
   if (!c.kit) return '<small style="color:var(--suave)" title="o robô vai ler a pasta na próxima rodada (10 min)">lendo a pasta…</small>';
   const falta = KIT.filter(([k]) => !c.kit[k]);
   const tip = KIT.map(([k, n]) => (c.kit[k] ? '✔ ' : '✖ ') + n).join('\n') + (c.kit_em ? '\nconferido em ' + new Date(c.kit_em).toLocaleString('pt-BR') + ' · o robô confere de novo a cada 10 min' : '');
-  return `<span title="${esc(tip)}" style="white-space:nowrap;color:#fde68a;font-size:12px">⚠️ falta ${esc(falta.map(f => f[1]).join(', '))}</span>`;
+  const admin = eu && eu.papel === 'admin';
+  const itens = admin ? falta.map(f => `<a href="#" data-kitm="${c.id}:${f[0]}" title="Está na pasta e o robô não reconheceu? Clique para marcar ${f[1]} como conferido por você" style="color:#fde68a;text-decoration:underline dotted">${f[1]}</a>`).join(', ') : esc(falta.map(f => f[1]).join(', '));
+  return `<span title="${esc(tip)}" style="white-space:nowrap;color:#fde68a;font-size:12px">⚠️ falta ${itens}</span>`;
 }
+// admin conferiu com os próprios olhos: marca o item (o robô não desmarca depois)
+document.addEventListener('click', async e => {
+  const a = e.target.closest && e.target.closest('[data-kitm]'); if (!a) return;
+  e.preventDefault(); e.stopPropagation();
+  const [id, item] = a.dataset.kitm.split(':'), c = clientesAtuais.find(x => x.id == id), nome = (KIT.find(k => k[0] === item) || [])[1];
+  if (!confirm('Marcar ' + nome + ' de ' + (c ? c.nome : 'cliente') + ' como conferido por você?\n\nUse só quando o documento está na pasta e o robô não reconheceu.')) return;
+  const { error } = await sb.rpc('kit_marcar', { cid: +id, item, valor: true });
+  if (error) return alert('Não deu para marcar: ' + error.message);
+  carregarClientes();
+}, true);
 
 /* ---------- CPF já com outro advogado: aviso na hora de digitar ---------- */
 async function checarCpfAdv() {
