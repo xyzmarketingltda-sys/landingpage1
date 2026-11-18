@@ -59,6 +59,7 @@ main{max-width:1240px;margin:0 auto;padding:22px}
 .carteira .c-bancos .bk small{display:block;color:var(--suave);font-size:11px;margin-top:1px}
 .carteira .c-bancos .bk b{white-space:nowrap}
 .barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;align-items:end}
+.barra.adm{grid-template-columns:2fr 1.1fr 1fr 1fr 1fr}
 .tabela{overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th{text-align:left;padding:11px 12px;font-size:12px;color:var(--suave);font-weight:600;background:rgba(7,20,48,.9);position:sticky;top:0}
@@ -130,6 +131,7 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
     </div>
     <div class="barra">
       <div><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite…"></div>
+      <div id="f-adv-box" hidden><label>Advogado</label><select id="f-adv"><option value="">Todos</option></select></div>
       <div><label>Status</label><select id="f-status"><option value="">Todos</option></select></div>
       <div><label>Indicado de</label><input type="date" id="f-de"></div>
       <div><label>até</label><input type="date" id="f-ate"></div>
@@ -197,6 +199,21 @@ async function carregar() {
       .order('data_contato', { ascending: false }).range(de, de + 999);
     if (error || !data) break; dados = dados.concat(data); if (data.length < 1000) break;
   }
+  dadosTodos = dados;
+  if (eu && eu.papel !== 'advogado') {   // admin: pode filtrar por advogado
+    const cont = {}; dados.forEach(c => { const a = (c.advogado || '').toUpperCase().trim() || '(SEM ADVOGADO)'; cont[a] = (cont[a] || 0) + 1; });
+    const sel = $('#f-adv'), atual = sel.value;
+    sel.innerHTML = '<option value="">Todos (' + dados.length + ')</option>' + Object.entries(cont).sort((x, y) => y[1] - x[1]).map(([a, n]) => `<option value="${esc(a)}">${esc(a)} (${n})</option>`).join('');
+    sel.value = [...sel.options].some(o => o.value === atual) ? atual : '';
+    $('#f-adv-box').hidden = false; $('.barra').classList.add('adm');
+  }
+  montar();
+}
+// monta indicadores, carteira e lista para o advogado escolhido (admin) ou para o próprio advogado
+let dadosTodos = [];
+function montar() {
+  const advSel = $('#f-adv-box').hidden ? '' : $('#f-adv').value;
+  const dados = advSel ? dadosTodos.filter(c => ((c.advogado || '').toUpperCase().trim() || '(SEM ADVOGADO)') === advSel) : dadosTodos;
   // agrupa por CPF (um cliente pode ter contrato em vários bancos)
   const g = new Map();
   dados.forEach(c => {
@@ -213,6 +230,7 @@ async function carregar() {
   $('#k-mes').textContent = todos.filter(x => (x.data || '').startsWith(mes)).length;
   $('#k-sem').textContent = todos.filter(x => !x.status).length;
   carteira(dados);
+  if (eu && eu.papel !== 'advogado') $('#w-sub').textContent = advSel ? 'soma do valor dos seguros (prestamista) indicados para ' + advSel : 'soma do valor dos seguros (prestamista) de todos os advogados';
   desenhar();
 }
 // carteira de seguros: soma do valor dos seguros indicados — hoje, no mês e no total
@@ -226,7 +244,6 @@ function carteira(dados) {
   $('#w-dia').textContent = real(soma(dDia)); $('#w-dia-q').textContent = dDia.length ? qtd(dDia) : 'nenhum indicado hoje ainda';
   $('#w-mes').textContent = real(soma(dMes)); $('#w-mes-q').textContent = dMes.length ? qtd(dMes) : 'nenhum indicado este mês ainda';
   $('#w-tot').textContent = real(soma(seg)); $('#w-tot-q').textContent = qtd(seg) + ' · ' + new Set(seg.map(c => so(c.cpf) || 'id' + c.id)).size + ' clientes';
-  if (eu && eu.papel !== 'advogado') $('#w-sub').textContent = 'soma do valor dos seguros (prestamista) de todos os advogados';
   // mês a mês (os 6 mais recentes)
   const pm = {}; seg.forEach(c => { const m = (c.data_contato || '').slice(0, 7); if (m) pm[m] = (pm[m] || 0) + (Number(c.valor) || 0); });
   const nomeMes = m => new Date(m + '-15T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('. de ', '/').replace(' de ', '/');
@@ -276,12 +293,13 @@ $$('.carteira .c-vis [data-v]').forEach(b => b.onclick = () => { wVisao = b.data
 $$('.carteira .c-nums [data-w]').forEach(d => d.onclick = () => { wEscopo = d.dataset.w; bancosCarteira(); });
 let tb; $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(desenhar, 200); };
 ['#f-status', '#f-de', '#f-ate'].forEach(s => $(s).onchange = desenhar);
+$('#f-adv').onchange = montar;
 function desenhar() {
   const t = $('#f-busca').value.trim().toLowerCase(), d = so(t), st = $('#f-status').value, de = $('#f-de').value, ate = $('#f-ate').value;
   const lista = todos.filter(x => (!t || x.nome.toLowerCase().includes(t) || (d.length >= 3 && (so(x.cpf).includes(d) || so(x.telefone).includes(d))))
     && (!st || (st === '-' ? !x.status : x.status === st)) && (!de || (x.data || '') >= de) && (!ate || (x.data || '') <= ate));
   $('#lista').innerHTML = lista.map(x => `<tr data-k="${esc(x.k)}">
-    <td><b>${esc(x.nome)}</b></td><td>${fmtCPF(x.cpf)}</td><td class="col-m">${fmtTel(x.telefone)}</td>
+    <td><b>${esc(x.nome)}</b>${eu && eu.papel !== 'advogado' && x.adv ? ` <span class="chip" style="font-size:10px;color:var(--ouro);border-color:rgba(251,191,36,.4)">${esc(String(x.adv).toUpperCase())}</span>` : ''}</td><td>${fmtCPF(x.cpf)}</td><td class="col-m">${fmtTel(x.telefone)}</td>
     <td>${[...new Set(x.contratos.map(c => c.banco).filter(Boolean))].map(b => `<span class="chip">${esc(b)}</span>`).join('')}</td>
     <td class="col-m">${dBR(x.data)}</td><td>${x.status ? `<span class="st ${clsSt(x.status)}">${esc(x.status)}</span>` : '<span class="st">—</span>'}</td>
     <td>${x.pasta ? `<a class="pasta" href="${esc(x.pasta)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📁 Abrir</a>` : '<span style="color:var(--suave)">—</span>'}</td></tr>`).join('')
