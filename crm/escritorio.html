@@ -928,7 +928,7 @@ function desenharLista() {
     const e = estadoDe(p), cls = e === 'mesa' ? 'on' : e === 'almoco' ? 'alm' : '';
     const txt = p.papel === 'advogado' ? 'no hall' : e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
     const c = CONQ[p.id], extra = c ? (c.sequencia >= 2 ? ` <span title="${c.sequencia} dias seguidos cumprindo a missão">🔥${c.sequencia}</span>` : '') + (c.desafios ? ` <span title="${c.desafios} desafio(s) vencido(s)">⚡${c.desafios}</span>` : '') : '';
-    return `<div class="pessoa"><i class="${cls}"></i>${esc(p.papel === 'advogado' ? nomeExib(p) : p.nome)}${p.papel === 'admin' ? ' 👑' : p.papel === 'advogado' ? ' ⭐' : ''}${extra}<small>${txt}</small></div>`;
+    return `<div class="pessoa"><i class="${cls}"></i>${esc(p.papel === 'advogado' ? nomeExib(p) : p.nome)}${p.id === liderId ? ' <span title="1º lugar no ranking do mês">👑</span>' : p.papel === 'advogado' ? ' ⭐' : ''}${extra}<small>${txt}</small></div>`;
   }).join('');
 }
 setInterval(() => { $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); atualizarAtores(); }, 15000);
@@ -1133,7 +1133,7 @@ async function carregarMetas() {
   const [y, m] = hoje.split('-').map(Number), ini = `${y}-${String(m).padStart(2, '0')}-01`;
   const fim = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   const { data } = await sb.rpc('metas_mes', { inicio: ini, fim });
-  if (data) { vendasMes = data; const top = [...data].filter(r => (equipe.find(p => p.id === r.id) || {}).papel === 'atendente' && Number(r.vendas) > 0).sort((a, b) => Number(b.vendas) - Number(a.vendas))[0]; liderId = top ? top.id : null; aplicarMetas(); atualizarDinheiro(); desenharTelao(); }
+  if (data) { vendasMes = data; const top = [...data].filter(r => (equipe.find(p => p.id === r.id) || {}).papel === 'atendente' && Number(r.vendas) > 0).sort((a, b) => Number(b.vendas) - Number(a.vendas))[0]; liderId = top ? top.id : null; desenharLista(); aplicarMetas(); atualizarDinheiro(); desenharTelao(); }
 }
 setInterval(carregarMetas, 60000);
 
