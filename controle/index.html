@@ -34,6 +34,16 @@ main{max-width:1240px;margin:0 auto;padding:22px}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .kpi{padding:14px 16px}.kpi span{font-size:12px;color:var(--suave)}.kpi b{display:block;font-size:26px;margin-top:2px}
 .kpi.ouro b{color:var(--ouro)}
+/* carteira de seguros */
+.carteira{padding:16px 18px;margin-bottom:14px;border-color:rgba(251,191,36,.45);background:linear-gradient(135deg,rgba(251,191,36,.10),rgba(7,20,48,.55) 45%)}
+.carteira .c-tit{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.carteira .c-tit b{font-size:16px;color:var(--ouro)}.carteira .c-tit small{color:var(--suave);font-size:12px}
+.carteira .c-nums{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:12px}
+.carteira .c-nums>div{padding:12px 14px;border:1px solid var(--borda);border-radius:12px;background:rgba(2,8,22,.45)}
+.carteira .c-nums span{font-size:12px;color:var(--suave)}.carteira .c-nums b{display:block;font-size:24px;margin:2px 0}.carteira .c-nums small{font-size:11px;color:var(--suave)}
+.carteira .c-nums .tot{border-color:rgba(251,191,36,.6)}.carteira .c-nums .tot b{color:var(--ouro);font-size:28px}
+.carteira .c-meses{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--suave);align-items:center}
+.carteira .c-meses .chip b{color:var(--texto)}
 .barra{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;align-items:end}
 .tabela{overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:14px}
@@ -56,7 +66,7 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
 .linha-tempo{display:flex;flex-direction:column;gap:6px}
 .linha-tempo div{font-size:13px;color:var(--suave)}.linha-tempo b{color:var(--texto)}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0b1a3a;border:1px solid var(--ouro);padding:10px 16px;border-radius:10px;z-index:60}
-@media(max-width:820px){.kpis{grid-template-columns:1fr 1fr}.barra{grid-template-columns:1fr 1fr}.grade{grid-template-columns:1fr}.col-m{display:none}}
+@media(max-width:820px){.carteira .c-nums{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.barra{grid-template-columns:1fr 1fr}.grade{grid-template-columns:1fr}.col-m{display:none}}
 </style>
 </head>
 <body>
@@ -86,6 +96,15 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
     </div>
   </header>
   <main>
+    <div class="carteira vidro">
+      <div class="c-tit"><b>💼 Carteira de seguros</b><small id="w-sub">soma do valor dos seguros (prestamista) dos clientes indicados a você</small></div>
+      <div class="c-nums">
+        <div><span>Hoje</span><b id="w-dia">–</b><small id="w-dia-q"></small></div>
+        <div><span>Este mês</span><b id="w-mes">–</b><small id="w-mes-q"></small></div>
+        <div class="tot"><span>Total da carteira</span><b id="w-tot">–</b><small id="w-tot-q"></small></div>
+      </div>
+      <div class="c-meses" id="w-meses"></div>
+    </div>
     <div class="kpis">
       <div class="kpi vidro ouro"><span>Clientes indicados</span><b id="k-cli">–</b></div>
       <div class="kpi vidro"><span>Contratos (bancos)</span><b id="k-ctr">–</b></div>
@@ -157,7 +176,7 @@ async function iniciar() {
 async function carregar() {
   let dados = [];
   for (let de = 0; de < 20000; de += 1000) {
-    const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,data_contato,banco,advogado,observacoes,pasta_url,status_adv,obs_adv,status_adv_em')
+    const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,data_contato,banco,advogado,observacoes,pasta_url,status_adv,obs_adv,status_adv_em,valor,produto')
       .order('data_contato', { ascending: false }).range(de, de + 999);
     if (error || !data) break; dados = dados.concat(data); if (data.length < 1000) break;
   }
@@ -176,7 +195,26 @@ async function carregar() {
   $('#k-cli').textContent = todos.length; $('#k-ctr').textContent = dados.length;
   $('#k-mes').textContent = todos.filter(x => (x.data || '').startsWith(mes)).length;
   $('#k-sem').textContent = todos.filter(x => !x.status).length;
+  carteira(dados);
   desenhar();
+}
+// carteira de seguros: soma do valor dos seguros indicados — hoje, no mês e no total
+function carteira(dados) {
+  const real = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }), mes = hojeSP.slice(0, 7);
+  const seg = dados.filter(c => (c.produto || 'seguro') === 'seguro');
+  const soma = l => l.reduce((x, c) => x + (Number(c.valor) || 0), 0);
+  const qtd = l => { const com = l.filter(c => Number(c.valor) > 0).length, sem = l.length - com; return com + (com === 1 ? ' seguro' : ' seguros') + (sem ? ' · ' + sem + ' aguardando valor' : ''); };
+  const dDia = seg.filter(c => c.data_contato === hojeSP), dMes = seg.filter(c => (c.data_contato || '').startsWith(mes));
+  $('#w-dia').textContent = real(soma(dDia)); $('#w-dia-q').textContent = dDia.length ? qtd(dDia) : 'nenhum indicado hoje ainda';
+  $('#w-mes').textContent = real(soma(dMes)); $('#w-mes-q').textContent = dMes.length ? qtd(dMes) : 'nenhum indicado este mês ainda';
+  $('#w-tot').textContent = real(soma(seg)); $('#w-tot-q').textContent = qtd(seg) + ' · ' + new Set(seg.map(c => so(c.cpf) || 'id' + c.id)).size + ' clientes';
+  if (eu && eu.papel !== 'advogado') $('#w-sub').textContent = 'soma do valor dos seguros (prestamista) de todos os advogados';
+  // mês a mês (os 6 mais recentes)
+  const pm = {}; seg.forEach(c => { const m = (c.data_contato || '').slice(0, 7); if (m) pm[m] = (pm[m] || 0) + (Number(c.valor) || 0); });
+  const nomeMes = m => new Date(m + '-15T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('. de ', '/').replace(' de ', '/');
+  const ms = Object.keys(pm).sort().reverse().slice(0, 6);
+  $('#w-meses').innerHTML = ms.length > 1 ? 'Mês a mês: ' + ms.map(m => `<span class="chip">${esc(nomeMes(m))} <b>${real(pm[m])}</b></span>`).join('') : '';
 }
 let tb; $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(desenhar, 200); };
 ['#f-status', '#f-de', '#f-ate'].forEach(s => $(s).onchange = desenhar);
