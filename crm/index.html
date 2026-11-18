@@ -366,6 +366,7 @@ body.embed{background:transparent}
           <div class="g-kpi"><span>Processos</span><b id="g-proc">–</b><small id="g-proc-sub"></small></div>
         </div>
         <div id="g-alerta-pix" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.6);background:rgba(251,191,36,.08);font-size:13px"></div>
+        <div id="g-alerta-cpf" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,146,60,.6);background:rgba(251,146,60,.08);font-size:13px"></div>
         <div id="g-alerta-proc" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(239,68,68,.6);background:rgba(239,68,68,.1);font-size:13px"></div>
         <div class="g-kpis prev">
           <div class="g-kpi prev"><span>🧾 A receber dos advogados (previsto)</span><b id="gp-prev">–</b><small id="gp-prev-sub">pelas regras de cada advogado, clientes lançados no mês</small></div>
@@ -447,6 +448,7 @@ body.embed{background:transparent}
         </div>
       </section>
       <div id="metas"></div>
+      <div id="pend-zap" hidden style="margin:0 0 12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(34,211,238,.5);background:rgba(34,211,238,.07);font-size:13px"></div>
       <div class="barra">
         <div class="busca"><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite e aguarde…"></div>
         <div><label>Advogado</label><select id="f-adv"><option value="">Todos</option></select></div>
@@ -804,9 +806,32 @@ async function iniciar() {
   }
   await carregarAdvogados();
   abrirAba('clientes');
+  carregarPendZap();
   if (EMBED) document.body.classList.add('embed');
   if (/[?&]novo=1/.test(location.search)) setTimeout(() => abrirCliente(null), 300);
 }
+
+/* ---------- CPF já com outro advogado: aviso na hora de digitar ---------- */
+async function checarCpfAdv() {
+  const cpf = so($('#c-cpf').value), adv = $('#c-adv').value.trim().toUpperCase(); if (cpf.length !== 11 || !adv) return;
+  const { data: outros } = await sb.rpc('cpf_outro_adv', { p_cpf: cpf, p_adv: adv, p_ignorar: editando?.id || null });
+  if (outros && outros.length) { $('#m-aviso').innerHTML = `🚨 Este CPF já está com <b>${outros.map(o => esc(o.advogado)).join(', ')}</b>. Confira a procuração antes de lançar para ${esc(adv)}.`; $('#m-aviso').hidden = false; }
+}
+document.addEventListener('change', e => { if (e.target && (e.target.id === 'c-cpf' || e.target.id === 'c-adv')) checarCpfAdv(); });
+
+/* ---------- assinou no ZapSign e ainda não lançou ---------- */
+async function carregarPendZap() {
+  const { data, error } = await sb.rpc('assinou_nao_lancou', { dias: 30 });
+  const box = $('#pend-zap'); if (!box) return;
+  if (error || !data || !data.length) { box.hidden = true; return; }
+  const admin = eu && eu.papel === 'admin';
+  box.hidden = false;
+  box.innerHTML = `<b style="color:#67e8f9">✍️ ${data.length} procuração(ões) assinada(s) no ZapSign e ainda não lançada(s) no CRM</b> — lance para não perder o cliente:
+    <div class="g-tab" style="margin-top:8px"><table><thead><tr><th>Cliente (no ZapSign)</th><th>Documento</th><th>Assinou em</th>${admin ? '<th>Atendente</th>' : ''}<th></th></tr></thead><tbody>${data.map((d, i) => `<tr><td><b>${esc(d.cliente || '—')}</b></td><td><small>${esc(d.nome_doc || '')}</small></td><td>${new Date(d.assinado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>${admin ? `<td>${esc(d.atendente || '—')}</td>` : ''}<td style="white-space:nowrap"><button class="btn peq" data-zl="${i}">+ Lançar agora</button> <button class="btn sec peq" data-zi="${i}" title="Não é cliente / já resolvido">Desconsiderar</button></td></tr>`).join('')}</tbody></table></div>`;
+  box.querySelectorAll('[data-zl]').forEach(b => b.onclick = () => { abrirCliente(null); setTimeout(() => { $('#c-nome').value = (data[+b.dataset.zl].cliente || '').toUpperCase(); $('#c-cpf').focus(); }, 80); });
+  box.querySelectorAll('[data-zi]').forEach(b => b.onclick = async () => { if (!confirm('Desconsiderar esta assinatura? Ela some da lista.')) return; await sb.rpc('ignorar_assinatura', { tok: data[+b.dataset.zi].doc_token }); carregarPendZap(); });
+}
+setInterval(() => { if (eu) carregarPendZap(); }, 120000);
 
 /* ---------- gestão (admin) ---------- */
 const G = { mes: null, aba: null, resumo: [] };
@@ -875,6 +900,11 @@ async function ajustarCrmProc(lista) {
   for (const c of lista) { if (!c.adv_procuracao) continue; const { error } = await sb.from('clientes').update({ advogado: c.adv_procuracao }).eq('id', c.id); if (error) { toast('Erro em ' + c.nome + ': ' + error.message); } else ok++; }
   toast(ok + ' cliente(s) ajustado(s) no CRM pela procuração'); $('#ga-det').innerHTML = ''; calcularPrevisoes();
 }
+async function alertaCpfMulti() {
+  const { data } = await sb.rpc('cpfs_multi_adv'); const box = $('#g-alerta-cpf'); if (!box) return;
+  box.hidden = !(data || []).length; if (!data || !data.length) return;
+  box.innerHTML = `<b style="color:#fdba74">⚠️ ${data.length} CPF(s) lançado(s) para mais de um advogado</b> — confira qual procuração vale:<div class="g-tab" style="margin-top:8px"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Advogados</th><th>Atendente(s)</th><th>Último lançamento</th></tr></thead><tbody>${data.map(d => `<tr><td>${esc(d.nome)}</td><td>${esc(d.cpf)}</td><td><b>${esc(d.advogados)}</b></td><td>${esc(d.atendentes || '')}</td><td>${d.ultimo ? d.ultimo.split('-').reverse().join('/') : ''}</td></tr>`).join('')}</tbody></table></div>`;
+}
 async function alertaProcuracao() {
   const { data } = await sb.from('clientes').select('id,nome,advogado,adv_drive,adv_procuracao,pasta_caminho,atendente_id').not('adv_procuracao', 'is', null).not('adv_drive', 'is', null).limit(1000);
   const ruins = (data || []).filter(c => c.adv_procuracao !== c.adv_drive);
@@ -886,7 +916,7 @@ async function alertaProcuracao() {
   $$('#g-alerta-proc [data-ajp]').forEach(b => b.onclick = () => ajustarCrmProc(ruins.filter(c => c.id == b.dataset.ajp)));
 }
 async function calcularPrevisoes() {
-  try { alertaProcuracao(); } catch (e) {}
+  try { alertaProcuracao(); alertaCpfMulti(); } catch (e) {}
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim);
@@ -1396,6 +1426,18 @@ $('#form-cli').onsubmit = async e => {
       return;
     }
   }
+  {
+    const advNovo = $('#c-adv').value.trim().toUpperCase(), chaveAdv = cpf + '|' + advNovo;
+    if (advNovo && cpfConfirmado !== chaveAdv) {
+      const { data: outros } = await sb.rpc('cpf_outro_adv', { p_cpf: cpf, p_adv: advNovo, p_ignorar: editando?.id || null });
+      if (outros && outros.length) {
+        cpfConfirmado = chaveAdv;
+        $('#m-aviso').innerHTML = `🚨 <b>Atenção: este CPF já está com outro advogado</b> — ${outros.map(o => `<b>${esc(o.advogado)}</b> (${esc(o.nome)}, ${o.data_contato ? o.data_contato.split('-').reverse().join('/') : ''}${o.atendente ? ', ' + esc(o.atendente) : ''})`).join('; ')}. Você está lançando para <b>${esc(advNovo)}</b>. Confira a procuração: ela é que manda. Se estiver certo, clique em <b>Salvar</b> de novo.`;
+        $('#m-aviso').hidden = false;
+        return;
+      }
+    }
+  }
   const reg = {
     nome: $('#c-nome').value.trim(), cpf, telefone: so($('#c-tel').value),
     data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
@@ -1421,7 +1463,7 @@ $('#form-cli').onsubmit = async e => {
     if (!editando) { if (EMBED) avisarPai({ tipo: 'venda', id: reg.atendente_id || eu.id, cliente: reg.nome }); else try { XYZPresenca.enviar('venda', { id: reg.atendente_id || eu.id }); } catch (e) {} }
     fecharModal();
     toast((editando ? 'Cliente atualizado.' : '🎉 Cliente fechado cadastrado!') + (nDocs ? ` ${nDocs} documento(s) enviado(s) — vão para o Drive em até 10 min.` : ''));
-    carregarClientes(); atualizarFlutuante();
+    carregarClientes(); atualizarFlutuante(); carregarPendZap();
   } catch (err) { toast(traduz(err), true); }
   ocupado(b, false);
 };
