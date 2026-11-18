@@ -135,7 +135,7 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="../crm/comissao.js?v=4"></script>
+<script src="../crm/comissao.js?v=5"></script>
 <script>
 const CFG = window.CRM_CONFIG, sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY), C = window.XYZComissao;
 const $ = s => document.querySelector(s);
@@ -190,7 +190,7 @@ async function iniciar() {
 
 async function carregar() {
   const ini = mes + '-01', fim = C.vencimento(mes).toLocaleDateString('en-CA');
-  let q = sb.from('clientes').select('nome,cpf,banco,valor,produto,data_contato,advogado').gte('data_contato', ini).lte('data_contato', fim);
+  let q = sb.from('clientes').select('nome,cpf,banco,valor,produto,data_contato,advogado,fora_comissao').gte('data_contato', ini).lte('data_contato', fim);
   q = q.ilike('advogado', chave);
   const [{ data: cli }, { data: regra }, { data: cb }] = await Promise.all([q, sb.from('regras_adv').select('regra,obs').eq('advogado', chave).maybeSingle(), sb.from('cobrancas').select('*').eq('advogado', chave).eq('mes', ini).maybeSingle()]);
   cob = cb || null;
@@ -202,12 +202,12 @@ async function carregar() {
   const st = cob && cob.status === 'pago' ? ['pago', 'PAGO ✔'] : atrasado && total ? ['atrasado', 'ATRASADO'] : cob && cob.status === 'informado' ? ['informado', 'PIX INFORMADO · AGUARDANDO CONFERÊNCIA'] : ['aberto', 'EM ABERTO'];
   $('#c-selo').className = 'selo ' + st[0]; $('#c-selo').textContent = st[1];
   $('#c-venc').textContent = 'vence em ' + venc.toLocaleDateString('pt-BR');
-  $('#c-qtd').textContent = '· ' + itens.length + ' cliente(s)';
+  $('#c-qtd').textContent = '· ' + itens.filter(i => !i.fora).length + ' cliente(s)';
   $('#c-info').innerHTML = (regra ? 'Regra: ' + esc(regra.obs || '') : 'Regra não cadastrada — fale com a XYZ.') + (cob && cob.status === 'pago' ? ' · recebido em ' + new Date(cob.pago_em).toLocaleDateString('pt-BR') + (cob.valor_pago ? ' (' + brl(cob.valor_pago) + ')' : '') : cob && cob.informado_em ? ' · Pix informado em ' + new Date(cob.informado_em).toLocaleString('pt-BR') : '');
   const semV = itens.filter(i => i.semValor).length, perc = regra && regra.regra && regra.regra.tipo === 'percentual';
   $('#aviso').hidden = !(semV || perc);
   $('#aviso').innerHTML = perc ? 'Sua parceria é por percentual no êxito: os valores entram conforme os processos são pagos. A lista abaixo mostra os clientes indicados no mês.' : semV + ' cliente(s) ainda sem o valor do seguro conferido pela XYZ — eles entram no valor assim que conferirmos o contrato.';
-  $('#lista').innerHTML = itens.map(i => `<tr style="cursor:default"><td><b>${esc(i.cliente)}</b></td><td>${fmtCPF(i.cpf)}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num"><b>${i.v ? brl(i.v) : '—'}</b></td></tr>`).join('') || '<tr><td colspan="6" class="vazio">Nenhum cliente indicado neste mês.</td></tr>';
+  $('#lista').innerHTML = itens.map(i => `<tr style="cursor:default${i.fora ? ';opacity:.6' : ''}"><td><b>${esc(i.cliente)}</b></td><td>${fmtCPF(i.cpf)}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num"><b>${i.v ? brl(i.v) : '—'}</b></td></tr>`).join('') || '<tr><td colspan="6" class="vazio">Nenhum cliente indicado neste mês.</td></tr>';
   // Pix com valor
   const payload = C.pixPayload(total, 'XYZ' + chave + mes.replace('-', ''));
   window.__pix = payload;

@@ -640,6 +640,7 @@ body.embed{background:transparent}
         <div id="c-docs-lista" class="docs-lista"></div></div>
       <div class="inteiro"><label>Observações</label><textarea id="c-obs"></textarea></div>
       <div class="inteiro" id="c-assin" hidden></div>
+      <div class="inteiro" id="c-fora-box" hidden><label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:500"><input type="checkbox" id="c-fora" style="width:auto;margin:0"> 🚫 Não protocolável — o advogado não paga este lançamento <small style="color:var(--suave);font-weight:400">(fica no histórico, sai da comissão · só você vê)</small></label></div>
       <div class="inteiro" id="c-pasta-box" hidden><label>Pasta do cliente no Google Drive (o robô acha sozinho pelo nome; se ele não achar, cole o link da pasta aqui)</label><input id="c-pasta" placeholder="https://drive.google.com/drive/folders/..."></div>
       <div class="inteiro" id="c-stadv" hidden></div>
     </div>
@@ -655,7 +656,7 @@ body.embed{background:transparent}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="presenca.js?v=20261118e"></script>
-<script src="comissao.js?v=4"></script>
+<script src="comissao.js?v=5"></script>
 <script>
 /* ================= FUNDO 3D (galáxia de partículas conectadas) ================= */
 (() => {
@@ -1059,7 +1060,7 @@ const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Da
 const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
 async function clientesDoMes(ini, fim) {
   let tudo = [], de = 0;
-  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,atendente_id,criado_em,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,pasta_lida_em,seguro_det,seguro_det_fonte,seguro_det_em,kit').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,atendente_id,criado_em,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,pasta_lida_em,seguro_det,seguro_det_fonte,seguro_det_em,kit,fora_comissao').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
 function aplicarRegra(regra, linhas) { return XYZComissao.aplicarRegra(regra, linhas); }
@@ -1088,7 +1089,7 @@ async function fechadosHoje() {
   if (!eu || eu.papel !== 'admin' || !$('#gp-dia')) return;
   const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }), ini = hoje + 'T00:00:00-03:00';
   const [{ data: cli }, { data: ass }] = await Promise.all([
-    sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,pasta_url,seguro_det_em,atendente_id,data_contato,criado_em').or(`data_contato.eq.${hoje},and(data_contato.is.null,criado_em.gte."${ini}")`).limit(2000),
+    sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,pasta_url,seguro_det_em,atendente_id,data_contato,criado_em,fora_comissao').or(`data_contato.eq.${hoje},and(data_contato.is.null,criado_em.gte."${ini}")`).limit(2000),
     sb.from('assinaturas_zap').select('doc_token,cliente,assinado_em').eq('conta', true).gte('assinado_em', ini).limit(2000)]);
   const porAt = {}, vistos = new Set();
   (cli || []).forEach(c => { const k = (c.atendente_id || '') + '|' + (so(c.cpf || '') || (c.nome || '').toUpperCase().trim()); if (vistos.has(k)) return; vistos.add(k); porAt[c.atendente_id] = (porAt[c.atendente_id] || 0) + 1; });
@@ -1114,7 +1115,7 @@ async function calcularPrevisoes() {
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim); window.__cliMes = cli;
     DIVERGE = cli.filter(c => { const crm = (c.advogado || '').toUpperCase().trim(); return c.adv_procuracao ? c.adv_procuracao !== crm : (c.adv_drive && c.adv_drive !== crm); });
     const porAdv = {}; cli.forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
-    RECEBER = Object.entries(porAdv).map(([adv, l]) => { const r = REGRAS[adv]; const itens = aplicarRegra(r?.regra, l); return { adv, obs: r?.obs || 'sem regra', itens, total: itens.reduce((x, i) => x + i.v, 0), semValor: itens.filter(i => i.semValor).length, processos: l.length }; }).sort((a, b) => b.total - a.total);
+    RECEBER = Object.entries(porAdv).map(([adv, l]) => { const r = REGRAS[adv]; const itens = aplicarRegra(r?.regra, l); return { adv, obs: r?.obs || 'sem regra', itens, total: itens.reduce((x, i) => x + i.v, 0), semValor: itens.filter(i => i.semValor).length, processos: l.filter(c => !c.fora_comissao).length }; }).sort((a, b) => b.total - a.total);
     const prev = RECEBER.reduce((x, a) => x + a.total, 0);
     $('#gp-prev').textContent = brl(prev); $('#gp-prev-sub').textContent = cli.length + ' lançamentos · ' + RECEBER.reduce((x, a) => x + a.semValor, 0) + ' cliente(s) sem valor de seguro';
     // custos previstos: fixos e tráfego repetem o mês anterior quando ainda não foram lançados; variáveis só o lançado
@@ -1163,7 +1164,7 @@ function desenharReceber() {
   const stPg = a => { const c = COB[a.adv]; if (c && c.status === 'pago') return `<span class="pill ok">✔ recebido ${brl(c.valor_pago || a.total)}</span>`;
     if (c && c.status === 'informado') return `<span class="pill" style="border-color:#fbbf24;color:#fde68a" title="${esc(c.informado_obs || '')}">💬 Pix informado ${new Date(c.informado_em).toLocaleDateString('pt-BR')}</span>`;
     return a.total ? (vencido ? '<span class="pill" style="border-color:#ef4444;color:#fca5a5">⏰ atrasado</span>' : `<span class="pill">vence ${venc.toLocaleDateString('pt-BR')}</span>`) : ''; };
-  $('#ga-lista').innerHTML = RECEBER.map((a, i) => `<tr><td><b>${esc(a.adv)}</b></td><td><small>${esc(a.obs)}</small></td><td class="num">${a.itens.length}</td><td class="num">${a.processos}</td><td class="num" style="${a.semValor ? 'color:#fbbf24' : ''}">${a.semValor || ''}</td><td class="num"><b>${brl(a.total)}</b></td><td>${stPg(a)}</td>
+  $('#ga-lista').innerHTML = RECEBER.map((a, i) => `<tr><td><b>${esc(a.adv)}</b></td><td><small>${esc(a.obs)}</small></td><td class="num">${a.itens.filter(i => !i.fora).length}</td><td class="num">${a.processos}</td><td class="num" style="${a.semValor ? 'color:#fbbf24' : ''}">${a.semValor || ''}</td><td class="num"><b>${brl(a.total)}</b></td><td>${stPg(a)}</td>
     <td style="white-space:nowrap"><button class="btn sec peq" data-gdet="${i}">Ver clientes</button> <button class="btn sec peq" data-gcsv="${i}" title="Baixar só deste advogado">⬇️</button> <button class="btn sec peq" data-glink="${i}" title="Copiar link de pagamento para mandar ao advogado">🔗</button> ${COB[a.adv] && COB[a.adv].status === 'pago' ? '' : `<button class="btn sec peq" data-grec="${i}" title="Marcar como recebido">✔</button>`}</td></tr>`).join('') || '<tr><td colspan="8" style="color:var(--suave)">Nenhum cliente lançado neste mês.</td></tr>';
   const prev = RECEBER.reduce((x, a) => x + a.total, 0), rec = RECEBER.reduce((x, a) => x + (COB[a.adv] && COB[a.adv].status === 'pago' ? Number(COB[a.adv].valor_pago || a.total) : 0), 0);
   $('#ga-resumo').insertAdjacentHTML('beforeend', `<span>Recebido: <b style="color:#86efac">${brl(rec)}</b></span><span>Falta receber: <b style="color:${vencido ? '#fca5a5' : '#fde68a'}">${brl(Math.max(0, prev - rec))}</b></span>`);
@@ -1176,7 +1177,7 @@ function desenharReceber() {
     const { error } = await sb.from('cobrancas').upsert({ advogado: a.adv, mes: G.mes, valor_previsto: a.total, valor_pago: numBR(v) || a.total, status: 'pago', pago_em: new Date().toISOString(), atualizado_em: new Date().toISOString() }, { onConflict: 'advogado,mes' });
     if (error) return alert(traduz(error)); toast('Recebimento registrado ✔'); await carregarCobrancas(); desenharReceber(); });
   $$('#ga-lista [data-gdet]').forEach(b => b.onclick = () => { const a = RECEBER[+b.dataset.gdet];
-    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px">${esc(a.adv)} — ${a.itens.length} cliente(s)</h4><div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th style="text-align:right">Processos</th><th>Base</th><th style="text-align:right">A receber</th></tr></thead><tbody>${a.itens.sort((x, y) => y.v - x.v).map((i, k) => `<tr data-gcli="${k}" style="cursor:pointer" title="Clique para ver data, atendente, pasta e contrato"><td>▸ ${esc(i.cliente)}</td><td>${esc(i.cpf || '')}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num">${brl(i.v)}</td></tr>`).join('')}</tbody></table></div>`;
+    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px">${esc(a.adv)} — ${a.itens.filter(i => !i.fora).length} cliente(s)${a.itens.some(i => i.fora) ? ' <small style="color:var(--suave);font-weight:400">+ ' + a.itens.filter(i => i.fora).length + ' não protocolável (não paga)</small>' : ''}</h4><div class="g-tab"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th style="text-align:right">Processos</th><th>Base</th><th style="text-align:right">A receber</th></tr></thead><tbody>${a.itens.sort((x, y) => y.v - x.v).map((i, k) => `<tr data-gcli="${k}" style="cursor:pointer${i.fora ? ';opacity:.6' : ''}" title="Clique para ver data, atendente, pasta e contrato"><td>▸ ${esc(i.cliente)}</td><td>${esc(i.cpf || '')}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num">${i.fora ? '—' : brl(i.v)}</td></tr>`).join('')}</tbody></table></div>`;
     $$('#ga-det [data-gcli]').forEach(tr => tr.onclick = () => detalheClienteAdv(tr, a.itens[+tr.dataset.gcli], a.adv));
     $('#ga-det').scrollIntoView({ behavior: 'smooth' }); });
   $$('#ga-lista [data-gcsv]').forEach(b => b.onclick = () => baixarReceber([RECEBER[+b.dataset.gcsv]]));
@@ -1194,7 +1195,7 @@ async function detalheClienteAdv(tr, item, adv) {
     const importado = c.criado_em && /T1[5-6]:00:00(\.0+)?(\+00:00|Z)$/.test(c.criado_em);
     const pasta = c.pasta_url ? `<a href="${esc(c.pasta_url)}" target="_blank" rel="noopener" style="color:#93c5fd">📁 abrir pasta</a>${c.pasta_lida_em ? ' <small style="opacity:.7">lida ' + dh(c.pasta_lida_em) + '</small>' : ' <small style="color:#fbbf24">robô ainda não leu</small>'}` : '<span style="color:#fbbf24">📁 sem pasta ligada — o robô procura pelo nome a cada 10 min; se não achar, o administrador cola o link no cadastro</span>';
     const seg = c.produto === 'revisional' ? (c.kit && c.kit.contratos != null ? `revisão de juros · <b>${c.kit.contratos}</b> contrato(s) na pasta${c.kit.contratos > 1 ? ' ✔' : ' <span style="color:#fbbf24">(precisa de mais de 1)</span>'}` : 'revisão de juros <small style="opacity:.7">(não tem seguro para ler)</small>') : Number(c.seguro_det) > 0 ? `contrato lido: <b>${brl(Number(c.seguro_det))}</b> <small style="opacity:.7">${esc((c.seguro_det_fonte || '').replace(/^robô — /, ''))}</small>` : c.seguro_det_em ? `<span style="color:#f87171">robô leu em ${dh(c.seguro_det_em)} e não achou seguro</span>` : c.pasta_url ? '<span style="color:#fbbf24">⏳ contrato ainda não lido</span>' : '';
-    return `<div style="padding:6px 0;border-top:1px dashed rgba(255,255,255,.12)"><b>${fmtData(c.data_contato)}</b> · ${esc(c.banco || '—')} · lançado por <b>${esc(_nomesEq[c.atendente_id] || '—')}</b>${c.criado_em && !importado ? ' em ' + dh(c.criado_em) : ''} · tel ${esc(fmtTel(c.telefone)) || '—'} · valor lançado <b>${brl(Number(c.valor || 0))}</b>
+    return `<div style="padding:6px 0;border-top:1px dashed rgba(255,255,255,.12)"><b>${fmtData(c.data_contato)}</b> · ${esc(c.banco || '—')} · lançado por <b>${esc(_nomesEq[c.atendente_id] || '—')}</b>${c.criado_em && !importado ? ' em ' + dh(c.criado_em) : ''} · tel ${esc(fmtTel(c.telefone)) || '—'} · valor lançado <b>${brl(Number(c.valor || 0))}</b>${c.fora_comissao ? ' · <b style="color:#f87171">🚫 não protocolável — não entra na comissão</b>' : ''}
       <br>${pasta}${seg ? ' · ' + seg : ''}${c.adv_procuracao ? ' · procuração: <b>' + esc(c.adv_procuracao) + '</b>' : ''} · <a href="#" data-abrir="${c.id}" style="color:#67e8f9">abrir cadastro</a></div>`;
   }).join('') || '<div style="opacity:.7">Não achei o lançamento deste cliente no mês.</div>';
   tr.insertAdjacentHTML('afterend', `<tr class="gcli-det"><td colspan="6" style="background:rgba(34,211,238,.06);font-size:13px;line-height:1.6;white-space:normal">${linhas}${regs.length ? '<div class="gcli-assin" style="padding:6px 0;border-top:1px dashed rgba(255,255,255,.12);color:var(--suave)">✍️ procurando a assinatura…</div>' : ''}</td></tr>`);
@@ -1522,7 +1523,7 @@ $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(carregarClient
 
 async function carregarClientes() {
   const admin = eu.papel === 'admin';
-  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,pasta_url,status_adv,obs_adv,status_adv_em,kit,kit_em,kit_ok_em,criado_em,perfis(nome)')
+  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,pasta_url,status_adv,obs_adv,status_adv_em,kit,kit_em,kit_ok_em,criado_em,fora_comissao,perfis(nome)')
     .order('data_contato', { ascending: false }).order('id', { ascending: false }).limit(1000);
   const termo = $('#f-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
   if (termo) {
@@ -1686,6 +1687,7 @@ function abrirCliente(c) {
   $('#c-obs').value = c?.observacoes || '';
   carregarDocsCliente(c?.id);
   $('#c-pasta-box').hidden = eu.papel !== 'admin'; $('#c-pasta').value = c?.pasta_url || '';
+  $('#c-fora-box').hidden = eu.papel !== 'admin'; $('#c-fora').checked = !!c?.fora_comissao;
   // só o admin: quando o cliente assinou no ZapSign
   { const bx = $('#c-assin'); bx.hidden = !(c && eu.papel === 'admin'); bx.innerHTML = '';
     if (!bx.hidden) { const cid = c.id; bx.innerHTML = '<label>Assinatura no ZapSign <small style="color:var(--suave)">(só você vê)</small></label><div class="assin-l" style="padding:8px 10px;border:1px solid var(--borda);border-radius:10px;font-size:13px;line-height:1.7;color:var(--suave)">procurando…</div>';
@@ -1731,7 +1733,7 @@ $('#form-cli').onsubmit = async e => {
   const reg = {
     nome: $('#c-nome').value.trim(), cpf, telefone: telPadrao($('#c-tel').value),
     data_contato: $('#c-data').value || hoje(), valor: lerValor($('#c-valor').value),
-    produto: produtoSel, banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null, ...(eu.papel === 'admin' ? { pasta_url: $('#c-pasta').value.trim() || null } : {})
+    produto: produtoSel, banco: $('#c-banco').value.trim() || null, advogado: $('#c-adv').value.trim().toUpperCase() || null, observacoes: $('#c-obs').value.trim() || null, ...(eu.papel === 'admin' ? { pasta_url: $('#c-pasta').value.trim() || null, fora_comissao: $('#c-fora').checked } : {})
   };
   if (eu.papel === 'admin') reg.atendente_id = $('#c-at').value;
   const b = $('#c-salvar'); ocupado(b, true);

@@ -4,7 +4,11 @@
   function aplicarRegra(regra, linhas) {
     // linhas: clientes do advogado no mês → agrupa por cliente (CPF), pois paga por cliente e não por processo
     const grupos = {}; linhas.forEach(c => { const k = (c.cpf || '').replace(/\D/g, '') || c.nome; (grupos[k] = grupos[k] || []).push(c); });
-    const itens = Object.values(grupos).map(g => {
+    const itens = Object.values(grupos).map(todos => {
+      // "não protocolável" (fora_comissao): o advogado não paga — fica na lista, mas sai da conta
+      const g = todos.filter(c => !c.fora_comissao), foraL = todos.filter(c => c.fora_comissao);
+      const bancosDe = l => [...new Set(l.map(c => c.banco).filter(Boolean))].join(', ');
+      if (!g.length) return { cliente: todos[0].nome, cpf: todos[0].cpf, bancos: bancosDe(todos), processos: 0, valor: 0, v: 0, obs: '🚫 não protocolável — não entra na comissão', semValor: false, fora: true };
       const seg = g.filter(c => (c.produto || 'seguro') === 'seguro'), rev = g.filter(c => c.produto === 'revisional');
       // por cliente vale o seguro de MAIOR valor (não soma os bancos); a soma só serve para saber se há algum valor
       const maior = seg.reduce((m, c) => (Number(c.valor) || 0) > (Number(m && m.valor) || 0) ? c : m, null);
@@ -32,7 +36,8 @@
         obs = obs ? obs + ' · ' + aviso + (sv.length < seg.length ? ' (' + sv.map(x => x.banco).join(', ') + ')' : '') : aviso;
       }
       }
-      return { cliente: g[0].nome, cpf: g[0].cpf, bancos: [...new Set(g.map(c => c.banco).filter(Boolean))].join(', '), processos: g.length, valor, v, obs, semValor };
+      if (foraL.length) obs += (obs ? ' · ' : '') + '🚫 ' + foraL.length + ' não protocolável' + (bancosDe(foraL) ? ' (' + bancosDe(foraL) + ')' : '') + ' fora da conta';
+      return { cliente: g[0].nome, cpf: g[0].cpf, bancos: bancosDe(todos), processos: g.length, valor, v, obs, semValor };
     });
     return itens;
   }
