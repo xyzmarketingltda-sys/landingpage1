@@ -623,7 +623,7 @@ body.embed{background:transparent}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="presenca.js?v=20261118c"></script>
+<script src="presenca.js?v=20261118d"></script>
 <script src="comissao.js?v=4"></script>
 <script>
 /* ================= FUNDO 3D (galáxia de partículas conectadas) ================= */
@@ -1694,7 +1694,7 @@ async function carregarAdvogados() {
 let equipeEsc = [];
 async function iniciarCardEsc() {
   const { data } = await sb.rpc('equipe_escritorio'); equipeEsc = data || [];
-  XYZPresenca.entrar(sb, eu, { venda: m => { if (!m || m.id !== eu.id) atualizarAoVivo(1500); }, sync: st => {
+  XYZPresenca.entrar(sb, eu, { venda: m => { if (!m || m.id !== eu.id || m.zapsign) atualizarAoVivo(1500); }, sync: st => {
     const ids = Object.keys(st), pessoas = equipeEsc.filter(p => ids.includes(p.id));
     const n = pessoas.length;
     $('#esc-dot').className = n ? 'on' : '';

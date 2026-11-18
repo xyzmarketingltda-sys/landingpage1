@@ -9,7 +9,7 @@ window.XYZPresenca = (() => {
       canal = sb.channel('escritorio-xyz', { config: { presence: { key: eu.id }, broadcast: { self: true } } });
       canal.on('presence', { event: 'sync' }, () => ouvintes.sync && ouvintes.sync(canal.presenceState()));
       canal.on('broadcast', { event: 'acao' }, ({ payload }) => ouvintes.acao && ouvintes.acao(payload));
-      canal.on('broadcast', { event: 'venda' }, ({ payload }) => ouvintes.venda && ouvintes.venda(payload));
+      canal.on('broadcast', { event: 'venda' }, ({ payload }) => { if (payload && payload.zapsign) { try { window.XYZAlertaAssinatura(payload); } catch (e) {} } ouvintes.venda && ouvintes.venda(payload); });
       canal.on('broadcast', { event: 'desafio' }, ({ payload }) => { try { window.XYZAlertaDesafio(payload); setTimeout(() => window.XYZLembretes(sb), 2000); } catch (e) {} ouvintes.desafio && ouvintes.desafio(payload); });
       canal.subscribe(async st => {
         if (st !== 'SUBSCRIBED') return;
@@ -53,6 +53,23 @@ window.XYZAlertaDesafio = d => {
   if (!b) { b = document.createElement('div'); b.id = 'xyz-desafio-alerta'; document.body.appendChild(b);
     b.style.cssText = 'position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:999;background:linear-gradient(180deg,#1a1205,#0b0b14);border:1px solid #fbbf24;box-shadow:0 0 30px rgba(251,191,36,.5);color:#fde68a;padding:14px 18px;border-radius:8px;font:600 14px Inter,sans-serif;display:flex;gap:14px;align-items:center;max-width:92vw'; }
   b.innerHTML = `<span style="font-size:26px">💰</span><div><div style="letter-spacing:2px;font-size:11px;color:#fbbf24">NOVO DESAFIO</div><b style="font-size:16px;color:#fff7d6">${String(d.titulo).replace(/</g, '&lt;')}</b><div style="font-size:12px;color:#cfe3ff">Prêmio: R$ ${Number(d.premio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div></div><a href="escritorio.html?desafio=1" style="background:linear-gradient(180deg,#b45309,#78350f);color:#fff;border:1px solid #fbbf24;padding:8px 14px;border-radius:4px;text-decoration:none;font-weight:800;letter-spacing:1px;font-size:12px">IR PRO ESCRITÓRIO</a><button style="background:none;border:0;color:#93a9c9;font-size:18px;cursor:pointer" onclick="this.parentNode.remove()">✕</button>`;
+};
+// ---------- cliente assinou a procuração no ZapSign: som + notificação do Windows + faixa na tela (para a atendente dona e para o admin) ----------
+const _assinVistas = {};
+window.XYZAlertaAssinatura = d => {
+  if (!d || location.pathname.includes('/controle')) return;
+  const me = window.__xyzEu; if (!me || (me.papel !== 'admin' && d.id !== me.id)) return;
+  const chave = d.tok || (d.cliente || '') + '|' + (d.id || ''); if (_assinVistas[chave]) return; _assinVistas[chave] = 1;
+  const nome = String(d.cliente || 'Cliente').trim(), quem = me.papel === 'admin' && d.atendente ? ' (' + d.atendente + ')' : '';
+  window.XYZSomDinheiro();
+  try { if ('Notification' in window && Notification.permission === 'granted') { const n = new Notification('✍️ Procuração assinada!', { body: nome + ' assinou no ZapSign' + quem + '. Lance no CRM.', tag: 'zap-' + chave, requireInteraction: true }); n.onclick = () => { window.focus(); if (/escritorio\.html|hiscon\.html/.test(location.pathname)) location.href = './'; n.close(); }; } } catch (e) {}
+  if (document.hidden) { const orig = document.title; let k = 0; const it = setInterval(() => { document.title = k++ % 2 ? orig : '✍️ ASSINOU!'; if (!document.hidden && k > 4) { clearInterval(it); document.title = orig; } }, 900); }
+  let b = document.getElementById('xyz-assinou-alerta');
+  if (!b) { b = document.createElement('div'); b.id = 'xyz-assinou-alerta'; document.body.appendChild(b);
+    b.style.cssText = 'position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:998;background:linear-gradient(180deg,#052e1b,#0b0b14);border:1px solid #34d399;box-shadow:0 0 30px rgba(52,211,153,.45);color:#d1fae5;padding:12px 16px;border-radius:8px;font:600 14px Inter,sans-serif;display:flex;gap:12px;align-items:center;max-width:92vw;cursor:pointer'; b.onclick = () => b.remove(); }
+  b.innerHTML = '<span style="font-size:24px">✍️</span><div><div style="letter-spacing:2px;font-size:11px;color:#34d399">PROCURAÇÃO ASSINADA</div><b style="font-size:15px;color:#fff"></b><div style="font-size:12px;color:#a7f3d0">assinou no ZapSign' + quem.replace(/</g, '&lt;') + ' · clique para fechar</div></div>';
+  b.querySelector('b').textContent = nome;
+  clearTimeout(b._t); b._t = setTimeout(() => b.remove(), 20000);
 };
 // pede permissão de notificação no primeiro clique (exigência do navegador)
 document.addEventListener('click', () => { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }, { once: true });
