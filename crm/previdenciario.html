@@ -61,23 +61,23 @@ td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}
 @media print{header,#drop,.acoes,.sub,.sexo button:not(.sel){display:none}body{background:#fff;color:#000}.vidro{background:#fff;border-color:#ccc}.al p,.al .det,.meta b{color:#000}details{display:block}}
 </style>
 </head>
-<body>
+<body hidden>
 <header><div class="marca" style="cursor:pointer" onclick="location.href=document.getElementById('voltar').href">XYZ <span>CRM</span></div><a class="voltar" id="voltar" href="./">← Voltar ao CRM</a></header>
 <main>
   <h1>⚖️ Previdenciário — o benefício pode ser revisto?</h1>
-  <p class="sub">Solte o <b>CNIS</b> e a <b>carta de concessão</b> do cliente (os dois saem do Meu INSS em PDF). O sistema compara salário por salário, confere tempo, regra aplicada e prazo, e aponta as revisões com indício — e também as teses que <b>não cabem mais</b>. Para quem recebe <b>BPC/LOAS</b>, procura direito a benefício previdenciário melhor e atrasados de pedido negado. Se tiver, solte junto o <b>histórico de créditos</b> (mostra a renda de hoje). A leitura é feita aqui no seu computador: nenhum arquivo é enviado.<br>
+  <p class="sub">Solte o <b>CNIS</b> e a <b>carta de concessão</b> do cliente (os dois saem do Meu INSS em PDF). O sistema compara salário por salário, confere tempo, regra aplicada e prazo, e aponta as revisões com indício, outros direitos que os documentos deixam ver (benefício cessado, auxílio-acidente, imposto de renda, descontos de associação, BPC na família) e também as teses que <b>não cabem mais</b>. Para quem recebe <b>BPC/LOAS</b>, procura direito a benefício previdenciário melhor e atrasados de pedido negado. Se tiver, solte junto o <b>histórico de créditos</b> (mostra a renda de hoje). A leitura é feita aqui no seu computador: nenhum arquivo é enviado.<br>
   Para pensão por morte, anexe o CNIS de quem faleceu. · <a id="ir-hiscon" href="hiscon.html">🔎 Analisar HISCON e contratos</a></p>
   <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
     <b>📄 Solte CNIS, carta de concessão e histórico de créditos aqui ou clique para escolher</b><small>Pode mandar de vários clientes de uma vez — o sistema separa pelo nome</small></label>
   <div id="erro" class="erro"></div>
   <div id="saida"></div>
-  <p class="aviso">⚖️ Triagem automática de <b>indícios</b>, para o advogado decidir onde vale aprofundar. Os valores são <b>estimativas</b> (renda de hoje projetada pelo reajuste do teto; atrasados dos últimos 5 anos sem correção) e não substituem o cálculo previdenciário. O prazo de 10 anos é estimado pela data de concessão: confirme a data do primeiro pagamento. <b>Atenção:</b> pedir revisão reabre todo o ato de concessão — se houver erro a favor do segurado, o benefício pode diminuir; simule o cálculo completo antes de protocolar. Situação das teses conferida em novembro de 2026 (STF Temas 76, 334, 1.102, 1.209 e 1.300; STJ Temas 1.057, 1.070 e 1.117; TNU Tema 353).</p>
+  <p class="aviso">⚖️ Triagem automática de <b>indícios</b>, para o advogado decidir onde vale aprofundar. Os valores são <b>estimativas</b> (renda de hoje projetada pelo reajuste do teto; atrasados dos últimos 5 anos sem correção) e não substituem o cálculo previdenciário. O prazo de 10 anos é estimado pela data de concessão: confirme a data do primeiro pagamento. <b>Atenção:</b> pedir revisão reabre todo o ato de concessão — se houver erro a favor do segurado, o benefício pode diminuir; simule o cálculo completo antes de protocolar. Situação das teses conferida em novembro de 2026 (STF Temas 76, 334, 1.102, 1.209 e 1.300; STJ Temas 1.057, 1.070, 1.117 e 1.124; TNU Temas 256 e 353; STJ Tema 1.370 ainda em julgamento).</p>
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="hiscon.js?v=20261118b"></script>
-<script src="docs-inss.js?v=20261118b"></script>
-<script src="previd.js?v=20261118b"></script>
+<script src="docs-inss.js?v=20261118c"></script>
+<script src="previd.js?v=20261118c"></script>
 <script src="presenca.js?v=20261118e"></script>
 <script type="module">
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
@@ -93,9 +93,13 @@ try {
   const C = window.CRM_CONFIG || {};
   const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) location.href = './';
-  else if (!/[?&]embed=1/.test(location.search)) sb.from('perfis').select('id,nome').eq('id', session.user.id).single().then(({ data }) => { if (data && window.XYZPresenca) XYZPresenca.entrar(sb, data, {}); });
-} catch (e) { location.href = './'; }
+  if (!session) throw new Error('sem sessão');
+  // por enquanto só advogados parceiros e administradores usam esta tela
+  const { data: eu } = await sb.from('perfis').select('id,nome,papel').eq('id', session.user.id).single();
+  if (!eu || !['admin', 'advogado'].includes(eu.papel)) throw new Error('sem acesso');
+  document.body.hidden = false;
+  if (window.XYZPresenca && !/[?&]embed=1/.test(location.search)) XYZPresenca.entrar(sb, eu, {});
+} catch (e) { location.replace('./'); await new Promise(() => {}); }
 if (/de=controle/.test(location.search)) { const v = $('#voltar'); v.href = '../controle/'; v.textContent = '← Voltar ao Controle'; $('#ir-hiscon').href = 'hiscon.html?de=controle'; }
 
 const drop = $('#drop');
@@ -122,9 +126,10 @@ async function processar(arqs) {
 }
 
 const TAG = { alto: 'forte', medio: 'atenção', info: 'info', venc: 'prazo vencido', nao: 'não propor' };
-const htmlTese = t => `<div class="al ${t.nivel}"><h4><span class="tag">${TAG[t.nivel]}</span>${esc(t.titulo)}</h4><p>${esc(t.texto)}</p>
+const chipGanho = t => { const g = t.ganho; if (!g || t.nivel === 'nao') return ''; const txt = g.unico ? `a restituir ≈ ${brl(g.atrasados)}` : g.piso ? `passa a ter 13º salário${g.atrasados > 0 ? ' · atrasados no piso do salário mínimo ≈ ' + brl(g.atrasados) : ''}` : `≈ +${brl(g.mensal)}/mês hoje${t.nivel !== 'venc' && g.atrasados > 0 ? ' · atrasados (até 5 anos) ≈ ' + brl(g.atrasados) : ''}`; return `<span class="ganho">${txt} · estimativa</span>`; };
+const htmlTese = t => `<div class="al ${t.nivel}"><h4><span class="tag">${TAG[t.nivel]}</span>${t.area ? `<span class="tag">${esc(t.area)}</span>` : ''}${esc(t.titulo)}</h4><p>${esc(t.texto)}</p>
   ${t.numeros ? `<p class="det">${t.numeros.split(' | ').map(esc).join('<br>')}</p>` : ''}
-  ${t.ganho && t.nivel !== 'nao' ? (t.ganho.piso ? `<span class="ganho">passa a ter 13º salário${t.ganho.atrasados > 0 ? ' · atrasados no piso do salário mínimo ≈ ' + brl(t.ganho.atrasados) : ''} · estimativa</span>` : `<span class="ganho">≈ +${brl(t.ganho.mensal)}/mês hoje${t.nivel !== 'venc' && t.ganho.atrasados > 0 ? ' · atrasados (até 5 anos) ≈ ' + brl(t.ganho.atrasados) : ''} · estimativa</span>`) : ''}
+  ${chipGanho(t)}
   ${t.base ? `<p class="base">Fundamento: ${esc(t.base)}${t.decai === false ? ' · sem o prazo de 10 anos' : ''}</p>` : ''}</div>`;
 
 function desenhar(p) {
@@ -135,7 +140,8 @@ function desenhar(p) {
   const idade = B.nascimento ? D.util.anos(B.nascimento, new Date().toISOString().slice(0, 10)) : null;
   const pz = R.prazo, pzTxt = !pz ? '' : pz.estado === 'vencido' ? `⏰ Prazo de 10 anos para revisar a concessão: <b>vencido em ${dBR(pz.limite)}</b><small>Estimado pela ${pz.base}. Só restam as teses sem decadência (teto, reflexos de ação trabalhista) — salvo se já houve pedido de revisão ou ação dentro do prazo.</small>`
     : `⏳ Prazo para revisar a concessão: <b>até ${dBR(pz.limite)}</b> — faltam ${am(pz.faltam)}${pz.estado === 'urgente' ? ' · <b>URGENTE</b>' : ''}<small>Estimado pela ${pz.base} (o prazo conta do 1º dia do mês seguinte ao primeiro pagamento — confirme no histórico de créditos).</small>`;
-  const ver = alto.length ? ['alto', `🚨 ${alto.length} ponto(s) com indício forte${R.melhor && !R.melhor.ganho.piso ? ` — a melhor estimativa é de +${brl(R.melhor.ganho.mensal)}/mês` : R.melhor && R.melhor.ganho.atrasados ? ` — atrasados estimados em pelo menos ${brl(R.melhor.ganho.atrasados)}` : ''}. Encaminhar para o advogado.`]
+  const gm = R.melhor && R.melhor.ganho;
+  const ver = alto.length ? ['alto', `🚨 ${alto.length} ponto(s) com indício forte${gm && gm.mensal > 1 && !gm.piso ? ` — a melhor estimativa é de +${brl(gm.mensal)}/mês` : gm && gm.atrasados ? ` — valores a recuperar estimados em pelo menos ${brl(gm.atrasados)}` : ''}. Encaminhar para o advogado.`]
     : medio.length ? ['medio', '⚠️ Há pontos que podem render revisão — vale pedir os documentos indicados e aprofundar.']
     : venc.length ? ['nao', '⏰ Havia indício de revisão, mas o prazo de 10 anos já passou.']
     : ['ok', R.temCarta && R.temCnis ? '✅ Nenhum indício de revisão encontrado nos documentos.' : 'ℹ️ Faltam documentos para concluir — veja abaixo o que pedir.'];
@@ -160,7 +166,7 @@ function desenhar(p) {
     <div class="acoes"><button class="btn sec" data-copiar>📋 Copiar resumo (WhatsApp)</button><button class="btn sec" onclick="window.print()">🖨️ Imprimir / PDF</button></div>`;
   el.querySelectorAll('[data-sx]').forEach(b => b.onclick = () => { p.sexo = p.sexo === b.dataset.sx ? null : b.dataset.sx; desenhar(p); });
   el.querySelector('[data-copiar]').onclick = async e => {
-    const lin = t => `• ${t.titulo}${t.ganho ? (t.ganho.piso ? ` (13º + atrasados ≈ ${brl(t.ganho.atrasados)} — estimativa)` : ` (≈ +${brl(t.ganho.mensal)}/mês — estimativa)`) : ''}${t.base ? ' — ' + t.base : ''}`;
+    const lin = t => `• ${t.titulo}${t.ganho ? (t.ganho.unico ? ` (a restituir ≈ ${brl(t.ganho.atrasados)})` : t.ganho.piso ? ` (13º + atrasados ≈ ${brl(t.ganho.atrasados)} — estimativa)` : ` (≈ +${brl(t.ganho.mensal)}/mês — estimativa)`) : ''}${t.base ? ' — ' + t.base : ''}`;
     const txt = `*Triagem previdenciária — ${B.nome}*\n${B.especieNome || ''} (${B.especie || '—'}) · DIB ${dBR(B.dib)}${B.rmi ? ' · RMI ' + brl(B.rmi) : ''}\n${pz ? (pz.estado === 'vencido' ? 'Prazo de 10 anos VENCIDO em ' + dBR(pz.limite) : 'Prazo para revisar: até ' + dBR(pz.limite) + ' (estimado)') + '\n' : ''}\n` +
       (alto.length ? '*Indícios fortes*\n' + alto.map(lin).join('\n') + '\n\n' : '') + (medio.length ? '*Atenção*\n' + medio.map(lin).join('\n') + '\n\n' : '') + (!alto.length && !medio.length ? 'Nenhum indício de revisão nos documentos.\n\n' : '') +
       (R.pedir.length ? '*Pedir ao cliente*\n' + R.pedir.map(x => '• ' + x).join('\n') + '\n\n' : '') + (nao.length ? '*Não propor*\n' + nao.map(t => '• ' + t.titulo).join('\n') : '');

@@ -70,7 +70,7 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 <main>
   <h1>🔎 Analisar HISCON e contratos</h1>
   <p class="sub">Arraste o <b>HISCON</b> (Histórico de Empréstimo Consignado do Meu INSS) e/ou os <b>contratos</b> baixados dos bancos — o sistema reconhece cada um sozinho. A leitura é feita aqui no seu computador — o arquivo não é enviado para lugar nenhum.<br>
-  <span class="mais">📎 <b>Para aprofundar</b>, solte junto: <b>extrato de pagamentos</b> (histórico de créditos do Meu INSS), <b>Registrato</b> do Banco Central (contas e empréstimos), <b>carta de concessão</b> e <b>CNIS</b>. O sistema cruza cada um com o HISCON do mesmo cliente. · <a id="ir-prev" href="previdenciario.html">⚖️ Revisão do benefício (Previdenciário)</a></span></p>
+  <span class="mais">📎 <b>Para aprofundar</b>, solte junto: <b>extrato de pagamentos</b> (histórico de créditos do Meu INSS), <b>Registrato</b> do Banco Central (contas e empréstimos), <b>carta de concessão</b> e <b>CNIS</b>. O sistema cruza cada um com o HISCON do mesmo cliente.<span id="prev-box" hidden> · <a id="ir-prev" href="previdenciario.html">⚖️ Revisão do benefício (Previdenciário)</a></span></span></p>
   <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
     <b>📄 Solte HISCONs, contratos e anexos aqui ou clique para escolher</b><small>Pode mandar vários de uma vez (PDF) — HISCON, contratos, extrato de pagamentos, Registrato, carta de concessão, CNIS</small></label>
   <div id="erro" class="erro"></div>
@@ -94,7 +94,7 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="hiscon.js?v=20261118b"></script>
-<script src="docs-inss.js?v=20261118b"></script>
+<script src="docs-inss.js?v=20261118c"></script>
 <script src="presenca.js?v=20261118e"></script>
 <script type="module">
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
@@ -110,7 +110,9 @@ try {
   const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
   const { data: { session } } = await sb.auth.getSession();
   if (!session) location.href = './';
-  else if (!/[?&]embed=1/.test(location.search)) sb.from('perfis').select('id,nome').eq('id', session.user.id).single().then(({ data }) => { if (data && window.XYZPresenca) XYZPresenca.entrar(sb, data, {}); });
+  else sb.from('perfis').select('id,nome,papel').eq('id', session.user.id).single().then(({ data }) => {
+    if (data && ['admin', 'advogado'].includes(data.papel)) { window.PODE_PREV = true; $('#prev-box').hidden = false; }
+    if (data && window.XYZPresenca && !/[?&]embed=1/.test(location.search)) XYZPresenca.entrar(sb, data, {}); });
 } catch (e) { location.href = './'; }
 
 if (/[?&]embed=1/.test(location.search)) { document.body.classList.add('embed'); const h = document.querySelector('body>header'); if (h) h.style.display = 'none'; }
@@ -171,7 +173,7 @@ function desenharAnexos() {
   Object.values(soltos).forEach(docs => {
     const div = document.createElement('section'); div.className = 'cli vidro solto';
     const prev = docs.some(d => d.tipo === 'carta' || d.tipo === 'cnis');
-    div.innerHTML = `<div class="cli-top"><div><h2>📎 ${esc(docs[0].nome || 'Documento')}</h2><div class="meta">${HISCONS.length ? '<b style="color:#fde68a">Não achei HISCON deste cliente entre os que você abriu</b> (o nome ou o número do benefício não bate).' : 'Solte também o <b>HISCON</b> deste cliente para cruzar os contratos.'}${prev ? ' Para saber se o benefício pode ser revisto, abra a carta e o CNIS no <a href="' + $('#ir-prev').href + '" style="color:var(--ciano)">Previdenciário</a>.' : ''}</div></div></div>
+    div.innerHTML = `<div class="cli-top"><div><h2>📎 ${esc(docs[0].nome || 'Documento')}</h2><div class="meta">${HISCONS.length ? '<b style="color:#fde68a">Não achei HISCON deste cliente entre os que você abriu</b> (o nome ou o número do benefício não bate).' : 'Solte também o <b>HISCON</b> deste cliente para cruzar os contratos.'}${prev && window.PODE_PREV ? ' Para saber se o benefício pode ser revisto, abra a carta e o CNIS no <a href="' + $('#ir-prev').href + '" style="color:var(--ciano)">Previdenciário</a>.' : ''}</div></div></div>
       <div class="anx" style="border-top:0;margin-top:6px;padding-top:0">${blocoAnexos(null, docs)}</div>`;
     $('#saida').prepend(div);
   });

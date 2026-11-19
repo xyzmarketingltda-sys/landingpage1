@@ -85,6 +85,7 @@
     if (!R.nb) { const m = t.match(/^(.+?)\s+(\d[\d.]{8,}-\d)\s+([\d.]+)\s+(\d{3}\.\d{3}\.\d{3}-\d)\s*$/m); if (m) { R.nome = R.nome || limpa(m[1]); R.nit = R.nit || m[2]; R.nb = so(m[4]); } }
     R.dip = dt(pega(u, /in[íi]cio do pagamento a partir de\s*(\d{2}\/\d{2}\/\d{4})/i)); if (!R.dib) R.dib = R.dip;
     R.primeiroPgto = dt(pega(u, /compare[çc]a a partir de\s*(\d{2}\/\d{2}\/\d{4})/i));
+    R.irAtrasados = num(pega(u, /DESCONTO PARA IR\s*([\d.]+,\d{2})/i)) || 0;      // IR retido sobre os atrasados pagos na concessão
     if (!R.emissao) R.emissao = dt(pega(u, /DATA:\s*(\d{2}\/\d{2}\/\d{4})/i));
     R.aps = pega(t, /Aps:\s*(.+)/i);
     t.split('\n').map(limpa).forEach(l => {
@@ -230,7 +231,7 @@
     const out = {};
     cr.meses.forEach(m => m.rubricas.forEach(r => { if (r.cod[0] === '2' && !['216', '217', '268', '215', '218'].includes(r.cod)) { const k = r.cod + ' ' + r.desc; (out[k] = out[k] || { n: 0, t: 0, desc: r.desc }); out[k].n++; out[k].t += r.valor; } }));
     Object.entries(out).forEach(([k, o]) => {
-      if (ASSOC.test(o.desc)) add('alto', `Mensalidade de associação/sindicato: ${brl(o.t)} em ${o.n} desconto(s)`, `Rubrica ${k}. Desconto associativo só vale com autorização expressa do segurado — se o cliente não reconhece, cabe exclusão, restituição em dobro e dano moral. Conferir também o ressarcimento administrativo aberto pelo INSS para descontos associativos não autorizados.`);
+      if (ASSOC.test(o.desc)) add('alto', `Mensalidade de associação/sindicato: ${brl(o.t)} em ${o.n} desconto(s)`, `Rubrica ${k}. Desconto associativo só vale com autorização expressa do segurado — se o cliente não reconhece, cabe exclusão, restituição em dobro e dano moral. O acordo administrativo do INSS cobre descontos de março/2020 a março/2025, mas exigia contestar no Meu INSS até 20/06/2026 (prazo que podia ser prorrogado): confira se o cliente contestou e aderiu; quem perdeu o prazo ou tem desconto fora desse período só recupera na Justiça.`);
       else add('info', `Outro desconto no benefício: ${o.desc} — ${brl(o.t)} em ${o.n} lançamento(s)`, `Rubrica ${k}. Conferir a origem (imposto de renda, pensão alimentícia, consignação diversa).`);
     });
     return A;
@@ -278,7 +279,7 @@
       if (durante.length) add('alto', `${durante.length} contrato(s) averbado(s) enquanto o cliente recebia auxílio por incapacidade`, 'Pelo CNIS, na data do contrato o único benefício ativo era auxílio por incapacidade temporária, que não admite consignado.', durante.join(' | '));
     }
     if ((ca || cn) && !h) add('info', 'Carta de concessão / CNIS anexados', 'Com o HISCON do mesmo cliente o sistema confere se houve contrato nos 90 dias de bloqueio depois da concessão, contrato durante auxílio por incapacidade e a idade do titular em cada contratação.');
-    else if ((ca || cn) && !A.length) add('info', 'Carta de concessão / CNIS conferidos: nada de irregular nos contratos', 'Data de concessão, espécie e idade do titular não apontam problema nos contratos do HISCON. Para saber se o benefício em si pode ser revisto, use o botão Previdenciário.');
+    else if ((ca || cn) && !A.length) add('info', 'Carta de concessão / CNIS conferidos: nada de irregular nos contratos', 'Data de concessão, espécie e idade do titular não apontam problema nos contratos do HISCON.');
     return A;
   }
 

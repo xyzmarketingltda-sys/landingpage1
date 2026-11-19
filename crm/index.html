@@ -379,7 +379,7 @@ body.embed{background:transparent}
     <button data-aba="ranking">Ranking</button>
     <button data-aba="remarketing" id="nav-rmk">📣 Remarketing <span id="rmk-qt" hidden style="margin-left:4px;padding:1px 7px;border-radius:99px;background:#f97316;color:#fff;font-size:11px;font-weight:800"></span></button>
     <a class="nav-link" href="hiscon.html" style="margin-left:auto">🔎 HISCON, contratos e seguro</a>
-    <a class="nav-link" href="previdenciario.html" style="margin-left:8px">⚖️ Previdenciário</a>
+    <a class="nav-link" id="nav-prev" href="previdenciario.html" style="margin-left:8px" hidden>⚖️ Previdenciário</a>
   </nav>
   <main>
     <!-- CLIENTES -->
@@ -868,6 +868,7 @@ async function iniciar() {
   $('#eu-foto').innerHTML = eu.foto_url ? `<img src="${esc(eu.foto_url)}" alt="">` : '';
   const admin = eu.papel === 'admin';
   $('#nav-atendentes').hidden = !admin;
+  $('#nav-prev').hidden = !admin;      // triagem previdenciária: por enquanto só admin e advogados
   $('#f-at-box').hidden = !admin;
   $('#c-at-box').hidden = !admin;
   $$('.col-at').forEach(x => x.hidden = !admin);
