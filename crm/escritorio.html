@@ -92,7 +92,9 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
 #quest .recomp{display:flex;align-items:center;gap:14px;padding:12px;border-radius:6px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.3)}
 #quest .recomp .ic{width:46px;height:46px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:24px;background:radial-gradient(circle,#3a2a05,#0b0b12);border:1px solid #fbbf24;box-shadow:0 0 14px rgba(251,191,36,.45)}
 #quest .recomp b{font-size:20px;color:#fde68a}
-#quest .recomp small{display:block;color:var(--suave);font-size:11px}
+#quest .recomp small{display:block;color:var(--suave);font-size:12px;line-height:1.45;margin-top:4px}
+#quest .recomp small b{font-size:inherit;color:#fde68a;font-weight:700}
+#quest .recomp>div:last-child{min-width:0}
 #quest .acoes{display:flex;gap:10px;justify-content:center;margin-top:18px}
 #quest .acoes button{font:700 13px Inter,sans-serif;letter-spacing:1px;text-transform:uppercase;padding:10px 22px;border-radius:4px;cursor:pointer;border:1px solid #fbbf24;background:linear-gradient(180deg,#b45309,#78350f);color:#fff7d6;box-shadow:0 0 14px rgba(251,191,36,.35)}
 #quest .acoes button.sec{background:transparent;border-color:rgba(125,211,252,.4);color:#cfe3ff;box-shadow:none}
@@ -1290,7 +1292,7 @@ function abrirDesafio() {
     <div class="tipo" style="color:#fca5a5">Desafio relâmpago · termina em ${hh ? hh + 'h ' : ''}${mm}min</div><h2>${esc(d.titulo)}</h2><div class="desc">${esc(d.descricao || '')}</div>
     ${eu.papel === 'atendente' && meu ? `<h4>Objetivos</h4><small style="display:block;opacity:.75;margin:-4px 0 8px">Só conta procuração assinada no ZapSign (missão: no dia, dentro do seu horário de trabalho · desafio: no horário do desafio).</small>${obj('Seguros prestamistas', meu.seguros, meu.meta_seguro ?? d.meta_seguro)}${obj('Revisões de juros', meu.revisionais, meu.meta_revisional ?? d.meta_revisional)}${obj('Aumentos de margem', meu.margens, meu.meta_margem ?? d.meta_margem)}`
       : `<h4>Equipe</h4>${painelDz.map(r => `<div class="obj ${r.cumpriu ? 'ok' : ''}"><span>${r.cumpriu ? '✔' : '◇'} ${esc(r.atendente)}</span><b>${r.seguros}/${r.meta_seguro ?? d.meta_seguro}${(r.meta_revisional ?? d.meta_revisional) ? ' · ' + r.revisionais + '/' + (r.meta_revisional ?? d.meta_revisional) : ''}${(r.meta_margem ?? d.meta_margem) ? ' · ' + r.margens + '/' + (r.meta_margem ?? d.meta_margem) : ''}</b></div>`).join('')}`}
-    <h4>Prêmio</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(d.premio)}</b><small>só conta <b>procuração assinada no ZapSign</b> dentro do horário · soma nas premiações do mês, pago junto com a meta</small></div></div>
+    <h4>Prêmio</h4><div class="recomp"><div class="ic">💰</div><div><b>${brlM(d.premio)}</b><small>Só conta <b>procuração assinada no ZapSign</b> dentro do horário.<br>Soma nas premiações do mês e é pago junto com a meta.</small></div></div>
     ${meu?.cumpriu ? '<div class="completa">✦ DESAFIO CUMPRIDO ✦</div>' : ''}<div class="acoes"><button data-q="fechar">${meu?.cumpriu ? 'Fechar' : 'Bora!'}</button></div></div>`;
   q.onclick = e => { if (e.target.closest('[data-q]') || e.target === q) q.hidden = true; };
 }

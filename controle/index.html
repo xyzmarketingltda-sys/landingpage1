@@ -190,7 +190,25 @@ async function iniciar() {
   eu = p; $('#login').hidden = true; $('#app').hidden = false;
   $('#eu-nome').textContent = p.papel === 'advogado' ? (['Carina','Cibele','Danyelle','Junny','Rita'].includes(p.nome) ? 'Dra. ' : 'Dr. ') + (p.nome === 'Luiz' ? 'Luís' : p.nome) : p.nome + ' (admin)';
   try { XYZPresenca.entrar(sb, eu, {}); } catch (e) {}
-  carregar();
+  carregar(); avisoDesafio(); setInterval(avisoDesafio, 120000);
+}
+
+/* Aviso no canto: desafio em andamento para a equipe da XYZ (só título, descrição e horário). */
+async function avisoDesafio() {
+  try {
+    const { data } = await sb.rpc('desafios_ativos_aviso'); let vistos = []; try { vistos = JSON.parse(sessionStorage.getItem('xyz_dz_vistos') || '[]'); } catch (e) {}
+    const novos = (data || []).filter(d => !vistos.includes(d.id)); let box = document.getElementById('dz-avisos');
+    if (!box) { box = document.createElement('div'); box.id = 'dz-avisos'; box.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;max-width:340px'; document.body.appendChild(box); }
+    novos.forEach(d => {
+      if (box.querySelector(`[data-dz="${d.id}"]`)) return;
+      const el = document.createElement('div'); el.dataset.dz = d.id;
+      el.style.cssText = 'position:relative;padding:14px 38px 14px 14px;border-radius:12px;background:#0b1630;border:1px solid rgba(239,68,68,.6);box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 22px rgba(239,68,68,.25);color:#e6eefc;font-size:13px;line-height:1.45';
+      const fim = new Date(d.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      el.innerHTML = `<button aria-label="Fechar" style="position:absolute;top:6px;right:8px;background:none;border:0;color:#9fb3d1;font-size:18px;cursor:pointer;line-height:1">×</button><div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#fca5a5;margin-bottom:4px">⚡ XYZ Marketing lançou um desafio à equipe</div><b style="font-size:15px;color:#fde68a">${esc(d.titulo)}</b><div style="margin-top:4px">${esc(d.descricao || '')}</div><div style="margin-top:6px;color:#9fb3d1;font-size:12px">Vai até ${fim}</div>`;
+      el.querySelector('button').onclick = () => { el.remove(); vistos.push(d.id); try { sessionStorage.setItem('xyz_dz_vistos', JSON.stringify(vistos)); } catch (e) {} };
+      box.appendChild(el);
+    });
+  } catch (e) {}
 }
 
 async function carregar() {
