@@ -494,12 +494,14 @@ body.embed{background:transparent}
       <div class="barra">
         <div class="busca"><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite e aguarde…"></div>
         <div><label>Advogado</label><select id="f-adv"><option value="">Todos</option></select></div>
+        <div><label>Mês inteiro</label><input type="month" id="f-mes"></div>
         <div><label>Fechado de</label><input type="date" id="f-de"></div>
         <div><label>até</label><input type="date" id="f-ate"></div>
         <div id="f-at-box" hidden><label>Atendente</label><select id="f-at"><option value="">Todos</option></select></div>
         <button class="btn sec" id="exportar" title="Baixar lista em planilha (sem senhas)">Exportar</button>
         <button class="btn" id="novo">+ Novo cliente</button>
       </div>
+      <div id="f-resumo" hidden style="margin:0 0 10px;padding:10px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.07);font-size:14px"></div>
       <div class="tabela vidro">
         <table>
           <thead><tr><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Banco</th><th>Advogado</th><th>Fechamento</th><th>Kit</th><th>Acesso INSS</th><th class="col-at">Atendente</th></tr></thead>
@@ -1521,7 +1523,10 @@ function abrirAba(aba) {
 /* ---------- clientes ---------- */
 let tb;
 $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(carregarClientes, 350); };
-['#f-de', '#f-ate', '#f-at', '#f-adv'].forEach(s => $(s).onchange = carregarClientes);
+['#f-at', '#f-adv'].forEach(s => $(s).onchange = carregarClientes);
+['#f-de', '#f-ate'].forEach(s => $(s).onchange = () => { $('#f-mes').value = ''; carregarClientes(); });
+// mês inteiro: preenche as duas datas de uma vez
+$('#f-mes').onchange = e => { const m = e.target.value; if (m) { const [a, me] = m.split('-').map(Number); $('#f-de').value = m + '-01'; $('#f-ate').value = m + '-' + String(new Date(a, me, 0).getDate()).padStart(2, '0'); } else { $('#f-de').value = ''; $('#f-ate').value = ''; } carregarClientes(); };
 
 async function carregarClientes() {
   const admin = eu.papel === 'admin';
@@ -1543,6 +1548,10 @@ async function carregarClientes() {
   const { data, error } = await q;
   if (error) return toast(traduz(error), true);
   clientesAtuais = data;
+  { const r = $('#f-resumo'), adv = $('#f-adv').value;
+    if (adv) { const proc = data.filter(c => !c.fora_comissao), cli = new Set(proc.map(c => so(c.cpf) || 'n' + c.id)).size, fora = data.length - proc.length, de = $('#f-de').value, ate = $('#f-ate').value;
+      r.innerHTML = `<b>${esc(adv)}</b>${$('#f-mes').value ? ' · ' + $('#f-mes').value.split('-').reverse().join('/') : de || ate ? ' · ' + (de ? fmtData(de) : 'início') + ' a ' + (ate ? fmtData(ate) : 'hoje') : ' · todo o período'}: <b>${cli}</b> cliente(s) × <b>${proc.length}</b> processo(s)${fora ? ` <small style="opacity:.75">(+ ${fora} não protocolável)</small>` : ''}${data.length >= 1000 ? ' <small style="opacity:.75">— a lista mostra no máximo 1.000; filtre por mês</small>' : ''}`; r.hidden = false; }
+    else r.hidden = true; }
   carregarMetas();
   $('#lista').innerHTML = data.length ? data.map(c => `
     <tr data-id="${c.id}">
