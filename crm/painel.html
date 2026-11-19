@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#061230">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="XYZ Painel">
+<link rel="manifest" href="painel.webmanifest">
+<link rel="apple-touch-icon" href="painel-192.png">
+<title>Painel | XYZ</title>
+<style>
+:root{--bg:#020816;--card:#0a1838;--borda:rgba(30,144,255,.28);--txt:#e6eefc;--suave:#9fb3d1;--ouro:#fde68a;--verde:#86efac}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 24px)}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}h1{font-size:18px;margin:0}header small{color:var(--suave)}
+button{background:#0f2552;color:var(--txt);border:1px solid var(--borda);border-radius:10px;padding:8px 12px;font-size:14px}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:12px}
+.card h3{margin:0 0 4px;font-size:12px;font-weight:600;color:var(--suave);text-transform:uppercase;letter-spacing:.06em}
+.num{font-size:26px;font-weight:800}.num.ouro{color:var(--ouro)}.sub{font-size:12px;color:var(--suave)}
+section{margin-top:14px}section>h2{font-size:14px;margin:0 0 8px;color:var(--suave);text-transform:uppercase;letter-spacing:.06em}
+.lin{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid rgba(30,144,255,.12)}.lin:first-child{border-top:0}.lin b{font-variant-numeric:tabular-nums}
+.barra{height:6px;border-radius:99px;background:rgba(30,144,255,.15);margin-top:4px;overflow:hidden}.barra i{display:block;height:100%;background:linear-gradient(90deg,#1e90ff,#22d3ee)}
+.abas{display:flex;gap:6px;margin-bottom:8px}.abas button.sel{background:#1e90ff;border-color:#1e90ff;color:#fff}
+.aviso{font-size:12px;color:var(--suave);margin-top:16px;text-align:center}.dz{border-color:rgba(239,68,68,.6)}
+</style>
+</head>
+<body hidden>
+<header><div><h1>XYZ — Painel</h1><small id="quando">carregando…</small></div><div><button id="atualizar">↻</button> <button onclick="location.href='./'">CRM</button></div></header>
+<div class="grade">
+  <div class="card"><h3>Fechados hoje</h3><div class="num" id="h-cli">–</div><div class="sub" id="h-sub"></div></div>
+  <div class="card"><h3>Ganho de hoje</h3><div class="num ouro" id="h-ganho">–</div><div class="sub" id="h-gsub"></div></div>
+  <div class="card"><h3>Fechados no mês</h3><div class="num" id="m-cli">–</div><div class="sub" id="m-sub"></div></div>
+  <div class="card"><h3>Previsto no mês</h3><div class="num ouro" id="m-ganho">–</div><div class="sub" id="m-gsub"></div></div>
+</div>
+<section id="sec-dz" hidden><h2>⚡ Desafio em andamento</h2><div class="card dz" id="dz"></div></section>
+<section><h2>Ranking</h2><div class="abas"><button data-rk="mes" class="sel">Mês</button><button data-rk="dia">Hoje</button></div><div class="card" id="rk"></div></section>
+<section><h2>Por advogado no mês</h2><div class="card" id="adv"></div></section>
+<section><h2>Robôs e filas</h2><div class="card" id="robos"></div></section>
+<p class="aviso">Atualiza sozinho a cada minuto. Para instalar: menu do navegador → "Adicionar à tela inicial".</p>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="comissao.js?v=5"></script>
+<script>
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY), brl = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), so = s => String(s || '').replace(/\D/g, '');
+const diaSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+let REGRAS = null, MES = [], RK = 'mes';
+const chave = c => so(c.cpf) || (c.nome || '').toUpperCase().trim();
+function ganhoDe(lista) {
+  const porAdv = {}; lista.forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
+  let ganho = 0, semValor = 0; const adv = {};
+  Object.entries(porAdv).forEach(([a, l]) => { let g = 0; try { XYZComissao.aplicarRegra(REGRAS[a] && REGRAS[a].regra, l).forEach(i => { g += i.v || 0; if (i.semValor) semValor++; }); } catch (e) {} ganho += g; adv[a] = { n: l.filter(c => !c.fora_comissao).length, cli: new Set(l.map(chave)).size, g }; });
+  return { ganho, semValor, adv };
+}
+function ranking() {
+  const hoje = diaSP(), base = RK === 'dia' ? MES.filter(c => c.data_contato === hoje) : MES, por = {};
+  base.forEach(c => { const n = (c.perfis && c.perfis.nome || 'sem atendente').split(' ')[0]; (por[n] = por[n] || new Set()).add(chave(c)); });
+  const l = Object.entries(por).map(([n, s]) => [n, s.size]).sort((a, b) => b[1] - a[1]), max = l.length ? l[0][1] : 1;
+  $('#rk').innerHTML = l.length ? l.map(([n, q], i) => `<div class="lin"><span>${['🥇', '🥈', '🥉'][i] || (i + 1) + 'º'} ${esc(n)}</span><b>${q}</b></div><div class="barra"><i style="width:${Math.round(q / max * 100)}%"></i></div>`).join('') : '<div class="sub">Nenhum fechamento ainda.</div>';
+}
+async function carregar() {
+  try {
+    const hoje = diaSP(), ini = hoje.slice(0, 8) + '01';
+    if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
+    let todos = [];
+    for (let de = 0; de < 5000; de += 1000) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,data_contato,valor,banco,advogado,fora_comissao,atendente_id,perfis(nome)').gte('data_contato', ini).lte('data_contato', hoje).range(de, de + 999); if (error) throw error; todos = todos.concat(data); if (data.length < 1000) break; }
+    MES = todos; const doDia = MES.filter(c => c.data_contato === hoje), gd = ganhoDe(doDia), gm = ganhoDe(MES);
+    $('#h-cli').textContent = new Set(doDia.map(chave)).size; $('#h-sub').textContent = doDia.length + ' processo(s)';
+    $('#h-ganho').textContent = brl(gd.ganho); $('#h-gsub').textContent = gd.semValor ? gd.semValor + ' sem valor do seguro' : 'pelas regras dos advogados';
+    $('#m-cli').textContent = new Set(MES.map(chave)).size; $('#m-sub').textContent = MES.length + ' processo(s)';
+    $('#m-ganho').textContent = brl(gm.ganho); $('#m-gsub').textContent = gm.semValor ? gm.semValor + ' sem valor do seguro' : 'pelas regras dos advogados';
+    $('#adv').innerHTML = Object.entries(gm.adv).sort((a, b) => b[1].g - a[1].g).map(([a, x]) => `<div class="lin"><span>${esc(a)}<br><small class="sub">${x.cli} cliente(s) × ${x.n} processo(s)</small></span><b>${brl(x.g)}</b></div>`).join('') || '<div class="sub">Sem lançamentos no mês.</div>';
+    ranking();
+    // desafio em andamento
+    const agora = new Date().toISOString(), { data: dz } = await sb.from('desafios').select('*').lte('inicio', agora).gt('fim', agora).order('inicio', { ascending: false }).limit(1);
+    const d = (dz || [])[0]; $('#sec-dz').hidden = !d;
+    if (d) { const { data: p } = await sb.rpc('desafio_painel', { did: d.id }), min = Math.max(0, Math.round((new Date(d.fim) - Date.now()) / 60000));
+      $('#dz').innerHTML = `<b>${esc(d.titulo)}</b> · termina em ${min} min · prêmio ${brl(d.premio)}` + (p || []).map(r => `<div class="lin"><span>${r.cumpriu ? '✔' : '◇'} ${esc(r.atendente)}</span><b>${r.seguros}/${r.meta_seguro ?? d.meta_seguro}</b></div>`).join(''); }
+    // robôs e filas
+    const conta = async q => { const { count } = await q; return count ?? '–'; };
+    const [semPasta, prevFila, banco, valFila] = await Promise.all([
+      conta(sb.from('clientes').select('id', { count: 'exact', head: true }).is('pasta_url', null).gte('data_contato', ini)),
+      conta(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).is('prev_lido_em', null)),
+      conta(sb.from('prev_oportunidades').select('id', { count: 'exact', head: true }).eq('status', 'nova')),
+      conta(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).is('seguro_det_em', null))]);
+    $('#robos').innerHTML = [['Clientes do mês sem pasta no Drive', semPasta], ['Contratos aguardando leitura do seguro', valFila], ['Previdenciário: clientes na fila', prevFila], ['Oportunidades novas no banco', banco]].map(([t, n]) => `<div class="lin"><span>${t}</span><b>${n}</b></div>`).join('');
+    $('#quando').textContent = 'atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { console.error(e); $('#quando').textContent = 'não consegui atualizar — toque em ↻'; }
+}
+document.querySelectorAll('[data-rk]').forEach(b => b.onclick = () => { RK = b.dataset.rk; document.querySelectorAll('[data-rk]').forEach(x => x.classList.toggle('sel', x === b)); ranking(); });
+$('#atualizar').onclick = carregar;
+(async () => {
+  const { data: { session } } = await sb.auth.getSession(); if (!session) return location.replace('./');
+  const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).maybeSingle();
+  if (!eu || !eu.ativo || eu.papel !== 'admin') return location.replace('./');     // os ganhos são só do admin
+  document.body.hidden = false; carregar(); setInterval(carregar, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) carregar(); });
+})();
+</script>
+</body>
+</html>

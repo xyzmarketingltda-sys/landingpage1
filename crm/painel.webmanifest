@@ -1,0 +1,1 @@
+{"name":"XYZ — Painel","short_name":"XYZ Painel","start_url":"./painel.html","scope":"./","display":"standalone","background_color":"#020816","theme_color":"#061230","icons":[{"src":"painel-192.png","sizes":"192x192","type":"image/png"},{"src":"painel-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
