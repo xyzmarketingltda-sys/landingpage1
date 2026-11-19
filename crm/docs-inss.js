@@ -15,7 +15,7 @@
 
   function tipoDoc(t) {
     if (/Hist[óo]rico de Cr[ée]ditos/i.test(t) && /Rubrica/i.test(t)) return 'hiscre';
-    if (/Carta de Concess[ãa]o/i.test(t)) return 'carta';
+    if (/Carta de\s+Concess[ãa]o/i.test(t)) return 'carta';
     if (/Rela[çc][õo]es Previdenci[áa]rias/i.test(t) && /CNIS|Extrato Previdenci[áa]rio/i.test(t)) return 'cnis';
     if (/Contas e Relacionamentos|\(CCS\)/i.test(t)) return 'ccs';
     if (/Empr[ée]stimos e Financiamentos|\(SCR\)/i.test(t)) return 'scr';
@@ -75,7 +75,74 @@
   }
 
   /* ---------- Carta de Concessão / Memória de Cálculo ---------- */
+  /* Espécie pelo nome do benefício (a carta nova do Meu INSS não traz o código). */
+  const ESP_NOME = [
+    [/PENSAO POR MORTE.*ACIDENT/, '93'], [/PENSAO POR MORTE/, '21'], [/APOSENTADORIA ESPECIAL/, '46'],
+    [/APOSENTADORIA POR TEMPO DE CONTRIBUICAO.*PROFESSOR/, '57'], [/APOSENTADORIA POR TEMPO DE (CONTRIBUICAO|SERVICO)/, '42'], [/APOSENTADORIA POR IDADE/, '41'],
+    [/APOSENTADORIA (POR )?(INCAPACIDADE PERMANENTE|INVALIDEZ).*ACIDENT/, '92'], [/APOSENTADORIA (POR )?(INCAPACIDADE PERMANENTE|INVALIDEZ)/, '32'],
+    [/AUXILIO.*(INCAPACIDADE TEMPORARIA|DOENCA).*ACIDENT/, '91'], [/AUXILIO.*(INCAPACIDADE TEMPORARIA|DOENCA)/, '31'],
+    [/AUXILIO[- ]ACIDENTE.*TRABALHO/, '94'], [/AUXILIO[- ]ACIDENTE/, '36'], [/AUXILIO[- ]RECLUSAO/, '25'], [/SALARIO[- ]MATERNIDADE/, '80'],
+    [/(ASSISTENCIAL|AMPARO|PRESTACAO CONTINUADA).*IDOS/, '88'], [/(ASSISTENCIAL|AMPARO|PRESTACAO CONTINUADA).*DEFICI/, '87'], [/APOSENTADORIA.*PESSOA COM DEFICIENCIA/, '42']
+  ];
+  const espPorNome = n => { const x = semAc(n); const e = ESP_NOME.find(([re]) => re.test(x)); return e ? e[1] : ''; };
+
+  /* Carta nova do Meu INSS: "TITULAR:", regras de direito ao benefício e memória de cálculo em quadros. */
+  function lerCartaNova(t) {
+    const L = t.split('\n').map(limpa), u = L.join(' '), R = { tipo: 'carta', modelo: 'nova', salarios: [], dependentes: [], regras: [] };
+    const depois = (re, n = 1) => { const i = L.findIndex(l => re.test(l)); return i < 0 ? '' : (L[i + n] || ''); }, datas = l => (l.match(/\d{2}\/\d{2}\/\d{4}/g) || []).map(dt);
+    { const i = L.findIndex(l => /^TITULAR:/i.test(l)); if (i >= 0) { R.nome = limpa(L[i].replace(/^TITULAR:/i, '')); if (L[i + 1] && !/^CPF/i.test(L[i + 1]) && /^[A-ZÀ-Ú' ]+$/.test(L[i + 1])) R.nome = limpa(R.nome + ' ' + L[i + 1]); } }
+    R.cpf = so(pega(u, /CPF:?\s*(\d{3}\.\d{3}\.\d{3}-\d{2})/)); R.emissao = dt(pega(u, /(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}:\d{2}/));
+    R.especieNome = depois(/foi concedido seu benef[ií]cio/i); R.especie = espPorNome(R.especieNome); R.direitoAdquirido = /Direito Adquirido/i.test(u);
+    { const m = depois(/^N[ÚU]MERO DO BENEF[ÍI]CIO/i).match(/^([\d.\-]+)\s+R\$\s*([\d.]+,\d{2})/); if (m) { R.nb = so(m[1]); R.rmi = num(m[2]); } }
+    { const d = datas(depois(/^Solicitado em/i)); R.der = d[0] || null; R.ddb = d[1] || d[0] || null; }
+    { const d = datas(depois(/^In[íi]cio do benef[ií]cio/i)); R.dib = d[0] || null; R.dip = d[1] || d[0] || null; }
+    R.instituidor = pega(t, /Instituidor:\s*(.+)/i);
+    { const i = L.findIndex(l => /^NOME V[ÍI]NCULO NASCIMENTO/i.test(l)); for (let k = i + 1; i >= 0 && k < L.length; k++) { const m = L[k].match(/^.+\s+([A-ZÇÃÕÔ\-]+(?:\s+(?:MENOR|MAIOR|INV[ÁA]LID[OA]|DEFICIENTE))*)\s+(\d{2}\/\d{2}\/\d{4})\s*(\d{2}\/\d{2}\/\d{4})?\s*(.*)$/); if (!m) break; R.dependentes.push({ vinculo: m[1], nascimento: dt(m[2]), fim: dt(m[3]), motivo: m[4] }); } }
+    R.baseCalculo = num(pega(u, /Valor da base de c[áa]lculo\s*R\$\s*([\d.]+,\d{2})/i)); { const x = pega(u, /Percentual da renda mensal[^\d]*(\d+)\s*%/i); R.pctDep = x ? +x / 100 : null; }
+    // regras de direito avaliadas pelo INSS (qual foi aplicada e em quais não havia direito)
+    for (let i = 0; i < L.length; i++) {
+      if (!/^Artigo\s+\d+/i.test(L[i])) continue;
+      const r = { texto: L[i], valor: null, maior: false, semDireito: false }; let k = i + 1;
+      while (k < L.length && k < i + 3 && !/^(C[áa]lculo:|R\$|N[ãa]o possui|Car[êe]ncia|Tempo de|Exigid|MAIOR|\*|\d+ \/ \d+)/i.test(L[k])) { r.texto += ' ' + L[k]; k++; }
+      for (; k < L.length && k < i + 9 && !/^(Valor do Benef[ií]cio Regra|Artigo\s+\d+|\*|REGRAS DE|A seguir)/i.test(L[k]); k++) {
+        const v = L[k].match(/^R\$\s*([\d.]+,\d{2})/); if (v && r.valor == null) r.valor = num(v[1]);
+        if (/MAIOR VALOR/i.test(L[k])) r.maior = true; if (/N[ãa]o possui direito/i.test(L[k])) r.semDireito = true;
+        const c = L[k].match(/^(\d+) anos\s+(\d+) anos(?: (\d+) m[eê]s(?:es)?)?(?: (\d+) dias?)?\s+(\d+)a\s+(\d+) anos/); if (c) { r.tcExigido = +c[1]; r.tcCumprido = { a: +c[2], m: +(c[3] || 0), d: +(c[4] || 0) }; r.idadeExigida = +c[5]; r.idadeCumprida = +c[6]; }
+      }
+      const art = r.texto.match(/Artigo\s+(\d+)\s+d[ao]\s+(EC|Lei|LC)\s*([\d.]+)/i); if (art) { r.artigo = +art[1]; r.norma = art[2].toUpperCase() + ' ' + art[3].replace(/\./g, ''); }
+      if (!R.regras.some(x => x.texto === r.texto)) R.regras.push(r);
+    }
+    { const m = u.match(/regra mais vantajosa\s*:\s*artigo\s+(\d+)\s+d[ao]\s+(EC|Lei|LC)\s*([\d.]+)/i); const com = R.regras.filter(r => !r.semDireito);
+      R.regra = (m && R.regras.find(r => r.artigo === +m[1] && !r.semDireito)) || R.regras.find(r => r.maior) || (com.length === 1 ? com[0] : null) || (R.regras.length === 1 ? R.regras[0] : null); }
+    R.rural = /atividade rural|Idade Rural|segurados? especia/i.test(u);
+    R.ate = dt(pega(u, /apura[çc][ãa]o do direito ao seu benef[ií]cio\.\s*At[ée]\s*(\d{2}\/\d{2}\/\d{4})/i));
+    R.semDescartes = /Sem descartes de/i.test(u); { const x = pega(u, /sem os\s*(\d+)\s*sal[áa]rios/i); R.descartados = x ? +x : null; }
+    { const x = pega(u, /Car[êe]ncia\*?\s+(\d+)\s+meses/i); R.carenciaMeses = x ? +x : null; }
+    { const x = u.match(/Tempo de\s+(\d+)\s+anos?(?:\s+(\d+)\s+m[eê]s(?:es)?)?(?:\s+(\d+)\s+dias?)?\s+Contribui/i) || (R.regra && R.regra.tcCumprido && [0, R.regra.tcCumprido.a, R.regra.tcCumprido.m, R.regra.tcCumprido.d]); if (x) R.tc = { a: +x[1], m: +(x[2] || 0), d: +(x[3] || 0), meses: +x[1] * 12 + +(x[2] || 0) + (+(x[3] || 0)) / 30 }; }
+    R.idade = R.regra && R.regra.idadeCumprida ? R.regra.idadeCumprida : null;
+    // memória de cálculo: dois formatos de linha (data antes ou depois dos valores)
+    L.forEach(l => {
+      let x = l.match(/^(\d{3})\s+(\d{2}\/\d{4})\s+([\d.]+,\d{2})\s+(\d+,\d{3,6})\s+([\d.]+,\d{2})\s*(.*)$/);
+      if (x) return R.salarios.push({ seq: +x[1], comp: comp(x[2]), sal: num(x[3]), indice: num(x[4]), corr: num(x[5]), desc: /DESCONSID|DESCART/i.test(x[6]), obs: x[6] });
+      x = l.match(/^(\d{3})\s+([\d.]+,\d{2})\s+(\d+,\d{3,6})\s+([\d.]+,\d{2})\s+(\d{2}\/\d{4})\s*(\d+)?\s*(.*)$/);
+      if (x) R.salarios.push({ seq: +x[1], comp: comp(x[5]), sal: num(x[2]), indice: num(x[3]), corr: num(x[4]), dias: x[6] ? +x[6] : null, desc: /DESCONSID|DESCART/i.test(x[7]), obs: x[7] });
+    });
+    { const soma = num(pega(u, /Soma d[eo]s?\s[^$]*?R\$\s*([\d.]+,\d{2})/i)), div = pega(u, /÷\s*(\d+)/), m = u.match(/M[ée]dia dos\s*(?:(\d+)%\s*maiores\s*)?sal[áa]rios de contribui[çc][ãa]o\s+R\$\s*([\d.]+,\d{2})/i);
+      if (m) R.media = { pct: m[1] ? +m[1] : 100, soma, div: div ? +div : null, valor: num(m[2]) }; }
+    { const c = pega(u, /×\s*(\d+(?:,\d+)?)\s*%/); R.coef = c ? parseFloat(c.replace(',', '.')) / 100 : null; }
+    R.fator = num(pega(u, /×\s*([01],\d{3,4})(?!\d)/)) || num(pega(u, /Fator Previdenci[áa]rio[^\d]{0,30}([01],\d{3,4})/i));
+    R.sb = R.media ? R.media.valor : null; R.valorCalc = num(pega(u, /Valor do [Bb]enef[ií]cio\s+R\$\s*([\d.]+,\d{2})/));
+    R.noMinimo = /ajustado para R\$\s*[\d.,]+\s*valor do sal[áa]rio m[íi]nimo|fixado no valor do sal[áa]rio m[íi]nimo|[ée] de um sal[áa]rio m[íi]nimo/i.test(u);
+    R.rmiReajustada = num(pega(u, /reajustado at[ée] a data do in[íi]cio do benef[ií]cio corresponde a\s*([\d.]+,\d{2})/i));
+    R.lei = pega(u, /C[áa]lculo d[eo]s? Benef[ií]cios? segundo a\s*(.+?)(?:,| Valor| Seq)/i);
+    R.irAtrasados = 0; R.primeiroPgto = null;
+    R.temMemoria = R.salarios.length > 0 && !!R.media;
+    if (!R.nb && !R.dib) throw new Error('Carta de concessão sem número do benefício ou data de início legível.');
+    return R;
+  }
+
   function lerCarta(t) {
+    if (/foi concedido seu benef[ií]cio/i.test(t) && /TITULAR:/i.test(t)) return lerCartaNova(t);
     const u = t.replace(/\s+/g, ' '), R = { tipo: 'carta', salarios: [], dependentes: [] };
     R.nome = pega(t, /^\s*Nome:\s*(.+)$/m); R.nit = pega(t, /Nit:\s*([\d.\-]+)/i); R.emissao = dt(pega(t, /(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}:\d{2}/));
     R.nb = so(pega(u, /N[úu]mero do Benef[ií]cio:\s*([\d.\-]+)/)); R.ddb = dt(pega(u, /Data de Concess[ãa]o do Benef[ií]cio:\s*(\d{2}\/\d{2}\/\d{4})/));
