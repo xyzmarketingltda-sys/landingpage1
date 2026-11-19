@@ -79,8 +79,13 @@
     const u = t.replace(/\s+/g, ' '), R = { tipo: 'carta', salarios: [], dependentes: [] };
     R.nome = pega(t, /^\s*Nome:\s*(.+)$/m); R.nit = pega(t, /Nit:\s*([\d.\-]+)/i); R.emissao = dt(pega(t, /(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}:\d{2}/));
     R.nb = so(pega(u, /N[úu]mero do Benef[ií]cio:\s*([\d.\-]+)/)); R.ddb = dt(pega(u, /Data de Concess[ãa]o do Benef[ií]cio:\s*(\d{2}\/\d{2}\/\d{4})/));
-    const e = u.match(/concedid[oa]\s+(.+?)\s*\((\d{2})\)\s*n[úu]mero/i); R.especieNome = e ? limpa(e[1]) : ''; R.especie = e ? e[2] : '';
-    R.der = dt(pega(u, /requerido em\s*(\d{2}\/\d{2}\/\d{4})/i)); R.rmi = num(pega(u, /renda mensal de R\$\s*([\d.,]+)/i)); R.dib = dt(pega(u, /vig[êe]ncia a partir de\s*(\d{2}\/\d{2}\/\d{4})/i));
+    const e = u.match(/concedid[oa]\s+(.+?)\s*\((\d{2})\)/i); R.especieNome = e ? limpa(e[1]) : ''; R.especie = e ? e[2] : '';
+    R.der = dt(pega(u, /requerido em\s*(\d{2}\/\d{2}\/\d{4})/i)); R.rmi = num(pega(u, /renda mensal(?: inicial)? de R\$\s*([\d.]+,\d{2})/i)); R.dib = dt(pega(u, /vig[êe]ncia a partir de\s*(\d{2}\/\d{2}\/\d{4})/i));
+    // modelo antigo da carta (tudo em maiúsculas): "NOME NIT OL NB" numa linha e os dados na seguinte
+    if (!R.nb) { const m = t.match(/^(.+?)\s+(\d[\d.]{8,}-\d)\s+([\d.]+)\s+(\d{3}\.\d{3}\.\d{3}-\d)\s*$/m); if (m) { R.nome = R.nome || limpa(m[1]); R.nit = R.nit || m[2]; R.nb = so(m[4]); } }
+    R.dip = dt(pega(u, /in[íi]cio do pagamento a partir de\s*(\d{2}\/\d{2}\/\d{4})/i)); if (!R.dib) R.dib = R.dip;
+    R.primeiroPgto = dt(pega(u, /compare[çc]a a partir de\s*(\d{2}\/\d{2}\/\d{4})/i));
+    if (!R.emissao) R.emissao = dt(pega(u, /DATA:\s*(\d{2}\/\d{2}\/\d{4})/i));
     R.aps = pega(t, /Aps:\s*(.+)/i);
     t.split('\n').map(limpa).forEach(l => {
       const x = l.match(/^(\d{3})\s+(\d{2}\/\d{4})\s+([\d.]+,\d{2})\s+(\d+,\d{3,6})\s+([\d.]+,\d{2})\s*(.*)$/);

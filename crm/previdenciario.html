@@ -65,7 +65,7 @@ td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}
 <header><div class="marca" style="cursor:pointer" onclick="location.href=document.getElementById('voltar').href">XYZ <span>CRM</span></div><a class="voltar" id="voltar" href="./">← Voltar ao CRM</a></header>
 <main>
   <h1>⚖️ Previdenciário — o benefício pode ser revisto?</h1>
-  <p class="sub">Solte o <b>CNIS</b> e a <b>carta de concessão</b> do cliente (os dois saem do Meu INSS em PDF). O sistema compara salário por salário, confere tempo, regra aplicada e prazo, e aponta as revisões com indício — e também as teses que <b>não cabem mais</b>. Se tiver, solte junto o <b>histórico de créditos</b> (mostra a renda de hoje). A leitura é feita aqui no seu computador: nenhum arquivo é enviado.<br>
+  <p class="sub">Solte o <b>CNIS</b> e a <b>carta de concessão</b> do cliente (os dois saem do Meu INSS em PDF). O sistema compara salário por salário, confere tempo, regra aplicada e prazo, e aponta as revisões com indício — e também as teses que <b>não cabem mais</b>. Para quem recebe <b>BPC/LOAS</b>, procura direito a benefício previdenciário melhor e atrasados de pedido negado. Se tiver, solte junto o <b>histórico de créditos</b> (mostra a renda de hoje). A leitura é feita aqui no seu computador: nenhum arquivo é enviado.<br>
   Para pensão por morte, anexe o CNIS de quem faleceu. · <a id="ir-hiscon" href="hiscon.html">🔎 Analisar HISCON e contratos</a></p>
   <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
     <b>📄 Solte CNIS, carta de concessão e histórico de créditos aqui ou clique para escolher</b><small>Pode mandar de vários clientes de uma vez — o sistema separa pelo nome</small></label>
@@ -76,8 +76,8 @@ td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="hiscon.js?v=20261118b"></script>
-<script src="docs-inss.js?v=20261118a"></script>
-<script src="previd.js?v=20261118a"></script>
+<script src="docs-inss.js?v=20261118b"></script>
+<script src="previd.js?v=20261118b"></script>
 <script src="presenca.js?v=20261118e"></script>
 <script type="module">
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
@@ -124,7 +124,7 @@ async function processar(arqs) {
 const TAG = { alto: 'forte', medio: 'atenção', info: 'info', venc: 'prazo vencido', nao: 'não propor' };
 const htmlTese = t => `<div class="al ${t.nivel}"><h4><span class="tag">${TAG[t.nivel]}</span>${esc(t.titulo)}</h4><p>${esc(t.texto)}</p>
   ${t.numeros ? `<p class="det">${t.numeros.split(' | ').map(esc).join('<br>')}</p>` : ''}
-  ${t.ganho && t.nivel !== 'nao' ? `<span class="ganho">≈ +${brl(t.ganho.mensal)}/mês hoje${t.nivel !== 'venc' && t.ganho.atrasados > 0 ? ' · atrasados (até 5 anos) ≈ ' + brl(t.ganho.atrasados) : ''} · estimativa</span>` : ''}
+  ${t.ganho && t.nivel !== 'nao' ? (t.ganho.piso ? `<span class="ganho">passa a ter 13º salário${t.ganho.atrasados > 0 ? ' · atrasados no piso do salário mínimo ≈ ' + brl(t.ganho.atrasados) : ''} · estimativa</span>` : `<span class="ganho">≈ +${brl(t.ganho.mensal)}/mês hoje${t.nivel !== 'venc' && t.ganho.atrasados > 0 ? ' · atrasados (até 5 anos) ≈ ' + brl(t.ganho.atrasados) : ''} · estimativa</span>`) : ''}
   ${t.base ? `<p class="base">Fundamento: ${esc(t.base)}${t.decai === false ? ' · sem o prazo de 10 anos' : ''}</p>` : ''}</div>`;
 
 function desenhar(p) {
@@ -135,7 +135,7 @@ function desenhar(p) {
   const idade = B.nascimento ? D.util.anos(B.nascimento, new Date().toISOString().slice(0, 10)) : null;
   const pz = R.prazo, pzTxt = !pz ? '' : pz.estado === 'vencido' ? `⏰ Prazo de 10 anos para revisar a concessão: <b>vencido em ${dBR(pz.limite)}</b><small>Estimado pela ${pz.base}. Só restam as teses sem decadência (teto, reflexos de ação trabalhista) — salvo se já houve pedido de revisão ou ação dentro do prazo.</small>`
     : `⏳ Prazo para revisar a concessão: <b>até ${dBR(pz.limite)}</b> — faltam ${am(pz.faltam)}${pz.estado === 'urgente' ? ' · <b>URGENTE</b>' : ''}<small>Estimado pela ${pz.base} (o prazo conta do 1º dia do mês seguinte ao primeiro pagamento — confirme no histórico de créditos).</small>`;
-  const ver = alto.length ? ['alto', `🚨 ${alto.length} revisão(ões) com indício forte${R.melhor ? ` — a melhor estimativa é de +${brl(R.melhor.ganho.mensal)}/mês` : ''}. Encaminhar para cálculo.`]
+  const ver = alto.length ? ['alto', `🚨 ${alto.length} ponto(s) com indício forte${R.melhor && !R.melhor.ganho.piso ? ` — a melhor estimativa é de +${brl(R.melhor.ganho.mensal)}/mês` : R.melhor && R.melhor.ganho.atrasados ? ` — atrasados estimados em pelo menos ${brl(R.melhor.ganho.atrasados)}` : ''}. Encaminhar para o advogado.`]
     : medio.length ? ['medio', '⚠️ Há pontos que podem render revisão — vale pedir os documentos indicados e aprofundar.']
     : venc.length ? ['nao', '⏰ Havia indício de revisão, mas o prazo de 10 anos já passou.']
     : ['ok', R.temCarta && R.temCnis ? '✅ Nenhum indício de revisão encontrado nos documentos.' : 'ℹ️ Faltam documentos para concluir — veja abaixo o que pedir.'];
@@ -160,7 +160,7 @@ function desenhar(p) {
     <div class="acoes"><button class="btn sec" data-copiar>📋 Copiar resumo (WhatsApp)</button><button class="btn sec" onclick="window.print()">🖨️ Imprimir / PDF</button></div>`;
   el.querySelectorAll('[data-sx]').forEach(b => b.onclick = () => { p.sexo = p.sexo === b.dataset.sx ? null : b.dataset.sx; desenhar(p); });
   el.querySelector('[data-copiar]').onclick = async e => {
-    const lin = t => `• ${t.titulo}${t.ganho ? ` (≈ +${brl(t.ganho.mensal)}/mês — estimativa)` : ''}${t.base ? ' — ' + t.base : ''}`;
+    const lin = t => `• ${t.titulo}${t.ganho ? (t.ganho.piso ? ` (13º + atrasados ≈ ${brl(t.ganho.atrasados)} — estimativa)` : ` (≈ +${brl(t.ganho.mensal)}/mês — estimativa)`) : ''}${t.base ? ' — ' + t.base : ''}`;
     const txt = `*Triagem previdenciária — ${B.nome}*\n${B.especieNome || ''} (${B.especie || '—'}) · DIB ${dBR(B.dib)}${B.rmi ? ' · RMI ' + brl(B.rmi) : ''}\n${pz ? (pz.estado === 'vencido' ? 'Prazo de 10 anos VENCIDO em ' + dBR(pz.limite) : 'Prazo para revisar: até ' + dBR(pz.limite) + ' (estimado)') + '\n' : ''}\n` +
       (alto.length ? '*Indícios fortes*\n' + alto.map(lin).join('\n') + '\n\n' : '') + (medio.length ? '*Atenção*\n' + medio.map(lin).join('\n') + '\n\n' : '') + (!alto.length && !medio.length ? 'Nenhum indício de revisão nos documentos.\n\n' : '') +
       (R.pedir.length ? '*Pedir ao cliente*\n' + R.pedir.map(x => '• ' + x).join('\n') + '\n\n' : '') + (nao.length ? '*Não propor*\n' + nao.map(t => '• ' + t.titulo).join('\n') : '');

@@ -11,7 +11,7 @@
   const difMeses = (a, b) => { const [ya, ma] = a.split('-').map(Number), [yb, mb] = b.split('-').map(Number); return (yb - ya) * 12 + (mb - ma); };
   const am = m => { m = Math.round(m); const a = Math.floor(m / 12), r = m % 12; return (a ? a + (a === 1 ? ' ano' : ' anos') : '') + (a && r ? ' e ' : '') + (r || !a ? r + (r === 1 ? ' mês' : ' meses') : ''); };
   const pct = v => (v * 100).toFixed(v * 100 % 1 ? 1 : 0) + '%';
-  const APOS = ['41', '42', '46', '57'], INCAP = ['32', '92'], PENSAO = ['21', '93'], TEMP = ['31', '91'];
+  const APOS = ['41', '42', '46', '57'], INCAP = ['32', '92'], PENSAO = ['21', '93'], TEMP = ['31', '91'], ASSIST = ['87', '88'];
   const ESPECIAL_RE = /HOSPITAL|SANTA CASA|CLINICA|LABORAT|FRIGORIF|ABATEDOURO|METALURG|SIDERURG|FUNDIC|MINERA|QUIMIC|PETRO|POSTO |COMBUST|TEXTIL|FIACAO|TECELAGEM|CERAMIC|CURTUME|GRAFIC|VIDRO|BORRACHA|CALCADO|USINA|MADEIREIRA|SERRARIA|GALVAN|TINTAS|PLASTIC|CELULOSE|CIMENTO|MARMOR|PEDREIRA|FERRO|ACO |ACOS |ELETRIC|ENERGIA|SANEAMENTO|LIMPEZA URBANA|COLETA|OXIGENIO|GASES|SOLDA|CALDEIR|MECANIC|FARMAC|RADIOL|ODONTO|ENFERM|AMBULAN|TRANSPORT|VIACAO|ONIBUS|VIGILAN|SEGURANCA/;
   const PEND_RE = /^(PEXT|PVIN|AEXT|PADM|PREC|PREM|IREC-LC123|IREC-INDPEND|IREM-INDPEND|IVIN|PRPPS|IGFIP|PSC|IREC-FBR|IREC-MEI|IREC-LC)/;
 
@@ -52,7 +52,7 @@
     const B = {
       nome: titular, especie: (ca && ca.especie) || (hc && hc.especie) || (benCnis && benCnis.especie) || '', especieNome: (ca && ca.especieNome) || (hc && hc.especieNome) || (benCnis && benCnis.especieNome) || '',
       nb: (ca && ca.nb) || (hc && hc.nb) || (benCnis && benCnis.nb) || '', dib: (ca && ca.dib) || (hc && hc.dib) || (benCnis && benCnis.inicio) || null, ddb: (ca && ca.ddb) || null, der: (ca && ca.der) || null,
-      dip: (hc && hc.dip) || null, rmi: ca ? ca.rmi : null, mrAtual: hc ? hc.mr : null, nascimento: (cnTit && cnTit.nascimento) || (hc && hc.nascimento) || null, instituidor: (ca && ca.instituidor) || ''
+      dip: (hc && hc.dip) || (ca && ca.dip) || null, primeiroPgto: (ca && ca.primeiroPgto) || null, rmi: ca ? ca.rmi : null, mrAtual: hc ? hc.mr : null, nascimento: (cnTit && cnTit.nascimento) || (hc && hc.nascimento) || null, instituidor: (ca && ca.instituidor) || ''
     };
     const esp = B.especie, dibC = B.dib ? B.dib.slice(0, 7) : null, posReforma = B.dib && B.dib >= REFORMA;
     let [sexo, sexoFonte] = op.sexo ? [op.sexo, 'informado'] : (ehPensao ? [null, ''] : sexoPalpite(B.nome, ca));
@@ -62,9 +62,10 @@
 
     /* ---- prazo de decadência (10 anos; art. 103 da Lei 8.213) ---- */
     let prazo = null;
-    { const base = B.ddb || B.dip || B.dib;
-      if (base) { const ini = maisMeses(base.slice(0, 7), 1), lim = maisMeses(ini, 120), falta = difMeses(hojeC, lim);
-        prazo = { limite: lim, faltam: falta, estado: falta < 0 ? 'vencido' : falta <= 12 ? 'urgente' : 'ok', base: B.ddb ? 'data de concessão' : B.dip ? 'data de início do pagamento' : 'data de início do benefício' }; } }
+    const assist = ASSIST.includes(esp);                  // BPC/LOAS: não há cálculo a revisar, então não há prazo de 10 anos
+    { const base = B.primeiroPgto || B.ddb || B.dip || B.dib;
+      if (base && !assist) { const ini = maisMeses(base.slice(0, 7), 1), lim = maisMeses(ini, 120), falta = difMeses(hojeC, lim);
+        prazo = { limite: lim, faltam: falta, estado: falta < 0 ? 'vencido' : falta <= 12 ? 'urgente' : 'ok', base: B.primeiroPgto ? 'data do primeiro pagamento informada na carta' : B.ddb ? 'data de concessão' : B.dip ? 'data de início do pagamento' : 'data de início do benefício' }; } }
     const decaiu = prazo && prazo.estado === 'vencido';
     const nv = n => decaiu ? 'venc' : n;                 // tese sujeita à decadência: se o prazo passou, vai para "prazo vencido"
     const pd = x => { if (!decaiu) pedir.add(x); };       // documento que só interessa se a tese ainda couber
@@ -89,7 +90,8 @@
     const limiar = sexo === 'M' ? 20 : 15, tcMin = sexo === 'M' ? 420 : 360;
 
     const semSaida = decaiu && B.dib >= '2004-01-01';     // prazo vencido e sem tese de teto: não adianta pedir mais documento
-    if (semSaida) add('info', 'vencido', 'Com o prazo vencido, só vale aprofundar em três situações', '(1) o cliente pediu revisão ao INSS ou entrou com ação dentro dos 10 anos; (2) ganhou ação trabalhista depois da concessão — o prazo conta do trânsito em julgado (STJ, Tema 1.117); (3) o benefício foi concedido ou revisto por decisão judicial em data posterior. Fora disso, não compensa pedir mais documentos.', { decai: false });
+    if (assist) { /* tratado no bloco do BPC, mais abaixo */ }
+    else if (semSaida) add('info', 'vencido', 'Com o prazo vencido, só vale aprofundar em três situações', '(1) o cliente pediu revisão ao INSS ou entrou com ação dentro dos 10 anos; (2) ganhou ação trabalhista depois da concessão — o prazo conta do trânsito em julgado (STJ, Tema 1.117); (3) o benefício foi concedido ou revisto por decisão judicial em data posterior. Fora disso, não compensa pedir mais documentos.', { decai: false });
     else {
       if (!ca) add('info', 'sem-carta', 'Falta a carta de concessão', 'Sem a carta de concessão (com a memória de cálculo) só dá para olhar o tempo de contribuição e os vínculos. Peça ao cliente: Meu INSS → "Carta de concessão". Com ela o sistema compara salário por salário com o CNIS e simula as revisões.', { decai: false });
       if (ca && !ca.temMemoria) { add('info', 'sem-memoria', 'A carta veio sem a memória de cálculo', `Benefícios antigos (este é de ${dBR(B.dib)}) costumam sair sem a lista de salários. Para conferir o cálculo, peça a cópia do processo administrativo (Meu INSS → "Cópia de processo") ou os extratos CONBAS/REVSIT/INFBEN em uma agência.`, { decai: false }); pedir.add('Cópia do processo administrativo do benefício (memória de cálculo)'); }
@@ -98,7 +100,7 @@
     if (ehPensao && !cnInst) { add('info', 'cnis-instituidor', 'Pensão: o cálculo é sobre a vida do instituidor', `A renda da pensão vem do benefício (ou dos salários) de ${B.instituidor || 'quem faleceu'}. ${cns.length ? 'O CNIS anexado é do pensionista e não serve para conferir esse cálculo. ' : ''}Anexe o CNIS do instituidor e, se ele era aposentado, a carta de concessão da aposentadoria dele: o pensionista pode pedir a revisão do benefício originário e receber os reflexos na pensão (STJ, Tema 1.057).`, { decai: false, base: 'STJ Tema 1.057' }); pedir.add('CNIS e carta de concessão do instituidor (falecido)'); }
 
     /* ---- 1. Teto (EC 20/1998 e EC 41/2003) — sem decadência ---- */
-    if (B.dib && B.dib < '2004-01-01' && !TEMP.includes(esp)) {
+    if (B.dib && B.dib < '2004-01-01' && !TEMP.includes(esp) && !assist) {
       const txt = 'Quando o salário de benefício foi limitado ao teto na concessão, o excedente deve ser reaproveitado nos tetos novos das EC 20/1998 (R$ 1.200) e 41/2003 (R$ 2.400). Não revisa o ato de concessão, então não tem decadência: só prescrevem as parcelas de mais de 5 anos.';
       if (B.dib >= '1988-10-05' && B.dib <= '1991-04-05') add('medio', 'teto', 'Benefício do "buraco negro" (05/10/1988 a 05/04/1991): conferir revisão do teto', txt + ' Para benefícios desse período o STF também admite a readequação (Tema 930). Conferir no processo administrativo se a média superava o teto e se o INSS já revisou.', { decai: false, base: 'STF Temas 76 e 930; art. 144 da Lei 8.213' });
       else if (ca && ca.temMemoria && ca.media.valor > tetoDib * 1.001 && B.dib >= '1994-07-01') { const g = ganhoDe(B.rmi * Math.min(ca.media.valor / tetoDib, 2400 / tetoDib)); add('alto', 'teto', 'Salário de benefício limitado ao teto na concessão', txt, { decai: false, base: 'STF Tema 76 (RE 564.354)', numeros: `Média ${brl(ca.media.valor)} × teto da época ${brl(tetoDib)} — excedente de ${pct(ca.media.valor / tetoDib - 1)}`, ganho: g }); }
@@ -149,7 +151,7 @@
     }
 
     /* ---- 4. Atividade especial ---- */
-    if (cn && (APOS.includes(esp) || (posReforma && INCAP.includes(esp)) || !ca)) {
+    if (cn && !assist && (APOS.includes(esp) || (posReforma && INCAP.includes(esp)) || !ca)) {
       const cand = cn.vinculos.filter(v => v.tipo === 'emprego' && v.inicio && v.inicio < REFORMA).map(v => { const iean = v.indicadores.includes('IEAN') || v.rem.some(r => r.ind.includes('IEAN')), nome = ESPECIAL_RE.test(semAc(v.origem || '') + ' '); const fim = (v.fim || (v.ultRemun ? v.ultRemun + '-28' : v.inicio)); return (iean || nome) ? { v, iean, meses: Math.max(1, difMeses(v.inicio.slice(0, 7), (fim < REFORMA ? fim : REFORMA).slice(0, 7)) + 1), vig: /VIGILAN|SEGURANCA/.test(semAc(v.origem)) } : null; }).filter(Boolean);
       if (cand.length) {
         const tot = cand.reduce((a, c) => a + c.meses, 0), fat = sexo === 'M' ? 0.4 : sexo === 'F' ? 0.2 : null, forte = cand.some(c => c.iean);
@@ -231,6 +233,34 @@
     /* ---- 10. Aposentadoria por idade antes da Reforma: coeficiente ---- */
     if (ca && esp === '41' && B.dib < REFORMA && ca.coef && ca.coef < 1 && tC) { const esper = Math.min(1, 0.7 + 0.01 * Math.floor(tC.meses / 12)); if (esper > ca.coef + 0.009) { const g = ca.media ? ganhoDe(rmiDe(ca.media.valor, esper * (fatorAplicado ? ca.fator : 1))) : null; add(nv('medio'), 'coef-idade', `Coeficiente de ${pct(ca.coef)} com cerca de ${am(tC.meses)} no CNIS`, `Na aposentadoria por idade anterior à Reforma o coeficiente é 70% + 1% a cada 12 contribuições (até 100%). Pelo CNIS daria ${pct(esper)} — conferir quais vínculos ficaram fora.` + obsDec, { base: 'art. 50 da Lei 8.213', ganho: g }); } }
 
+    /* ---- BPC/LOAS (espécies 87 e 88): não se revisa valor; procura-se benefício melhor e atrasados ---- */
+    if (assist) {
+      add('info', 'bpc', 'BPC/LOAS não tem revisão de cálculo', 'O benefício assistencial é sempre de 1 salário mínimo, não paga 13º e não deixa pensão por morte. O que pode existir é (1) direito a um benefício previdenciário no lugar dele, com 13º e pensão, e (2) atrasados de pedido negado antes da concessão. É isso que a triagem procura abaixo.', { decai: false, base: 'Lei 8.742/1993 (LOAS), art. 20' });
+      const V = cnTit ? cnTit.vinculos : [], bpcIni = B.dib || (benCnis && benCnis.inicio);
+      if (!cnTit) { add('info', 'sem-cnis', 'Falta o CNIS', 'É no CNIS que aparecem os benefícios anteriores (auxílio cessado, pedidos negados) e as contribuições. Peça: Meu INSS → "Extrato de contribuição (CNIS)".', { decai: false }); pedir.add('CNIS completo (extrato de contribuição)'); }
+      // auxílio por incapacidade cessado antes do BPC por deficiência: indício de que a incapacidade nunca acabou
+      const ces = V.filter(v => v.tipo === 'beneficio' && [...TEMP, ...INCAP].includes(v.especie) && v.inicio && v.fim && /CESSADO/i.test(v.situacao || '') && (!bpcIni || v.fim < bpcIni)).sort((a, b) => b.fim.localeCompare(a.fim))[0];
+      if (ces && esp === '87') {
+        const dur = difMeses(ces.inicio.slice(0, 7), ces.fim.slice(0, 7)), vao = bpcIni ? difMeses(ces.fim.slice(0, 7), bpcIni.slice(0, 7)) : null;
+        // piso dos atrasados: salário mínimo dos meses sem benefício dentro dos últimos 5 anos + 13º que o BPC não paga
+        const de = [maisMeses(ces.fim.slice(0, 7), 1), maisMeses(hojeC, -60)].sort().pop(), ate = bpcIni ? maisMeses(bpcIni.slice(0, 7), -1) : hojeC; let atras = 0, n = 0;
+        for (let c = de; c <= ate && n < 61; c = maisMeses(c, 1), n++) atras += em(SM, c) * 13 / 12;
+        if (bpcIni) for (let a = Math.max(+bpcIni.slice(0, 4), +hojeC.slice(0, 4) - 5); a < +hojeC.slice(0, 4); a++) atras += em(SM, a + '-12');
+        const tentou = V.filter(v => v.tipo === 'beneficio' && TEMP.concat(INCAP).includes(v.especie) && /INDEFERIDO/i.test(v.situacao || '')).length;
+        const contribAntes = tempoCnis(cnTit, ces.inicio.slice(0, 7)).meses;
+        add(dur >= 12 ? 'alto' : 'medio', 'restabelecer', 'Auxílio por incapacidade cessado e hoje recebe BPC por deficiência: avaliar restabelecimento e aposentadoria por incapacidade',
+          `O CNIS mostra auxílio por incapacidade (espécie ${ces.especie}) de ${dBR(ces.inicio)} a ${dBR(ces.fim)} — ${am(dur)} —${vao != null ? ` e, ${am(vao)} depois, a concessão do BPC à pessoa com deficiência` : ' e depois o BPC à pessoa com deficiência'}.${tentou ? ` Há ainda ${tentou} pedido(s) de auxílio indeferido(s).` : ''}${contribAntes < 12 ? ` O auxílio saiu com apenas ${contribAntes} contribuição(ões): houve dispensa de carência (acidente ou doença grave do art. 151), que vale também para a aposentadoria.` : ''} Se a doença ou deficiência é a mesma e a incapacidade não cessou em ${dBR(ces.fim)}, a alta foi indevida: cabe pedir o restabelecimento do auxílio desde a cessação e a conversão em aposentadoria por incapacidade permanente. Quem estava incapaz não perde a qualidade de segurado, e a própria avaliação do BPC (impedimento de longo prazo) ajuda a provar. Vantagens sobre o BPC: 13º salário, pensão por morte para os dependentes, não depende da renda da família nem do CadÚnico, e adicional de 25% se precisar de cuidador. Como a incapacidade é anterior à Reforma, a aposentadoria é de 100% do salário de benefício. Não há prazo de 10 anos para restabelecer benefício cessado; prescrevem só as parcelas de mais de 5 anos, e o BPC recebido é descontado. Ponto de atenção: com a alta há mais de 5 anos, parte dos juízes exige novo requerimento administrativo antes da ação — os pedidos negados depois da alta ajudam a suprir isso.`,
+          { decai: false, base: 'arts. 15, 42, 59 e 62 da Lei 8.213; STF ADI 6.096 (sem decadência para cessação ou indeferimento); Súmula 85 do STJ', numeros: n ? `Sem benefício de ${cBR(de)} a ${cBR(ate)} (${n} meses dentro dos últimos 5 anos)` : '', ganho: { novaRmi: null, mensal: smHoje / 12, atrasados: atras, pct: 0, piso: true } });
+        pedir.add('Laudos, exames e receitas de ' + ces.fim.slice(0, 4) + ' até hoje (para mostrar que a incapacidade não cessou)'); pedir.add('Laudo da perícia que cessou o auxílio e a avaliação médica e social do BPC (Meu INSS → "Laudo médico pericial" e cópia do processo)');
+      }
+      const neg = V.filter(v => v.tipo === 'beneficio' && /INDEFERIDO/i.test(v.situacao || ''));
+      if (neg.length) { const porEsp = {}; neg.forEach(v => porEsp[v.especie] = (porEsp[v.especie] || 0) + 1);
+        add('medio', 'indeferidos', `${neg.length} pedido(s) negado(s) antes: conferir as datas para cobrar atrasados`, `O CNIS registra pedidos indeferidos (${Object.entries(porEsp).map(([e, q]) => q + ' da espécie ' + e).join(', ')}), mas não mostra a data. Se o BPC foi negado antes e a deficiência e a renda da família já eram as mesmas, cabe cobrar as parcelas desde o primeiro requerimento (limitadas aos últimos 5 anos). Indeferimento não tem prazo de decadência.`, { decai: false, base: 'STF ADI 6.096; Súmula 85 do STJ; LOAS, art. 20' }); pedir.add('Datas e motivos dos pedidos negados (Meu INSS → "Consultar pedidos" / cópia dos processos)'); }
+      if (tC && tC.meses >= 180) add('alto', 'bpc-aposentadoria', `Tem cerca de ${am(tC.meses)} de contribuição: pode ter direito a aposentadoria no lugar do BPC`, esp === '88' ? 'Com 180 contribuições e a idade mínima, a aposentadoria por idade substitui o BPC com vantagem: paga 13º, deixa pensão e não depende da renda da família. Conferir a idade na data do pedido e, se faltar pouco, tempo rural ou vínculos fora do CNIS (aposentadoria híbrida, STJ Tema 1.007).' : 'Com 15 anos de contribuição na condição de pessoa com deficiência, cabe a aposentadoria por idade da pessoa com deficiência (60 anos homem, 55 mulher) ou, com mais tempo, a por tempo de contribuição da LC 142/2013 — ambas com 13º e pensão.', { decai: false, base: esp === '88' ? 'art. 48 da Lei 8.213; STJ Tema 1.007' : 'LC 142/2013' });
+      else if (tC && tC.meses >= 120 && esp === '88') add('info', 'bpc-aposentadoria', `Faltam cerca de ${180 - tC.meses} contribuições para a aposentadoria por idade`, 'Vale procurar tempo que não está no CNIS (rural, CTPS antiga, carnês) — completando 180 contribuições, a aposentadoria por idade substitui o BPC com 13º e pensão.', { decai: false, base: 'art. 48 da Lei 8.213; STJ Tema 1.007' });
+      add('info', 'bpc-cuidados', 'Cuidados para não perder o BPC', 'Manter o CadÚnico atualizado (no máximo 2 anos sem atualizar) e avisar mudança de renda ou de endereço: o INSS revisa o benefício periodicamente. Se a pessoa com deficiência começar a trabalhar, o BPC é suspenso e ela pode pedir o auxílio-inclusão (metade do BPC).', { decai: false, base: 'LOAS, arts. 21 e 26-A (Lei 14.176/2021); Decreto 11.016/2022' });
+    }
+
     /* ---- 11. Indícios pelos indicadores do CNIS ---- */
     if (cn) {
       const inds = new Set(cn.vinculos.flatMap(v => v.indicadores.concat(v.rem.flatMap(r => r.ind))));
@@ -245,11 +275,12 @@
 
     /* ---- o que perguntar (o que nenhum documento mostra) ---- */
     const perguntas = [];
-    if (APOS.includes(esp) || !esp) { perguntas.push('Trabalhou na roça antes de 1991 (mesmo criança, com os pais)? Tempo rural pode ser averbado sem contribuição.'); perguntas.push('Serviu ao Exército, foi aluno-aprendiz ou trabalhou em órgão público com regime próprio? Esse tempo pode ser trazido por certidão.'); }
-    perguntas.push('Ganhou ação trabalhista depois da concessão? As verbas entram no cálculo (prazo conta do trânsito em julgado).');
-    if (!INCAP.includes(esp)) perguntas.push('Trabalhou com ruído, produto químico, hospital, frio, eletricidade? Pedir o PPP de cada empresa.');
+    if (assist) { perguntas.push('A doença ou deficiência de hoje é a mesma que deu o auxílio no passado? Desde quando não consegue trabalhar?'); perguntas.push('Trabalhou com carteira, pagou carnê ou trabalhou na roça em algum período que não aparece no CNIS?'); perguntas.push('Tem dependentes (cônjuge, filhos menores)? O BPC não deixa pensão; o benefício previdenciário deixa.'); }
+    if (!assist && (APOS.includes(esp) || !esp)) { perguntas.push('Trabalhou na roça antes de 1991 (mesmo criança, com os pais)? Tempo rural pode ser averbado sem contribuição.'); perguntas.push('Serviu ao Exército, foi aluno-aprendiz ou trabalhou em órgão público com regime próprio? Esse tempo pode ser trazido por certidão.'); }
+    if (!assist) perguntas.push('Ganhou ação trabalhista depois da concessão? As verbas entram no cálculo (prazo conta do trânsito em julgado).');
+    if (!INCAP.includes(esp) && !assist) perguntas.push('Trabalhou com ruído, produto químico, hospital, frio, eletricidade? Pedir o PPP de cada empresa.');
     if (APOS.includes(esp)) perguntas.push('Tem deficiência (física, auditiva, visual, mental) desde antes de se aposentar? A aposentadoria da pessoa com deficiência (LC 142/2013) tem regras melhores.');
-    if (noMinimo) add('info', 'minimo', 'Benefício concedido no salário mínimo', 'Revisão só compensa se a renda recalculada passar do salário mínimo — as estimativas acima já consideram isso.', { decai: false });
+    if (noMinimo && !assist) add('info', 'minimo', 'Benefício concedido no salário mínimo', 'Revisão só compensa se a renda recalculada passar do salário mínimo — as estimativas acima já consideram isso.', { decai: false });
 
     const ord = { alto: 0, medio: 1, info: 2, venc: 3, nao: 4 }; T.sort((a, b) => ord[a.nivel] - ord[b.nivel] || ((b.ganho && b.ganho.mensal) || 0) - ((a.ganho && a.ganho.mensal) || 0));
     const melhor = T.filter(t => t.ganho && t.nivel !== 'nao' && t.nivel !== 'venc').sort((a, b) => b.ganho.mensal - a.ganho.mensal)[0] || null;
