@@ -55,6 +55,11 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 .chk{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;margin-top:10px;font-size:13px}
 .chk div{display:flex;gap:6px}.chk .s{color:#86efac}.chk .n{color:#fca5a5}.chk small{color:var(--suave)}
 .liga{font-size:12px;color:var(--ciano);margin-top:4px}
+.mais{display:inline-block;margin-top:8px;font-size:13px}.mais a{color:var(--ciano)}
+.anx{margin-top:14px;padding-top:12px;border-top:1px dashed var(--borda)}
+.anx h3{font-size:15px;margin-bottom:4px}.anx .chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+.anx .chips span{font-size:12px;border:1px solid var(--borda);border-radius:99px;padding:3px 10px;color:var(--azul2);background:rgba(30,144,255,.08)}
+.al .fonte{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--suave);margin-left:auto;font-weight:500}
 @media(max-width:700px){.chk{grid-template-columns:1fr}}
 @media(max-width:700px){.marg{grid-template-columns:1fr 1fr}main{padding:14px}}
 @media print{header,#drop,.acoes,.aviso,.sub{display:none}body{background:#fff;color:#000}.vidro{background:#fff;border-color:#ccc}.al p,.al .det{color:#000}}
@@ -64,9 +69,10 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 <header><div class="marca" style="cursor:pointer" title="Voltar para a página inicial" onclick="location.href=document.getElementById('voltar').href">XYZ <span>CRM</span></div><a class="voltar" id="voltar" href="./">← Voltar ao CRM</a></header>
 <main>
   <h1>🔎 Analisar HISCON e contratos</h1>
-  <p class="sub">Arraste o <b>HISCON</b> (Histórico de Empréstimo Consignado do Meu INSS) e/ou os <b>contratos</b> baixados dos bancos — o sistema reconhece cada um sozinho. A leitura é feita aqui no seu computador — o arquivo não é enviado para lugar nenhum.</p>
+  <p class="sub">Arraste o <b>HISCON</b> (Histórico de Empréstimo Consignado do Meu INSS) e/ou os <b>contratos</b> baixados dos bancos — o sistema reconhece cada um sozinho. A leitura é feita aqui no seu computador — o arquivo não é enviado para lugar nenhum.<br>
+  <span class="mais">📎 <b>Para aprofundar</b>, solte junto: <b>extrato de pagamentos</b> (histórico de créditos do Meu INSS), <b>Registrato</b> do Banco Central (contas e empréstimos), <b>carta de concessão</b> e <b>CNIS</b>. O sistema cruza cada um com o HISCON do mesmo cliente. · <a id="ir-prev" href="previdenciario.html">⚖️ Revisão do benefício (Previdenciário)</a></span></p>
   <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
-    <b>📄 Solte HISCONs e contratos aqui ou clique para escolher</b><small>Pode mandar vários de uma vez (PDF)</small></label>
+    <b>📄 Solte HISCONs, contratos e anexos aqui ou clique para escolher</b><small>Pode mandar vários de uma vez (PDF) — HISCON, contratos, extrato de pagamentos, Registrato, carta de concessão, CNIS</small></label>
   <div id="erro" class="erro"></div>
 
   <section class="vidro" style="margin-top:22px;padding:18px" id="lote">
@@ -88,6 +94,7 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="hiscon.js?v=20261118b"></script>
+<script src="docs-inss.js?v=20261118a"></script>
 <script src="presenca.js?v=20261118e"></script>
 <script type="module">
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
@@ -107,32 +114,67 @@ try {
 } catch (e) { location.href = './'; }
 
 if (/[?&]embed=1/.test(location.search)) { document.body.classList.add('embed'); const h = document.querySelector('body>header'); if (h) h.style.display = 'none'; }
-if (/de=controle/.test(location.search)) { const v = $('#voltar'); v.href = '../controle/'; v.textContent = '← Voltar ao Controle'; }
+if (/de=controle/.test(location.search)) { const v = $('#voltar'); v.href = '../controle/'; v.textContent = '← Voltar ao Controle'; $('#ir-prev').href = 'previdenciario.html?de=controle'; }
 const drop = $('#drop');
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('sobre'); }));
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('sobre'); }));
 drop.addEventListener('drop', e => processar([...e.dataTransfer.files]));
 $('#arq').onchange = e => { processar([...e.target.files]); e.target.value = ''; };
 
-const HISCONS = [];
+const HISCONS = [], ANEXOS = [], CARTOES = [];
 async function processar(arqs) {
   $('#erro').textContent = '';
   const pdfs = arqs.filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
-  // HISCONs primeiro, para os contratos poderem ser ligados ao cliente
+  // HISCONs primeiro, para os contratos e anexos poderem ser ligados ao cliente
   const lidos = [];
   for (const f of pdfs) {
     try { lidos.push({ f, doc: await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise }); }
     catch (e) { $('#erro').textContent = `${f.name}: não consegui abrir o PDF (${e.message})`; }
   }
-  const contratos = [];
+  const contratos = [], anexar = d => { const i = ANEXOS.findIndex(x => x.tipo === d.tipo && XYZDocs.mesmoNome(x.nome, d.nome)); if (i >= 0) ANEXOS.splice(i, 1); ANEXOS.push(d); };
   for (const { f, doc } of lidos) {
-    try { const h = await lerHiscon(doc); HISCONS.push(h); $('#saida').prepend(cartao(h, analisarHiscon(h), f.name)); }
-    catch (e) { contratos.push({ f, doc }); }
+    try {
+      // anexos do Meu INSS / Registrato primeiro (o histórico de créditos também fala em "consignado")
+      const t = await textoPdf(doc), tp = window.XYZDocs && XYZDocs.tipoDoc(t);
+      if (tp) { const d = XYZDocs.ler(t); d.arquivo = f.name; anexar(d); continue; }
+      let h = null; try { h = await lerHiscon(doc); } catch (e) {}
+      if (h) { HISCONS.push(h); const el = cartao(h, analisarHiscon(h), f.name); CARTOES.push({ h, el }); $('#saida').prepend(el); }
+      else contratos.push({ f, t });
+    } catch (e) { $('#erro').textContent = `${f.name}: ${e.message}`; console.error(e); }
   }
-  for (const { f, doc } of contratos) {
-    try { $('#saida').prepend(cartaoContrato(analisarContrato(await textoPdf(doc), f.name))); }
+  for (const { f, t } of contratos) {
+    try { $('#saida').prepend(cartaoContrato(analisarContrato(t, f.name))); }
     catch (e) { $('#erro').textContent = `${f.name}: ${e.message}`; console.error(e); }
   }
+  desenharAnexos();
+}
+/* ---------- ANEXOS (extrato de pagamentos, Registrato, carta de concessão, CNIS) ---------- */
+const htmlAl = a => `<div class="al ${a.nivel}"><h4><span class="tag">${a.nivel === 'alto' ? 'forte' : a.nivel === 'medio' ? 'atenção' : 'info'}</span>${esc(a.titulo)}<span class="fonte">${esc(a.fonte || '')}</span></h4><p>${esc(a.tese)}</p>${a.detalhe ? `<p class="det">${a.detalhe.split(' | ').map(esc).join('<br>')}</p>` : ''}</div>`;
+function blocoAnexos(h, docs) {
+  const { alertas } = XYZDocs.cruzar(h, docs), fortes = alertas.filter(a => a.nivel === 'alto').length;
+  return `<h3>📎 Anexos cruzados${h ? ' com o HISCON' : ''}${fortes ? ` — <span style="color:#fca5a5">${fortes} indício(s) forte(s)</span>` : ''}</h3>
+    <div class="chips">${docs.map(d => `<span title="${esc(d.arquivo || '')}">${esc(XYZDocs.NOMES[d.tipo])}</span>`).join('')}</div>
+    <div class="alertas">${alertas.map(htmlAl).join('')}</div>`;
+}
+function desenharAnexos() {
+  if (!window.XYZDocs) return;
+  const usados = new Set();
+  CARTOES.forEach(({ h, el }) => {
+    const meus = ANEXOS.filter(d => XYZDocs.mesmaPessoa(h, d)); meus.forEach(d => usados.add(d));
+    const bx = el.querySelector('[data-anexos]'); if (!bx) return;
+    bx.hidden = !meus.length; bx.innerHTML = meus.length ? blocoAnexos(h, meus) : '';
+    h._anexos = meus.length ? XYZDocs.cruzar(h, meus).alertas : [];
+  });
+  // anexos sem HISCON do mesmo cliente: mostra o que dá para dizer só com eles
+  document.querySelectorAll('.cli.solto').forEach(e => e.remove());
+  const soltos = {}; ANEXOS.filter(d => !usados.has(d)).forEach(d => { const k = XYZDocs.util.semAc(d.nome || d.instituidor || '?'); (soltos[k] = soltos[k] || []).push(d); });
+  Object.values(soltos).forEach(docs => {
+    const div = document.createElement('section'); div.className = 'cli vidro solto';
+    const prev = docs.some(d => d.tipo === 'carta' || d.tipo === 'cnis');
+    div.innerHTML = `<div class="cli-top"><div><h2>📎 ${esc(docs[0].nome || 'Documento')}</h2><div class="meta">${HISCONS.length ? '<b style="color:#fde68a">Não achei HISCON deste cliente entre os que você abriu</b> (o nome ou o número do benefício não bate).' : 'Solte também o <b>HISCON</b> deste cliente para cruzar os contratos.'}${prev ? ' Para saber se o benefício pode ser revisto, abra a carta e o CNIS no <a href="' + $('#ir-prev').href + '" style="color:var(--ciano)">Previdenciário</a>.' : ''}</div></div></div>
+      <div class="anx" style="border-top:0;margin-top:6px;padding-top:0">${blocoAnexos(null, docs)}</div>`;
+    $('#saida').prepend(div);
+  });
 }
 /* ---------- LOTE ---------- */
 let LOTE = [];
@@ -231,10 +273,12 @@ function cartao(h, al, arquivo) {
       <div class="tab"><table><thead><tr><th>Contrato</th><th>Banco</th><th>Situação</th><th>Origem</th><th>Inclusão</th><th>Parc.</th><th>Parcela</th><th>Emprestado</th><th>Liberado</th><th>IOF</th><th>Dívida paga</th><th>Juros</th><th>CET</th><th>Exclusão</th></tr></thead><tbody>${linhas}</tbody></table></div>
       ${cart ? `<div class="tab"><table><thead><tr><th>Tipo</th><th>Contrato</th><th>Banco</th><th>Inclusão</th><th>Limite</th><th>Reservado</th></tr></thead><tbody>${cart}</tbody></table></div>` : ''}
     </details>
+    <div class="anx" data-anexos hidden></div>
     <div class="acoes"><button class="btn sec" data-copiar>📋 Copiar resumo (WhatsApp)</button><button class="btn sec" onclick="window.print()">🖨️ Imprimir / PDF</button></div>`;
   div.querySelector('[data-copiar]').onclick = async e => {
+    const anx = (h._anexos || []).filter(a => a.nivel !== 'info').map(a => `• [${a.fonte}] ${a.titulo}${a.detalhe ? ' — ' + a.detalhe.replace(/ \| /g, '; ') : ''}`).join('\n');
     const t = `*Análise HISCON — ${h.nome}*\nNB ${h.nb} · ${h.beneficio}\n${ver[1]}\n\n` + al.filter(a => a.nivel !== 'info').map(a => `• ${a.titulo}${a.detalhe ? ' — ' + a.detalhe : ''}${a.contratos.length ? '\n   ' + a.contratos.join('; ') : ''}`).join('\n');
-    await navigator.clipboard.writeText(t); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar resumo (WhatsApp)', 2000);
+    await navigator.clipboard.writeText(t + (anx ? '\n\n*Anexos*\n' + anx : '')); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar resumo (WhatsApp)', 2000);
   };
   return div;
 }

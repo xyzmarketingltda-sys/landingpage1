@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Previdenciário · revisão de benefício · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#02060f;--painel:rgba(5,13,32,.82);--painel2:rgba(9,24,56,.85);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--azul2:#8cc8ff;--ciano:#00e5ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--borda)}
+.marca{font-weight:800;font-size:22px}.marca span{color:var(--ciano)}
+a.voltar{color:var(--azul2);text-decoration:none;font-size:14px}
+main{max-width:1180px;margin:0 auto;padding:22px}
+h1{font-size:22px;margin-bottom:6px}.sub{color:var(--suave);font-size:14px;margin-bottom:18px;line-height:1.55}.sub a{color:var(--ciano)}
+.vidro{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);backdrop-filter:blur(14px)}
+#drop{display:block;padding:34px;text-align:center;border:2px dashed rgba(0,229,255,.4);cursor:pointer;transition:.2s}
+#drop.sobre{background:rgba(0,229,255,.08);border-color:var(--ciano)}
+#drop b{font-size:17px;display:block;margin-bottom:6px}#drop small{color:var(--suave)}
+.btn{background:linear-gradient(135deg,#0052ff,#1e90ff 55%,#00b8ff);border:0;border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer}
+.btn.sec{background:var(--painel2);border:1px solid var(--borda)}
+.cli{margin-top:20px;padding:18px}
+.cli-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.cli h2{font-size:19px}.cli .meta{color:var(--suave);font-size:13px;margin-top:4px;line-height:1.6}.meta b{color:var(--texto)}
+.placar{display:flex;gap:8px;flex-wrap:wrap}
+.placar span,.chips span{border-radius:99px;padding:5px 12px;font-size:13px;font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chips span{font-size:12px;font-weight:600;padding:3px 10px}
+.alto{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}
+.medio{background:rgba(251,191,36,.12);color:#fde68a;border:1px solid rgba(251,191,36,.45)}
+.info{background:rgba(30,144,255,.12);color:var(--azul2);border:1px solid var(--borda)}
+.ok{background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.45)}
+.nao,.venc{background:rgba(148,163,184,.08);color:#a8b5c9;border:1px solid rgba(148,163,184,.3)}
+.veredito,.prazo{margin:12px 0 0;padding:11px 14px;border-radius:12px;font-weight:600;font-size:14px;line-height:1.5}
+.prazo small{font-weight:400;display:block;opacity:.9;margin-top:2px}
+.alertas{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.al{border-radius:12px;padding:11px 13px}
+.al h4{font-size:14px;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.al p{font-size:13px;color:#dbe7f7;line-height:1.55}
+.al .det{color:#fff;font-weight:600;margin-top:5px}
+.al .base{font-size:12px;color:var(--suave);margin-top:5px}
+.al .ganho{display:inline-block;margin-top:7px;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.45);color:#86efac;border-radius:8px;padding:4px 9px;font-size:12.5px;font-weight:700}
+.tag{font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:99px;background:rgba(255,255,255,.1)}
+details{margin-top:14px}summary{cursor:pointer;color:var(--azul2);font-size:14px;font-weight:600}
+.tab{overflow:auto;margin-top:10px;border:1px solid var(--borda);border-radius:10px;max-height:420px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:#071430;text-align:left;padding:7px;color:var(--suave);font-weight:600;white-space:nowrap;position:sticky;top:0}
+td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}td.n{text-align:right}td.q{white-space:normal}
+.lista{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lista div{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.6}
+.lista h4{font-size:13px;color:var(--azul2);margin-bottom:4px}.lista ul{padding-left:18px}
+.sexo{margin-top:8px;font-size:13px;color:var(--suave);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sexo button{background:var(--painel2);border:1px solid var(--borda);border-radius:99px;padding:3px 12px;cursor:pointer;font-size:12.5px}.sexo button.sel{border-color:var(--ciano);color:var(--ciano);font-weight:700}
+.acoes{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.aviso{font-size:12px;color:var(--suave);margin-top:18px;line-height:1.6}
+.erro{color:#fca5a5;margin-top:12px}
+@media(max-width:700px){.lista{grid-template-columns:1fr}main{padding:14px}}
+@media print{header,#drop,.acoes,.sub,.sexo button:not(.sel){display:none}body{background:#fff;color:#000}.vidro{background:#fff;border-color:#ccc}.al p,.al .det,.meta b{color:#000}details{display:block}}
+</style>
+</head>
+<body>
+<header><div class="marca" style="cursor:pointer" onclick="location.href=document.getElementById('voltar').href">XYZ <span>CRM</span></div><a class="voltar" id="voltar" href="./">← Voltar ao CRM</a></header>
+<main>
+  <h1>⚖️ Previdenciário — o benefício pode ser revisto?</h1>
+  <p class="sub">Solte o <b>CNIS</b> e a <b>carta de concessão</b> do cliente (os dois saem do Meu INSS em PDF). O sistema compara salário por salário, confere tempo, regra aplicada e prazo, e aponta as revisões com indício — e também as teses que <b>não cabem mais</b>. Se tiver, solte junto o <b>histórico de créditos</b> (mostra a renda de hoje). A leitura é feita aqui no seu computador: nenhum arquivo é enviado.<br>
+  Para pensão por morte, anexe o CNIS de quem faleceu. · <a id="ir-hiscon" href="hiscon.html">🔎 Analisar HISCON e contratos</a></p>
+  <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
+    <b>📄 Solte CNIS, carta de concessão e histórico de créditos aqui ou clique para escolher</b><small>Pode mandar de vários clientes de uma vez — o sistema separa pelo nome</small></label>
+  <div id="erro" class="erro"></div>
+  <div id="saida"></div>
+  <p class="aviso">⚖️ Triagem automática de <b>indícios</b>, para o advogado decidir onde vale aprofundar. Os valores são <b>estimativas</b> (renda de hoje projetada pelo reajuste do teto; atrasados dos últimos 5 anos sem correção) e não substituem o cálculo previdenciário. O prazo de 10 anos é estimado pela data de concessão: confirme a data do primeiro pagamento. <b>Atenção:</b> pedir revisão reabre todo o ato de concessão — se houver erro a favor do segurado, o benefício pode diminuir; simule o cálculo completo antes de protocolar. Situação das teses conferida em novembro de 2026 (STF Temas 76, 334, 1.102, 1.209 e 1.300; STJ Temas 1.057, 1.070 e 1.117; TNU Tema 353).</p>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="hiscon.js?v=20261118b"></script>
+<script src="docs-inss.js?v=20261118a"></script>
+<script src="previd.js?v=20261118a"></script>
+<script src="presenca.js?v=20261118e"></script>
+<script type="module">
+import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
+pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const brl = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dBR = s => s ? s.split('-').reverse().join('/') : '—';
+const { am } = XYZPrevid.util, D = XYZDocs;
+
+// só para quem está logado no CRM
+try {
+  const C = window.CRM_CONFIG || {};
+  const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) location.href = './';
+  else if (!/[?&]embed=1/.test(location.search)) sb.from('perfis').select('id,nome').eq('id', session.user.id).single().then(({ data }) => { if (data && window.XYZPresenca) XYZPresenca.entrar(sb, data, {}); });
+} catch (e) { location.href = './'; }
+if (/de=controle/.test(location.search)) { const v = $('#voltar'); v.href = '../controle/'; v.textContent = '← Voltar ao Controle'; $('#ir-hiscon').href = 'hiscon.html?de=controle'; }
+
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('sobre'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('sobre'); }));
+drop.addEventListener('drop', e => processar([...e.dataTransfer.files]));
+$('#arq').onchange = e => { processar([...e.target.files]); e.target.value = ''; };
+
+const PESSOAS = [];   // { docs: [], sexo: null, el }
+const daPessoa = (p, d) => p.docs.some(x => D.mesmoNome(x.nome, d.nome) || (x.instituidor && D.mesmoNome(x.instituidor, d.nome)) || (d.instituidor && D.mesmoNome(d.instituidor, x.nome)) || (x.nb && d.nb && x.nb === d.nb));
+async function processar(arqs) {
+  $('#erro').textContent = ''; const erros = [];
+  for (const f of arqs.filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name))) {
+    try {
+      const t = await textoPdf(await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise), tp = D.tipoDoc(t);
+      if (!['cnis', 'carta', 'hiscre'].includes(tp)) { erros.push(`${f.name}: ${tp ? 'este documento (' + D.NOMES[tp] + ') é usado na tela do HISCON, não aqui' : /HIST[ÓO]RICO DE EMPR/i.test(t) ? 'isto é um HISCON — use a tela "Analisar HISCON"' : t.trim().length < 80 ? 'PDF sem texto (foto/escaneado) — baixe o original no Meu INSS' : 'não reconheci como CNIS, carta de concessão ou histórico de créditos'}`); continue; }
+      const d = D.ler(t); d.arquivo = f.name;
+      let p = PESSOAS.find(p => daPessoa(p, d)); if (!p) { p = { docs: [], sexo: null }; PESSOAS.push(p); }
+      const i = p.docs.findIndex(x => x.tipo === d.tipo && D.mesmoNome(x.nome, d.nome)); if (i >= 0) p.docs.splice(i, 1); p.docs.push(d);
+    } catch (e) { erros.push(`${f.name}: ${e.message}`); console.error(e); }
+  }
+  $('#erro').innerHTML = erros.map(esc).join('<br>');
+  PESSOAS.forEach(desenhar);
+}
+
+const TAG = { alto: 'forte', medio: 'atenção', info: 'info', venc: 'prazo vencido', nao: 'não propor' };
+const htmlTese = t => `<div class="al ${t.nivel}"><h4><span class="tag">${TAG[t.nivel]}</span>${esc(t.titulo)}</h4><p>${esc(t.texto)}</p>
+  ${t.numeros ? `<p class="det">${t.numeros.split(' | ').map(esc).join('<br>')}</p>` : ''}
+  ${t.ganho && t.nivel !== 'nao' ? `<span class="ganho">≈ +${brl(t.ganho.mensal)}/mês hoje${t.nivel !== 'venc' && t.ganho.atrasados > 0 ? ' · atrasados (até 5 anos) ≈ ' + brl(t.ganho.atrasados) : ''} · estimativa</span>` : ''}
+  ${t.base ? `<p class="base">Fundamento: ${esc(t.base)}${t.decai === false ? ' · sem o prazo de 10 anos' : ''}</p>` : ''}</div>`;
+
+function desenhar(p) {
+  const R = XYZPrevid.analisar(p.docs, { sexo: p.sexo }), B = R.B, T = R.teses;
+  const n = k => T.filter(t => t.nivel === k), alto = n('alto'), medio = n('medio'), info = n('info'), venc = n('venc'), nao = n('nao');
+  const el = p.el || document.createElement('section'); el.className = 'cli vidro'; if (!p.el) { p.el = el; $('#saida').prepend(el); }
+  const tem = tp => p.docs.some(d => d.tipo === tp), chip = (tp, rot) => `<span class="${tem(tp) ? 'ok' : 'medio'}">${tem(tp) ? '✔' : '✘'} ${rot}</span>`;
+  const idade = B.nascimento ? D.util.anos(B.nascimento, new Date().toISOString().slice(0, 10)) : null;
+  const pz = R.prazo, pzTxt = !pz ? '' : pz.estado === 'vencido' ? `⏰ Prazo de 10 anos para revisar a concessão: <b>vencido em ${dBR(pz.limite)}</b><small>Estimado pela ${pz.base}. Só restam as teses sem decadência (teto, reflexos de ação trabalhista) — salvo se já houve pedido de revisão ou ação dentro do prazo.</small>`
+    : `⏳ Prazo para revisar a concessão: <b>até ${dBR(pz.limite)}</b> — faltam ${am(pz.faltam)}${pz.estado === 'urgente' ? ' · <b>URGENTE</b>' : ''}<small>Estimado pela ${pz.base} (o prazo conta do 1º dia do mês seguinte ao primeiro pagamento — confirme no histórico de créditos).</small>`;
+  const ver = alto.length ? ['alto', `🚨 ${alto.length} revisão(ões) com indício forte${R.melhor ? ` — a melhor estimativa é de +${brl(R.melhor.ganho.mensal)}/mês` : ''}. Encaminhar para cálculo.`]
+    : medio.length ? ['medio', '⚠️ Há pontos que podem render revisão — vale pedir os documentos indicados e aprofundar.']
+    : venc.length ? ['nao', '⏰ Havia indício de revisão, mas o prazo de 10 anos já passou.']
+    : ['ok', R.temCarta && R.temCnis ? '✅ Nenhum indício de revisão encontrado nos documentos.' : 'ℹ️ Faltam documentos para concluir — veja abaixo o que pedir.'];
+  const cmp = R.comparacao, linhasCmp = cmp ? cmp.conc.map(r => [r, 'concomitante']).concat(cmp.menor.map(r => [r, 'a menor']), cmp.falta.map(r => [r, 'fora do cálculo'])).sort((a, b) => a[0].comp.localeCompare(b[0].comp)) : [];
+  const vinc = R.cnis ? R.cnis.vinculos : [];
+  el.innerHTML = `
+    <div class="cli-top"><div><h2>${esc(B.nome || 'Cliente')}</h2>
+      <div class="meta">${B.especie ? `<b>${esc(B.especieNome || 'Benefício')} (${esc(B.especie)})</b>` : 'Benefício não identificado'}${B.nb ? ' · NB ' + esc(B.nb) : ''}${B.instituidor ? ' · instituidor: ' + esc(B.instituidor) : ''}<br>
+      ${B.dib ? 'Início (DIB) <b>' + dBR(B.dib) + '</b>' : ''}${B.ddb ? ' · concedido em ' + dBR(B.ddb) : ''}${B.rmi ? ' · renda inicial <b>' + brl(B.rmi) + '</b>' : ''}${B.mrAtual ? ' · renda hoje <b>' + brl(B.mrAtual) + '</b>' : ''}${idade != null ? ' · ' + idade + ' anos' : ''}
+      ${R.carta && R.carta.tc ? '<br>Tempo na carta: ' + am(R.carta.tc.meses) : ''}${R.tempoCnis ? (R.carta && R.carta.tc ? ' · ' : '<br>') + 'tempo pelo CNIS: ≈ ' + am(R.tempoCnis.meses) : ''}${R.carta && R.carta.coef != null ? ' · coeficiente ' + XYZPrevid.util.pct(R.carta.coef) : ''}${R.carta && R.carta.fator ? ' · fator ' + String(R.carta.fator).replace('.', ',') : ''}</div>
+      <div class="chips">${chip('carta', 'Carta de concessão')}${chip('cnis', 'CNIS')}${chip('hiscre', 'Histórico de créditos')}</div>
+      <div class="sexo">Sexo${B.sexoFonte && B.sexoFonte !== 'informado' ? ` <small>(sugerido ${esc(B.sexoFonte)} — confira)</small>` : ''}: <button data-sx="F" class="${B.sexo === 'F' ? 'sel' : ''}">Mulher</button><button data-sx="M" class="${B.sexo === 'M' ? 'sel' : ''}">Homem</button>${!B.sexo ? ' <small style="color:#fde68a">escolha para simular as regras que dependem do sexo</small>' : ''}</div></div>
+      <div class="placar"><span class="alto">${alto.length} forte(s)</span><span class="medio">${medio.length} atenção</span></div></div>
+    ${pzTxt ? `<div class="prazo ${pz.estado === 'vencido' ? 'nao' : pz.estado === 'urgente' ? 'alto' : 'info'}">${pzTxt}</div>` : ''}
+    <div class="veredito ${ver[0]}">${ver[1]}</div>
+    <div class="alertas">${alto.concat(medio, info).map(htmlTese).join('')}</div>
+    ${venc.length ? `<details><summary>⏰ Caberiam, mas o prazo de 10 anos venceu (${venc.length})</summary><div class="alertas">${venc.map(htmlTese).join('')}</div></details>` : ''}
+    ${nao.length ? `<details><summary>🚫 Teses encerradas — não propor (${nao.length})</summary><div class="alertas">${nao.map(htmlTese).join('')}</div></details>` : ''}
+    <div class="lista">${R.pedir.length ? `<div><h4>📄 O que pedir ao cliente</h4><ul>${R.pedir.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}<div><h4>❓ Perguntas que os documentos não respondem</h4><ul>${R.perguntas.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div>
+    ${linhasCmp.length ? `<details><summary>Ver os ${linhasCmp.length} meses em que o CNIS difere do cálculo</summary><div class="tab"><table><thead><tr><th>Competência</th><th>Situação</th><th style="text-align:right">No CNIS (limitado ao teto)</th><th style="text-align:right">Usado pelo INSS</th><th>Vínculos no CNIS</th></tr></thead><tbody>${linhasCmp.map(([r, s]) => `<tr><td>${dBR(r.comp)}</td><td>${s}</td><td class="n">${brl(r.cnis)}</td><td class="n">${r.carta == null ? '—' : brl(r.carta)}</td><td class="q">${r.vinc.map(v => esc((v.origem || 'vínculo ' + v.seq) + ' ' + brl(v.valor) + (v.ind.length ? ' [' + [...new Set(v.ind)].join(', ') + ']' : ''))).join(' + ')}</td></tr>`).join('')}</tbody></table></div></details>` : ''}
+    ${vinc.length ? `<details><summary>Ver vínculos e benefícios do CNIS (${vinc.length})</summary><div class="tab"><table><thead><tr><th>#</th><th>Origem</th><th>Tipo</th><th>Início</th><th>Fim</th><th style="text-align:right">Remun.</th><th>Indicadores / situação</th></tr></thead><tbody>${vinc.map(v => `<tr><td>${v.seq}</td><td class="q">${esc(v.origem || '')}</td><td>${esc(v.tipo === 'beneficio' ? 'benefício' : v.filiado || v.tipo)}</td><td>${dBR(v.inicio)}</td><td>${v.fim ? dBR(v.fim) : v.ultRemun ? 'últ. rem. ' + dBR(v.ultRemun) : '—'}</td><td class="n">${v.tipo === 'beneficio' ? '' : v.rem.length}</td><td class="q">${esc([...new Set(v.indicadores.concat(v.rem.flatMap(r => r.ind)))].join(', ') || v.situacao || '')}</td></tr>`).join('')}</tbody></table></div></details>` : ''}
+    <div class="acoes"><button class="btn sec" data-copiar>📋 Copiar resumo (WhatsApp)</button><button class="btn sec" onclick="window.print()">🖨️ Imprimir / PDF</button></div>`;
+  el.querySelectorAll('[data-sx]').forEach(b => b.onclick = () => { p.sexo = p.sexo === b.dataset.sx ? null : b.dataset.sx; desenhar(p); });
+  el.querySelector('[data-copiar]').onclick = async e => {
+    const lin = t => `• ${t.titulo}${t.ganho ? ` (≈ +${brl(t.ganho.mensal)}/mês — estimativa)` : ''}${t.base ? ' — ' + t.base : ''}`;
+    const txt = `*Triagem previdenciária — ${B.nome}*\n${B.especieNome || ''} (${B.especie || '—'}) · DIB ${dBR(B.dib)}${B.rmi ? ' · RMI ' + brl(B.rmi) : ''}\n${pz ? (pz.estado === 'vencido' ? 'Prazo de 10 anos VENCIDO em ' + dBR(pz.limite) : 'Prazo para revisar: até ' + dBR(pz.limite) + ' (estimado)') + '\n' : ''}\n` +
+      (alto.length ? '*Indícios fortes*\n' + alto.map(lin).join('\n') + '\n\n' : '') + (medio.length ? '*Atenção*\n' + medio.map(lin).join('\n') + '\n\n' : '') + (!alto.length && !medio.length ? 'Nenhum indício de revisão nos documentos.\n\n' : '') +
+      (R.pedir.length ? '*Pedir ao cliente*\n' + R.pedir.map(x => '• ' + x).join('\n') + '\n\n' : '') + (nao.length ? '*Não propor*\n' + nao.map(t => '• ' + t.titulo).join('\n') : '');
+    await navigator.clipboard.writeText(txt.trim()); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar resumo (WhatsApp)', 2000);
+  };
+}
+window.__previd = { PESSOAS, processar };
+</script>
+</body>
+</html>
