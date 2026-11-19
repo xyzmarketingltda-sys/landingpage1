@@ -1332,6 +1332,17 @@ function comemorarDesafio() {
     else avisoCanto(`⚡ <b>${esc(r.atendente)}</b> cumpriu o desafio <b>${esc(desafio.titulo)}</b>!`);
   });
 }
+// aviso de reta final: uma vez por desafio, quando faltam 10 minutos (não aparece para quem já cumpriu)
+const dzAvisado10 = new Set();
+function avisoRetaFinal() {
+  if (!desafio || dzAvisado10.has(desafio.id)) return;
+  const falta = new Date(desafio.fim) - Date.now(); if (falta <= 0 || falta > 10 * 60000) return;
+  dzAvisado10.add(desafio.id);
+  const meu = painelDz.find(r => r.atendente_id === eu.id); if (meu && meu.cumpriu) return;
+  avisoCanto(`⏰ Faltam <b>${Math.max(1, Math.ceil(falta / 60000))} min</b> para acabar o desafio <b>${esc(desafio.titulo)}</b>!`);
+  particulas(eu.id, '⏰', 8);
+}
+setInterval(avisoRetaFinal, 15000);
 function avisoCanto(html) {
   let box = document.getElementById('avisos-canto');
   if (!box) { box = document.createElement('div'); box.id = 'avisos-canto'; box.style.cssText = 'position:fixed;right:16px;top:70px;z-index:11;display:flex;flex-direction:column;gap:8px;max-width:320px'; document.body.appendChild(box); }
