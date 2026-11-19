@@ -1311,7 +1311,34 @@ async function carregarDesafio(abrir) {
   const ps = await Promise.all((todos || []).map(d => sb.rpc('desafio_painel', { did: d.id })));
   alvosDz = [...new Set(ps.flatMap(r => (r.data || []).filter(x => !x.cumpriu).map(x => x.atendente_id)))];
   marcadoresDesafio();
+  comemorarDesafio();
   if (abrir && desafio) abrirDesafio();
+}
+// comemoração: quem acabou de cumprir vê o cartão abrir sozinho; os colegas veem um aviso; o prêmio sobe da mesa
+let dzVistos = null;
+function comemorarDesafio() {
+  const feitos = desafio ? painelDz.filter(r => r.cumpriu).map(r => desafio.id + ':' + r.atendente_id) : [];
+  if (dzVistos === null) { dzVistos = new Set(feitos); return; }       // primeira leitura: só registra, sem festa
+  painelDz.filter(r => r.cumpriu && !dzVistos.has(desafio.id + ':' + r.atendente_id)).forEach(r => {
+    dzVistos.add(desafio.id + ':' + r.atendente_id);
+    const i = mesaDe[r.atendente_id];
+    if (i != null) { const [x, z] = DESKS[i], t0 = T;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto('⚡ +' + brlM(desafio.premio).replace(/,00$/, ''), 220, 64, '900 38px Inter, sans-serif', '#fde68a', '#dc2626'), transparent: true, depthTest: false }));
+      sp.scale.set(8, 2.4, 1); sp.position.set(x * U, 6, z * U); scene.add(sp);
+      const f = t => { const k = (t - t0) / 9000; sp.position.y = 6 + k * 7; sp.material.opacity = Math.max(0, 1 - Math.max(0, k - .6) / .4); if (k >= 1) { scene.remove(sp); const q = animados.indexOf(f); if (q >= 0) animados.splice(q, 1); } };
+      animados.push(f); }
+    const a = atores.get(r.atendente_id); if (a) for (let n = 0; n < 14; n++) efeitos.push({ x: a.x, y: a.y, dx: (Math.random() - .5) * 60, v: 30 + Math.random() * 30, emoji: ['🎉', '⚡', '💰', '✨'][n % 4], ate: T + 1800 + Math.random() * 1500 });
+    if (r.atendente_id === eu.id) abrirDesafio();
+    else avisoCanto(`⚡ <b>${esc(r.atendente)}</b> cumpriu o desafio <b>${esc(desafio.titulo)}</b>!`);
+  });
+}
+function avisoCanto(html) {
+  let box = document.getElementById('avisos-canto');
+  if (!box) { box = document.createElement('div'); box.id = 'avisos-canto'; box.style.cssText = 'position:fixed;right:16px;top:70px;z-index:11;display:flex;flex-direction:column;gap:8px;max-width:320px'; document.body.appendChild(box); }
+  const el = document.createElement('div');
+  el.style.cssText = 'position:relative;padding:12px 34px 12px 14px;border-radius:10px;background:rgba(6,18,46,.96);border:1px solid rgba(251,191,36,.7);box-shadow:0 0 24px rgba(251,191,36,.35);color:#e6eefc;font-size:13px;line-height:1.4';
+  el.innerHTML = html + '<button aria-label="Fechar" style="position:absolute;top:4px;right:8px;background:none;border:0;color:#9fb3d1;font-size:18px;cursor:pointer">×</button>';
+  el.querySelector('button').onclick = () => el.remove(); box.appendChild(el); setTimeout(() => el.remove(), 15000);
 }
 // quem está em desafio: "!" vermelho na tela do PC e fumaça saindo da cabeça
 let marcaDz = [], animDz = [], alvosDz = [];
@@ -1327,7 +1354,7 @@ function marcadoresDesafio() {
   });
 }
 setInterval(() => { emDesafio().forEach(id => { const a = atores.get(id); if (a && a.alpha > .5) efeitos.push({ x: a.x, y: a.y, dx: (Math.random() - .5) * 18, v: 22 + Math.random() * 14, emoji: '💨', ate: T + 1400 + Math.random() * 500 }); }); }, 450);
-setInterval(() => carregarDesafio(false), 45000);
+setInterval(() => carregarDesafio(false), 20000);
 
 /* ---------- início ---------- */
 async function carregarEquipe() {
