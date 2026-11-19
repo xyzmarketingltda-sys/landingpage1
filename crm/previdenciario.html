@@ -74,6 +74,7 @@ td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}
   <div id="erro" class="erro"></div>
   <div id="resumo"></div>
   <div id="saida"></div>
+  <section class="cli vidro" id="banco" style="margin-top:16px"><h2>🗂️ Banco de oportunidades</h2><p class="aviso" style="margin:6px 0 10px">Cada cliente analisado com indício fica guardado aqui, ligado à atendente que o atendeu no CRM (pelo CPF). O advogado marca se quer ou não o caso.</p><button class="btn sec" id="bt-banco">Ver o banco</button><div id="banco-lista"></div></section>
   <p class="aviso">⚖️ Triagem automática de <b>indícios</b>, para o advogado decidir onde vale aprofundar. Os valores são <b>estimativas</b> (renda de hoje projetada pelo reajuste do teto; atrasados dos últimos 5 anos sem correção) e não substituem o cálculo previdenciário. O prazo de 10 anos é estimado pela data de concessão: confirme a data do primeiro pagamento. <b>Atenção:</b> pedir revisão reabre todo o ato de concessão — se houver erro a favor do segurado, o benefício pode diminuir; simule o cálculo completo antes de protocolar. Situação das teses conferida em novembro de 2026 (STF Temas 76, 334, 1.102, 1.209 e 1.300; STJ Temas 1.057, 1.070, 1.117 e 1.124; TNU Temas 256 e 353; STJ Tema 1.370 ainda em julgamento).</p>
 </main>
 <script src="config.js"></script>
@@ -81,7 +82,7 @@ td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}
 <script src="hiscon.js?v=20261118b"></script>
 <script src="docs-inss.js?v=20261119a"></script>
 <script src="previd-base.js?v=20261119a"></script>
-<script src="previd.js?v=20261119a"></script>
+<script src="previd.js?v=20261119b"></script>
 <script src="presenca.js?v=20261118e"></script>
 <script type="module">
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
@@ -101,7 +102,7 @@ try {
   // por enquanto só advogados parceiros e administradores usam esta tela
   const { data: eu } = await sb.from('perfis').select('id,nome,papel').eq('id', session.user.id).single();
   if (!eu || !['admin', 'advogado'].includes(eu.papel)) throw new Error('sem acesso');
-  document.body.hidden = false;
+  window.__sb = sb; window.__eu = eu; document.body.hidden = false;
   if (window.XYZPresenca && !/[?&]embed=1/.test(location.search)) XYZPresenca.entrar(sb, eu, {});
 } catch (e) { location.replace('./'); await new Promise(() => {}); }
 if (/de=controle/.test(location.search)) { const v = $('#voltar'); v.href = '../controle/'; v.textContent = '← Voltar ao Controle'; $('#ir-hiscon').href = 'hiscon.html?de=controle'; }
@@ -113,6 +114,7 @@ drop.addEventListener('drop', e => processar([...e.dataTransfer.files]));
 $('#arq').onchange = e => { processar([...e.target.files]); e.target.value = ''; };
 $('#pasta').onchange = e => { processar([...e.target.files], true); e.target.value = ''; };
 $('#bt-relatorio').onclick = relatorioLeitura;
+$('#bt-banco').onclick = verBanco;
 
 const PESSOAS = [];   // { docs: [], sexo: null, el }
 const daPessoa = (p, d) => p.docs.some(x => D.mesmoNome(x.nome, d.nome) || (x.instituidor && D.mesmoNome(x.instituidor, d.nome)) || (d.instituidor && D.mesmoNome(d.instituidor, x.nome)) || (x.nb && d.nb && x.nb === d.nb));
@@ -137,7 +139,29 @@ async function processar(arqs, lote) {
   const ig = LEITURA.ignorados, nIg = ig.hiscon + ig.outraTela + ig.semTexto + ig.naoReconhecido;
   $('#prog').textContent = lote ? `${pdfs.length} PDF(s) lidos · ${PESSOAS.length} cliente(s)${nIg ? ` · ${nIg} ignorado(s): ${ig.hiscon} HISCON, ${ig.semTexto} sem texto (foto), ${ig.outraTela + ig.naoReconhecido} de outro tipo` : ''}` : '';
   $('#erro').innerHTML = erros.slice(0, 30).map(esc).join('<br>') + (erros.length > 30 ? `<br>… e mais ${erros.length - 30}` : '');
-  PESSOAS.forEach(desenhar); desenharResumo();
+  PESSOAS.forEach(desenhar); desenharResumo(); PESSOAS.forEach(guardarOportunidade);
+}
+
+/* Guarda no banco quem tem indício (forte ou de atenção). Precisa do CPF, que vem do CNIS, do extrato ou da carta nova. */
+async function guardarOportunidade(p) {
+  try {
+    const R = p.R; if (!R || !window.__sb) return; const T = R.teses.filter(t => t.nivel === 'alto' || t.nivel === 'medio'); if (!T.length) return;
+    const cpf = (p.docs.map(d => d.cpf).find(Boolean) || '').replace(/\D/g, ''); if (cpf.length !== 11) { p.salvo = 'sem CPF nos documentos — não foi para o banco'; marcarSalvo(p); return; }
+    const chave = JSON.stringify(T.map(t => t.id)) + (p.sexo || ''); if (p.chaveSalva === chave) return; p.chaveSalva = chave;
+    const g = R.melhor && R.melhor.ganho;
+    const { data, error } = await window.__sb.rpc('prev_registrar', { p: { cpf, nome: R.B.nome, especie: R.B.especie || null, dib: R.B.dib || '', prazo: R.prazo ? R.prazo.estado : null, fortes: T.filter(t => t.nivel === 'alto').length, atencao: T.filter(t => t.nivel === 'medio').length,
+      teses: T.map(t => ({ id: t.id, nivel: t.nivel, titulo: t.titulo, mensal: t.ganho ? Math.round(t.ganho.mensal || 0) : null, atrasados: t.ganho ? Math.round(t.ganho.atrasados || 0) : null })), est_mensal: g ? Math.round(g.mensal || 0) : '', est_atrasados: g ? Math.round(g.atrasados || 0) : '', docs: [...new Set(p.docs.map(d => d.tipo))].join('+') } });
+    p.salvo = error ? 'não consegui guardar no banco' : data && data.ok ? `guardado no banco de oportunidades${data.atendente ? ' · atendente: ' + data.atendente : data.cliente ? '' : ' · CPF não está no CRM'}` : '';
+    marcarSalvo(p);
+  } catch (e) { console.error(e); }
+}
+function marcarSalvo(p) { if (!p.el || !p.salvo) return; let x = p.el.querySelector('.salvo'); if (!x) { x = document.createElement('div'); x.className = 'salvo'; x.style.cssText = 'font-size:12px;color:#86efac;margin-top:6px'; p.el.querySelector('.cli-top > div').appendChild(x); } x.textContent = '🗂️ ' + p.salvo; }
+async function verBanco() {
+  const box = $('#banco-lista'); box.innerHTML = '<p class="aviso">Carregando…</p>';
+  const { data, error } = await window.__sb.rpc('prev_lista'); if (error) { box.innerHTML = '<p class="erro">Não consegui carregar.</p>'; return; }
+  const ST = { nova: 'nova', aceita: 'aceita', recusada: 'recusada' };
+  box.innerHTML = !data.length ? '<p class="aviso">Ainda não há oportunidades guardadas.</p>' : `<div class="tab" style="max-height:560px"><table><thead><tr><th>Cliente</th><th>Atendente</th><th>Benefício</th><th>Prazo</th><th>Indícios</th><th style="text-align:right">Estimativa</th><th>Situação</th><th></th></tr></thead><tbody>${data.map(o => `<tr><td class="q">${esc(o.nome)}${o.no_crm ? '' : ' <small style="opacity:.7">(fora do CRM)</small>'}</td><td>${esc(o.atendente || '—')}</td><td>${esc(o.especie || '—')}${o.dib ? ' · ' + dBR(o.dib) : ''}</td><td>${esc(o.prazo || '—')}</td><td class="q">${(o.teses || []).map(t => (t.nivel === 'alto' ? '🚨 ' : '⚠️ ') + esc(t.titulo)).join('<br>')}</td><td style="text-align:right">${o.est_mensal ? '+' + brl(o.est_mensal) + '/mês' : o.est_atrasados ? brl(o.est_atrasados) : '—'}</td><td>${ST[o.status]}${o.advogado ? ' · ' + esc(o.advogado) : ''}</td><td>${o.status === 'nova' || window.__eu.papel === 'admin' ? `<button class="btn sec" data-quer="${o.id}" style="padding:4px 8px">Quero</button> <button class="btn sec" data-nao="${o.id}" style="padding:4px 8px">Não</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+  box.querySelectorAll('[data-quer],[data-nao]').forEach(b => b.onclick = async () => { await window.__sb.rpc('prev_decidir', { p_id: +(b.dataset.quer || b.dataset.nao), p_quer: !!b.dataset.quer }); verBanco(); });
 }
 
 /* Vários clientes de uma vez: quadro com quem tem indício, do mais forte para o mais fraco. */
@@ -218,7 +242,8 @@ function desenhar(p) {
     ${linhasCmp.length ? `<details><summary>Ver os ${linhasCmp.length} meses em que o CNIS difere do cálculo</summary><div class="tab"><table><thead><tr><th>Competência</th><th>Situação</th><th style="text-align:right">No CNIS (limitado ao teto)</th><th style="text-align:right">Usado pelo INSS</th><th>Vínculos no CNIS</th></tr></thead><tbody>${linhasCmp.map(([r, s]) => `<tr><td>${dBR(r.comp)}</td><td>${s}</td><td class="n">${brl(r.cnis)}</td><td class="n">${r.carta == null ? '—' : brl(r.carta)}</td><td class="q">${r.vinc.map(v => esc((v.origem || 'vínculo ' + v.seq) + ' ' + brl(v.valor) + (v.ind.length ? ' [' + [...new Set(v.ind)].join(', ') + ']' : ''))).join(' + ')}</td></tr>`).join('')}</tbody></table></div></details>` : ''}
     ${vinc.length ? `<details><summary>Ver vínculos e benefícios do CNIS (${vinc.length})</summary><div class="tab"><table><thead><tr><th>#</th><th>Origem</th><th>Tipo</th><th>Início</th><th>Fim</th><th style="text-align:right">Remun.</th><th>Indicadores / situação</th></tr></thead><tbody>${vinc.map(v => `<tr><td>${v.seq}</td><td class="q">${esc(v.origem || '')}</td><td>${esc(v.tipo === 'beneficio' ? 'benefício' : v.filiado || v.tipo)}</td><td>${dBR(v.inicio)}</td><td>${v.fim ? dBR(v.fim) : v.ultRemun ? 'últ. rem. ' + dBR(v.ultRemun) : '—'}</td><td class="n">${v.tipo === 'beneficio' ? '' : v.rem.length}</td><td class="q">${esc([...new Set(v.indicadores.concat(v.rem.flatMap(r => r.ind)))].join(', ') || v.situacao || '')}</td></tr>`).join('')}</tbody></table></div></details>` : ''}
     <div class="acoes"><button class="btn sec" data-copiar>📋 Copiar resumo (WhatsApp)</button><button class="btn sec" onclick="window.print()">🖨️ Imprimir / PDF</button></div>`;
-  el.querySelectorAll('[data-sx]').forEach(b => b.onclick = () => { p.sexo = p.sexo === b.dataset.sx ? null : b.dataset.sx; desenhar(p); desenharResumo(); });
+  marcarSalvo(p);
+  el.querySelectorAll('[data-sx]').forEach(b => b.onclick = () => { p.sexo = p.sexo === b.dataset.sx ? null : b.dataset.sx; desenhar(p); desenharResumo(); guardarOportunidade(p); });
   el.querySelector('[data-copiar]').onclick = async e => {
     const lin = t => `• ${t.titulo}${t.ganho ? (t.ganho.unico ? ` (a restituir ≈ ${brl(t.ganho.atrasados)})` : t.ganho.piso ? ` (13º + atrasados ≈ ${brl(t.ganho.atrasados)} — estimativa)` : ` (≈ +${brl(t.ganho.mensal)}/mês — estimativa)`) : ''}${t.base ? ' — ' + t.base : ''}`;
     const txt = `*Triagem previdenciária — ${B.nome}*\n${B.especie ? `${B.especieNome || ''} (${B.especie}) · DIB ${dBR(B.dib)}${B.rmi ? ' · RMI ' + brl(B.rmi) : ''}` : 'Sem benefício ativo no CNIS'}${idade != null ? ' · ' + idade + ' anos' : ''}${R.tempoCnis ? ' · ≈ ' + am(R.tempoCnis.meses) + ' de contribuição no CNIS' : ''}\n${pz ? (pz.estado === 'vencido' ? 'Prazo de 10 anos VENCIDO em ' + dBR(pz.limite) : 'Prazo para revisar: até ' + dBR(pz.limite) + ' (estimado)') + '\n' : ''}\n` +
