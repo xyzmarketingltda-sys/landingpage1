@@ -64,8 +64,9 @@ td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}
 <body hidden>
 <header><div class="marca" style="cursor:pointer" onclick="location.href=document.getElementById('voltar').href">XYZ <span>CRM</span></div><a class="voltar" id="voltar" href="./">← Voltar ao CRM</a></header>
 <main>
-  <h1>⚖️ Previdenciário — o benefício pode ser revisto?</h1>
-  <p class="sub">Solte o <b>CNIS</b> e a <b>carta de concessão</b> do cliente (os dois saem do Meu INSS em PDF). O sistema compara salário por salário, confere tempo, regra aplicada e prazo, e aponta as revisões com indício, outros direitos que os documentos deixam ver (benefício cessado, auxílio-acidente, imposto de renda, descontos de associação, BPC na família) e também as teses que <b>não cabem mais</b>. Para quem recebe <b>BPC/LOAS</b>, procura direito a benefício previdenciário melhor e atrasados de pedido negado. Se tiver, solte junto o <b>histórico de créditos</b> (mostra a renda de hoje). A leitura é feita aqui no seu computador: nenhum arquivo é enviado.<br>
+  <h1>⚖️ Previdenciário — revisão e direito a benefício</h1>
+  <p class="sub">Solte o <b>CNIS</b> do cliente e, se ele já recebe benefício, a <b>carta de concessão</b> (os dois saem do Meu INSS em PDF). Funciona para <b>qualquer espécie de benefício (01 a 99)</b> e também para quem ainda não recebe nada.<br>
+  <b>Só com o CNIS</b>, o sistema calcula idade, tempo e carência e diz a que aposentadoria a pessoa já tem direito — pelas regras antigas (direito adquirido) e pelas regras de transição da Reforma — ou o que falta e quando fecha. <b>Com a carta</b>, compara salário por salário, confere tempo, regra aplicada e prazo, e aponta as revisões com indício, o que a lei manda conferir naquela espécie, outros direitos que os documentos deixam ver e as teses que <b>não cabem mais</b>. Se tiver, solte junto o <b>histórico de créditos</b> (mostra a renda de hoje). A leitura é feita aqui no seu computador: nenhum arquivo é enviado.<br>
   Para pensão por morte, anexe o CNIS de quem faleceu. · <a id="ir-hiscon" href="hiscon.html">🔎 Analisar HISCON e contratos</a></p>
   <label id="drop" class="vidro"><input type="file" id="arq" accept="application/pdf" multiple hidden>
     <b>📄 Solte CNIS, carta de concessão e histórico de créditos aqui ou clique para escolher</b><small>Pode mandar de vários clientes de uma vez — o sistema separa pelo nome</small></label>
@@ -77,7 +78,8 @@ td{padding:6px 7px;border-top:1px solid rgba(30,144,255,.12);white-space:nowrap}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="hiscon.js?v=20261118b"></script>
 <script src="docs-inss.js?v=20261118c"></script>
-<script src="previd.js?v=20261118c"></script>
+<script src="previd-base.js?v=20261118d"></script>
+<script src="previd.js?v=20261118d"></script>
 <script src="presenca.js?v=20261118e"></script>
 <script type="module">
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
@@ -132,6 +134,18 @@ const htmlTese = t => `<div class="al ${t.nivel}"><h4><span class="tag">${TAG[t.
   ${chipGanho(t)}
   ${t.base ? `<p class="base">Fundamento: ${esc(t.base)}${t.decai === false ? ' · sem o prazo de 10 anos' : ''}</p>` : ''}</div>`;
 
+function chipsEsp(E) {
+  if (!E || !E.cod || E.desconhecida) return '';
+  const f = E.f, c = [];
+  if (f.extinta || f.legado) c.push(['info', 'espécie que não é mais concedida']);
+  if (f.rural) c.push(['info', 'rural']);
+  if (f.acid) c.push(['info', 'acidentário']);
+  if (f.uniao) c.push(['info', 'legislação especial']);
+  const assistencial = ['assist', 'rmv'].includes(E.grupo);
+  if (f.contributivo) c.push(['ok', 'paga 13º']); else if (assistencial) c.push(['medio', 'não paga 13º']);
+  if (f.geraPensao) c.push(['ok', 'deixa pensão aos dependentes']); else if (assistencial) c.push(['medio', 'não deixa pensão']);
+  return c.map(([k, t]) => `<span class="${k}">${t}</span>`).join('');
+}
 function desenhar(p) {
   const R = XYZPrevid.analisar(p.docs, { sexo: p.sexo }), B = R.B, T = R.teses;
   const n = k => T.filter(t => t.nivel === k), alto = n('alto'), medio = n('medio'), info = n('info'), venc = n('venc'), nao = n('nao');
@@ -142,17 +156,18 @@ function desenhar(p) {
     : `⏳ Prazo para revisar a concessão: <b>até ${dBR(pz.limite)}</b> — faltam ${am(pz.faltam)}${pz.estado === 'urgente' ? ' · <b>URGENTE</b>' : ''}<small>Estimado pela ${pz.base} (o prazo conta do 1º dia do mês seguinte ao primeiro pagamento — confirme no histórico de créditos).</small>`;
   const gm = R.melhor && R.melhor.ganho;
   const ver = alto.length ? ['alto', `🚨 ${alto.length} ponto(s) com indício forte${gm && gm.mensal > 1 && !gm.piso ? ` — a melhor estimativa é de +${brl(gm.mensal)}/mês` : gm && gm.atrasados ? ` — valores a recuperar estimados em pelo menos ${brl(gm.atrasados)}` : ''}. Encaminhar para o advogado.`]
-    : medio.length ? ['medio', '⚠️ Há pontos que podem render revisão — vale pedir os documentos indicados e aprofundar.']
+    : medio.length ? ['medio', B.especie ? '⚠️ Há pontos que podem render revisão — vale pedir os documentos indicados e aprofundar.' : '⚠️ Há caminho para fechar uma aposentadoria — vale pedir os documentos indicados e aprofundar.']
     : venc.length ? ['nao', '⏰ Havia indício de revisão, mas o prazo de 10 anos já passou.']
+    : !B.especie && R.temCnis ? ['ok', R.elegibilidade ? 'ℹ️ Pelo CNIS ainda não fecha nenhuma aposentadoria — veja abaixo o que falta e os caminhos que antecipam.' : 'ℹ️ Marque o sexo acima para o sistema calcular a que aposentadoria a pessoa tem direito.']
     : ['ok', R.temCarta && R.temCnis ? '✅ Nenhum indício de revisão encontrado nos documentos.' : 'ℹ️ Faltam documentos para concluir — veja abaixo o que pedir.'];
   const cmp = R.comparacao, linhasCmp = cmp ? cmp.conc.map(r => [r, 'concomitante']).concat(cmp.menor.map(r => [r, 'a menor']), cmp.falta.map(r => [r, 'fora do cálculo'])).sort((a, b) => a[0].comp.localeCompare(b[0].comp)) : [];
   const vinc = R.cnis ? R.cnis.vinculos : [];
   el.innerHTML = `
     <div class="cli-top"><div><h2>${esc(B.nome || 'Cliente')}</h2>
-      <div class="meta">${B.especie ? `<b>${esc(B.especieNome || 'Benefício')} (${esc(B.especie)})</b>` : 'Benefício não identificado'}${B.nb ? ' · NB ' + esc(B.nb) : ''}${B.instituidor ? ' · instituidor: ' + esc(B.instituidor) : ''}<br>
-      ${B.dib ? 'Início (DIB) <b>' + dBR(B.dib) + '</b>' : ''}${B.ddb ? ' · concedido em ' + dBR(B.ddb) : ''}${B.rmi ? ' · renda inicial <b>' + brl(B.rmi) + '</b>' : ''}${B.mrAtual ? ' · renda hoje <b>' + brl(B.mrAtual) + '</b>' : ''}${idade != null ? ' · ' + idade + ' anos' : ''}
+      <div class="meta">${B.especie ? `<b>${esc(B.especieNome || 'Benefício')} (${esc(B.especie)})</b>` : R.temCnis ? '<b>Sem benefício ativo no CNIS</b>' : 'Benefício não identificado'}${B.nb ? ' · NB ' + esc(B.nb) : ''}${B.instituidor ? ' · instituidor: ' + esc(B.instituidor) : ''}<br>
+      ${[B.dib ? 'Início (DIB) <b>' + dBR(B.dib) + '</b>' : '', B.ddb ? 'concedido em ' + dBR(B.ddb) : '', B.rmi ? 'renda inicial <b>' + brl(B.rmi) + '</b>' : '', B.mrAtual ? 'renda hoje <b>' + brl(B.mrAtual) + '</b>' : '', idade != null ? idade + ' anos' : ''].filter(Boolean).join(' · ')}
       ${R.carta && R.carta.tc ? '<br>Tempo na carta: ' + am(R.carta.tc.meses) : ''}${R.tempoCnis ? (R.carta && R.carta.tc ? ' · ' : '<br>') + 'tempo pelo CNIS: ≈ ' + am(R.tempoCnis.meses) : ''}${R.carta && R.carta.coef != null ? ' · coeficiente ' + XYZPrevid.util.pct(R.carta.coef) : ''}${R.carta && R.carta.fator ? ' · fator ' + String(R.carta.fator).replace('.', ',') : ''}</div>
-      <div class="chips">${chip('carta', 'Carta de concessão')}${chip('cnis', 'CNIS')}${chip('hiscre', 'Histórico de créditos')}</div>
+      <div class="chips">${chip('carta', 'Carta de concessão')}${chip('cnis', 'CNIS')}${chip('hiscre', 'Histórico de créditos')}${chipsEsp(R.especie)}</div>
       <div class="sexo">Sexo${B.sexoFonte && B.sexoFonte !== 'informado' ? ` <small>(sugerido ${esc(B.sexoFonte)} — confira)</small>` : ''}: <button data-sx="F" class="${B.sexo === 'F' ? 'sel' : ''}">Mulher</button><button data-sx="M" class="${B.sexo === 'M' ? 'sel' : ''}">Homem</button>${!B.sexo ? ' <small style="color:#fde68a">escolha para simular as regras que dependem do sexo</small>' : ''}</div></div>
       <div class="placar"><span class="alto">${alto.length} forte(s)</span><span class="medio">${medio.length} atenção</span></div></div>
     ${pzTxt ? `<div class="prazo ${pz.estado === 'vencido' ? 'nao' : pz.estado === 'urgente' ? 'alto' : 'info'}">${pzTxt}</div>` : ''}
@@ -167,8 +182,8 @@ function desenhar(p) {
   el.querySelectorAll('[data-sx]').forEach(b => b.onclick = () => { p.sexo = p.sexo === b.dataset.sx ? null : b.dataset.sx; desenhar(p); });
   el.querySelector('[data-copiar]').onclick = async e => {
     const lin = t => `• ${t.titulo}${t.ganho ? (t.ganho.unico ? ` (a restituir ≈ ${brl(t.ganho.atrasados)})` : t.ganho.piso ? ` (13º + atrasados ≈ ${brl(t.ganho.atrasados)} — estimativa)` : ` (≈ +${brl(t.ganho.mensal)}/mês — estimativa)`) : ''}${t.base ? ' — ' + t.base : ''}`;
-    const txt = `*Triagem previdenciária — ${B.nome}*\n${B.especieNome || ''} (${B.especie || '—'}) · DIB ${dBR(B.dib)}${B.rmi ? ' · RMI ' + brl(B.rmi) : ''}\n${pz ? (pz.estado === 'vencido' ? 'Prazo de 10 anos VENCIDO em ' + dBR(pz.limite) : 'Prazo para revisar: até ' + dBR(pz.limite) + ' (estimado)') + '\n' : ''}\n` +
-      (alto.length ? '*Indícios fortes*\n' + alto.map(lin).join('\n') + '\n\n' : '') + (medio.length ? '*Atenção*\n' + medio.map(lin).join('\n') + '\n\n' : '') + (!alto.length && !medio.length ? 'Nenhum indício de revisão nos documentos.\n\n' : '') +
+    const txt = `*Triagem previdenciária — ${B.nome}*\n${B.especie ? `${B.especieNome || ''} (${B.especie}) · DIB ${dBR(B.dib)}${B.rmi ? ' · RMI ' + brl(B.rmi) : ''}` : 'Sem benefício ativo no CNIS'}${idade != null ? ' · ' + idade + ' anos' : ''}${R.tempoCnis ? ' · ≈ ' + am(R.tempoCnis.meses) + ' de contribuição no CNIS' : ''}\n${pz ? (pz.estado === 'vencido' ? 'Prazo de 10 anos VENCIDO em ' + dBR(pz.limite) : 'Prazo para revisar: até ' + dBR(pz.limite) + ' (estimado)') + '\n' : ''}\n` +
+      (alto.length ? '*Indícios fortes*\n' + alto.map(lin).join('\n') + '\n\n' : '') + (medio.length ? '*Atenção*\n' + medio.map(lin).join('\n') + '\n\n' : '') + (!alto.length && !medio.length ? (B.especie ? 'Nenhum indício de revisão nos documentos.\n\n' : info.filter(t => t.area === 'Direito pelo CNIS').map(t => '• ' + t.titulo + ': ' + t.texto).join('\n') + '\n\n') : '') +
       (R.pedir.length ? '*Pedir ao cliente*\n' + R.pedir.map(x => '• ' + x).join('\n') + '\n\n' : '') + (nao.length ? '*Não propor*\n' + nao.map(t => '• ' + t.titulo).join('\n') : '');
     await navigator.clipboard.writeText(txt.trim()); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar resumo (WhatsApp)', 2000);
   };

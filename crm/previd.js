@@ -11,7 +11,10 @@
   const difMeses = (a, b) => { const [ya, ma] = a.split('-').map(Number), [yb, mb] = b.split('-').map(Number); return (yb - ya) * 12 + (mb - ma); };
   const am = m => { m = Math.round(m); const a = Math.floor(m / 12), r = m % 12; return (a ? a + (a === 1 ? ' ano' : ' anos') : '') + (a && r ? ' e ' : '') + (r || !a ? r + (r === 1 ? ' mês' : ' meses') : ''); };
   const pct = v => (v * 100).toFixed(v * 100 % 1 ? 1 : 0) + '%';
-  const APOS = ['41', '42', '46', '57'], INCAP = ['32', '92'], PENSAO = ['21', '93'], TEMP = ['31', '91'], ASSIST = ['87', '88'];
+  const BASE = root.XYZPrevBase;
+  // grupos de espécies (todas as espécies de 01 a 99 vêm da base de conhecimento)
+  const APOS = BASE.doGrupo('idade', 'tempo', 'especial'), INCAP = BASE.doGrupo('invalidez'), PENSAO = BASE.doGrupo('pensao'), TEMP = BASE.doGrupo('auxdoenca'), ASSIST = BASE.doGrupo('assist', 'rmv');
+  const CAR142 = a => a <= 1992 ? 60 : a >= 2011 ? 180 : ({ 1993: 66, 1994: 72, 1995: 78, 1996: 90, 1997: 96, 1998: 102, 1999: 108, 2000: 114, 2001: 120, 2002: 126, 2003: 132, 2004: 138, 2005: 144, 2006: 150, 2007: 156, 2008: 162, 2009: 168, 2010: 174 })[a];
   const ESPECIAL_RE = /HOSPITAL|SANTA CASA|CLINICA|LABORAT|FRIGORIF|ABATEDOURO|METALURG|SIDERURG|FUNDIC|MINERA|QUIMIC|PETRO|POSTO |COMBUST|TEXTIL|FIACAO|TECELAGEM|CERAMIC|CURTUME|GRAFIC|VIDRO|BORRACHA|CALCADO|USINA|MADEIREIRA|SERRARIA|GALVAN|TINTAS|PLASTIC|CELULOSE|CIMENTO|MARMOR|PEDREIRA|FERRO|ACO |ACOS |ELETRIC|ENERGIA|SANEAMENTO|LIMPEZA URBANA|COLETA|OXIGENIO|GASES|SOLDA|CALDEIR|MECANIC|FARMAC|RADIOL|ODONTO|ENFERM|AMBULAN|TRANSPORT|VIACAO|ONIBUS|VIGILAN|SEGURANCA/;
   const PEND_RE = /^(PEXT|PVIN|AEXT|PADM|PREC|PREM|IREC-LC123|IREC-INDPEND|IREM-INDPEND|IVIN|PRPPS|IGFIP|PSC|IREC-FBR|IREC-MEI|IREC-LC)/;
 
@@ -19,23 +22,89 @@
     if (ca && ca.dib >= REFORMA && ca.coef > 0.6 && ca.coef < 1 && ca.tc) { const l = Math.floor(ca.tc.meses / 12) - Math.round((ca.coef - 0.6) / 0.02); if (l === 15) return ['F', 'pelo coeficiente da carta']; if (l === 20) return ['M', 'pelo coeficiente da carta']; }
     if (ca && ca.especie === '42' && ca.dib < REFORMA && ca.coef === 1 && ca.tc && ca.tc.a >= 30 && ca.tc.a < 35 && !ca.pedagio) return ['F', 'pelo tempo de contribuição da carta'];
     const p = semAc(nome).split(' ')[0] || '';
-    if (/^(INES|RAQUEL|ISABEL|IZABEL|BEATRIZ|ALICE|IVONE|ELIANE|ROSANE|SIMONE|IRENE|MARLENE|ARLETE|SUELI|SUELY|MIRIAM|CARMEM|CARMEN|LURDES|LOURDES|DOLORES|MERCEDES|ESTER|ESTHER|RUTH|RUTE|JUDITE|JUDITH|EDITE|IVETE|ELISABETE|ELIZABETH|ELISABETH|ELIZABETE|SOLANGE|ROSEMEIRE|ROSIMEIRE|NAIR|NOEMI|DAGMAR|GLADIS|SIRLEI|SIRLEY|SHIRLEY|LENIR|DENISE|CLEIDE|NEIDE|NEUZA|CLEONICE|EUNICE|BERENICE|IRACI|IRACY|JACI|JUCI|DULCE|ROSE|ROSELI|ROSELY|MARLI|MARLY|NELI|NELY|LEONI|EDNA)$/.test(p)) return ['F', 'pelo nome'];
-    if (/A$/.test(p) && !/^(LUCA|JOSUA|NOA|JOSA|GARCIA|SILVA|BATISTA|COSTA)$/.test(p)) return ['F', 'pelo nome'];
-    if (/(O|OS|SON|TON|ALDO|ERTO|IAS|EL|IL|OR|US|UR)$/.test(p)) return ['M', 'pelo nome'];
+    if (/^(INES|AGNES|RAQUEL|ISABEL|IZABEL|MABEL|MARIBEL|ANABEL|BEATRIZ|BEATRIS|IVONE|SIMONE|IRENE|SUELI|SUELY|SUELEN|MIRIAM|MIRIAN|LILIAN|LILIAM|VIVIAN|CARMEM|CARMEN|LURDES|LOURDES|DOLORES|MERCEDES|GERTRUDES|ESTER|ESTHER|RUTH|RUTE|JUDITE|EDITE|SOLANGE|ROSEMEIRE|ROSIMEIRE|ROSEMARY|ROSEMARI|ROSEMERI|ROSIMERI|MARY|MERI|NAIR|NOEMI|DAGMAR|LUCIMAR|ROSIMAR|ROSEMAR|GLADIS|IRIS|DORIS|LAIS|THAIS|TAIS|INGRID|ASTRID|SIRLEI|SIRLEY|SHIRLEY|ROSELEI|LENIR|DENISE|CLEIDE|NEIDE|IRACI|IRACY|JACI|JUCI|DULCE|ROSE|ROSELI|ROSELY|MARLI|MARLY|NELI|NELY|LEONI|KELLY|KELI|KAREN|LUCY|LUCI|NANCI|NANCY|JANE|LIZ|LIS|YASMIM|YASMIN|JASMIM|MONIQUE|MARGARETH|CONCEICAO|ASSUNCAO|ENCARNACAO|ANUNCIACAO|CONSOLACAO|SOCORRO|ROSARIO|AMPARO|CARMO)$/.test(p)) return ['F', 'pelo nome'];
+    if (/^(JOSE|JORGE|FELIPE|PHILIPE|HENRIQUE|GUILHERME|ALEXANDRE|ANDRE|VICENTE|CLEMENTE|DANTE|JAIME|JAYME|WAGNER|VAGNER|WALTER|VALTER|VALDIR|WALDIR|ADEMIR|VALMIR|WALMIR|ALTAIR|JAIR|ALMIR|CLAUDEMIR|VLADIMIR|WLADIMIR|EDMAR|VALDEMAR|WALDEMAR|OSMAR|ADEMAR|GILMAR|ITAMAR|DILMAR|VILMAR|WILMAR|OSCAR|CESAR|LUIZ|LUIS|DAVI|DAVID|LEVI|RUI|RUY|JONAS|LUCAS|THOMAS|TOMAS|TOMAZ|THOMAZ|MOISES|HERCULES|ULISSES|ULYSSES|ARISTIDES|EUCLIDES|ALCIDES|NEI|NEY|WILLIAM|WILIAN|WILLIAN|ADRIAN|CRISTIAN|CHRISTIAN|FABIAN|RENAN|IVAN|RUAN|LUAN|JUAN|ALAN|ALLAN|ERIK|ERIC|ERICK|ISAAC|ISAC|JACOB|ROGER|JOSUE|NOE|ARI|ARY|DJALMA|YURI|IURI|RENE|RAUL|SAUL|JEAN|JOHN|JONATHAN|JONATAN|NATAN|NATHAN|RICHARD|EDGAR|EDGARD|BRAZ|BRAS|FELIX|ALEX|MAX|HELDER|ELDER|KLEBER|CLEBER|VALBER|WEBER|JADER|WESLEY|WESLEI|SIDNEI|SIDNEY|SIDINEI|CLAUDINEI|VALDINEI|RUDINEI|VANDERLEI|WANDERLEY|WANDERLEI|VANDERLEY|RONEI|RONI|RONY|JUAREZ|DOUGLAS|NICOLAS|NICHOLAS|DIMAS|ESDRAS|JOAQUIM|SERAFIM|VALENTIM|BENJAMIM|BENJAMIN|CRISPIM|LUCA|JOSUA|NOA|BATISTA)$/.test(p)) return ['M', 'pelo nome'];
+    if (/(A|ANE|ENE|INE|ETE|ICE|ILDE|AIDE|ELE|ELLE|ETH)$/.test(p)) return ['F', 'pelo nome'];
+    if (/(O|OS|SON|TON|ALDO|ERTO|IAS|EL|IL|OR|US|UR|EU)$/.test(p)) return ['M', 'pelo nome'];
     return [null, ''];
   }
 
   // meses de contribuição pelo CNIS (aproximação por competência)
   function tempoCnis(cn, ate) {
-    const set = new Set(), pend = new Set(), add = (ini, fim, alvo) => { if (!ini) return; let c = ini.slice(0, 7); const f = (fim || ini).slice(0, 7); for (let i = 0; c <= f && c <= ate && i < 900; i++) { alvo.add(c); c = maisMeses(c, 1); } };
+    const set = new Set(), pend = new Set(), add = (ini, fim, alvo) => { if (!ini) return; let c = ini.slice(0, 7); const f = (fim || ini).slice(0, 7); for (let i = 0; c <= f && i < 900; i++) { alvo.add(c); c = maisMeses(c, 1); } };
     const V = cn.vinculos, contribs = [];
     V.filter(v => v.tipo === 'emprego').forEach(v => { const fim = v.fim || (v.ultRemun ? v.ultRemun + '-28' : v.rem.length ? v.rem.map(r => r.comp).sort().pop() + '-28' : v.inicio); add(v.inicio, fim, set); });
-    V.filter(v => v.tipo === 'recolhimento').forEach(v => v.rem.forEach(r => { if (r.comp > ate) return; if (r.ind.some(i => /MENOR-MIN/.test(i))) pend.add(r.comp); else set.add(r.comp); }));
+    V.filter(v => v.tipo === 'recolhimento').forEach(v => v.rem.forEach(r => { if (r.ind.some(i => /MENOR-MIN/.test(i))) pend.add(r.comp); else set.add(r.comp); }));
     set.forEach(c => contribs.push(c)); const ult = contribs.sort().pop() || '';
     // benefício por incapacidade conta como tempo quando intercalado com contribuição (STF Tema 1125)
     V.filter(v => v.tipo === 'beneficio' && [...TEMP, ...INCAP].includes(v.especie) && v.inicio && v.fim && /CESSADO/i.test(v.situacao || '')).forEach(v => { if (ult > v.fim.slice(0, 7)) add(v.inicio, v.fim, set); });
-    const todos = [...set].filter(c => c <= ate);
-    return { meses: todos.length, pre94: todos.filter(c => c < '1994-07').length, ateReforma: todos.filter(c => c <= '2019-11').length, pendentes: [...pend].filter(c => !set.has(c)).length, primeiro: todos.sort()[0] || null };
+    const lista = [...set].sort(), ateC = c => { let n = 0; for (const x of lista) { if (x <= c) n++; else break; } return n; };
+    const todos = lista.filter(c => c <= ate);
+    return { meses: todos.length, pre94: todos.filter(c => c < '1994-07').length, ateReforma: todos.filter(c => c <= '2019-11').length, pendentes: [...pend].filter(c => !set.has(c) && c <= ate).length, primeiro: lista[0] || null, ultimo: ult, lista, ate: ateC };
+  }
+
+  /* Meses com indicador de exposição a agente nocivo (IEAN) no CNIS, até a competência `ate`. */
+  const maisRecente = (a, b) => (a || '') > (b || '') ? a : b;
+  function mesesIean(cn, ate) {
+    const s = new Set();
+    cn.vinculos.filter(v => v.tipo === 'emprego').forEach(v => {
+      const todo = v.indicadores.includes('IEAN');
+      v.rem.forEach(r => { if ((todo || r.ind.includes('IEAN')) && r.comp <= ate) s.add(r.comp); });
+      if (todo && !v.rem.length && v.inicio) { let c = v.inicio.slice(0, 7); const f = (v.fim || v.inicio).slice(0, 7); for (let i = 0; c <= f && c <= ate && i < 900; i++) { s.add(c); c = maisMeses(c, 1); } }
+    });
+    return s.size;
+  }
+
+  /* A que aposentadoria programada o CNIS dá direito até a competência `ate`: regras anteriores à Reforma
+     (direito adquirido) e as regras da EC 103/2019. `bonus` = meses a mais de tempo de contribuição
+     (conversão de tempo especial); vale para tempo, não para carência. */
+  function elegib(cn, sexo, ate, bonus) {
+    bonus = bonus || 0;
+    const REF = '2019-11', tt = tempoCnis(cn, ate), nasc = cn.nascimento.slice(0, 7), F = sexo === 'F', R = [], falta = [];
+    const idadeEm = c => difMeses(nasc, c) / 12, anoDe = c => +c.slice(0, 4), car = c => tt.ate(c), tc = c => tt.ate(c) + (tt.ate(c) ? bonus : 0);
+    const tMin = F ? 360 : 420, tRef = tc(REF), tHoje = tc(ate), idHoje = idadeEm(ate);
+    const antes91 = !!tt.primeiro && tt.primeiro < '1991-07', antes98 = !!tt.primeiro && tt.primeiro <= '1998-12', depois = !tt.primeiro || tt.primeiro > REF;
+    const meses = []; for (let c = REF; c <= ate; c = maisMeses(c, 1)) meses.push(c);
+    const primeira = f => meses.find(f) || null, quandoTc = n => { const tot = tt.ate(REF); let k = 0; for (const c of tt.lista) { if (c > REF) break; k++; if (k + (tot ? bonus * k / tot : 0) >= n) return c; } return REF; }, maior = (a, b) => a > b ? a : b;
+    const coefNovo = t => 0.6 + 0.02 * Math.max(0, Math.floor(t / 12) - (F ? 15 : 20));
+    const ptsMin = c => Math.min(F ? 100 : 105, (F ? 86 : 96) + (anoDe(c) - 2019)), idProg = c => Math.min(F ? 62 : 65, (F ? 56 : 61) + 0.5 * (anoDe(c) - 2019));
+    const idIdade = c => F ? (depois ? 62 : Math.min(62, 60 + 0.5 * (anoDe(c) - 2019))) : 65, carIdade = !F && depois ? 240 : 180, ped = Math.max(0, tMin - tRef);
+
+    // 1. aposentadoria por idade pela regra anterior à Reforma (60/65 anos + carência até 13/11/2019)
+    { const q = maisMeses(nasc, (F ? 60 : 65) * 12), cz = antes91 ? CAR142(anoDe(q)) : 180;
+      if (q <= REF && car(REF) >= cz) R.push({ id: 'idade-antiga', nome: 'aposentadoria por idade pela regra anterior à Reforma (direito adquirido)', desde: maior(q, tt.lista[cz - 1]), valor: `${pct(Math.min(1, 0.7 + 0.01 * Math.floor(car(REF) / 12)))} da média dos 80% maiores salários`, base: 'art. 48 da Lei 8.213; EC 103, art. 3º' + (cz < 180 ? `; carência de ${cz} meses pela tabela do art. 142` : '') }); }
+    // 2. aposentadoria por idade pela Reforma (transição do art. 18; regra permanente do art. 19)
+    { const d = primeira(c => idadeEm(c) >= idIdade(c) && car(c) >= carIdade);
+      if (d) R.push({ id: 'idade', nome: 'aposentadoria por idade pelas regras da Reforma', desde: d, valor: `${pct(coefNovo(car(ate)))} da média de todos os salários desde 07/1994`, base: 'EC 103, arts. 18, 19 e 26' }); }
+    // 3. tempo de contribuição: direito adquirido antes da Reforma (integral; ou proporcional da EC 20)
+    if (tRef >= tMin) { const pts = idadeEm(REF) + tRef / 12; R.push({ id: 'tc-antiga', nome: 'aposentadoria por tempo de contribuição pela regra anterior à Reforma (direito adquirido)', desde: quandoTc(tMin), valor: pts >= (F ? 86 : 96) ? '100% da média dos 80% maiores salários, sem fator (86/96 pontos)' : 'média dos 80% maiores salários × fator previdenciário', base: 'EC 103, art. 3º; arts. 29 e 29-C da Lei 8.213' }); }
+    else {
+      if (antes98) { const b = F ? 300 : 360, pp = Math.ceil(0.4 * Math.max(0, b - tt.ate('1998-12'))), q = maisMeses(nasc, (F ? 48 : 53) * 12);
+        if (q <= REF && tRef >= b + pp) R.push({ id: 'proporcional', nome: 'aposentadoria proporcional por tempo de contribuição (direito adquirido antes da Reforma)', desde: maior(q, quandoTc(b + pp)), valor: `${pct(Math.min(1, 0.7 + 0.05 * Math.floor((tRef - b - pp) / 12)))} da média dos 80% maiores salários × fator previdenciário`, base: 'EC 20/1998, art. 9º, § 1º; EC 103, art. 3º' }); }
+      // 4 a 7. regras de transição da aposentadoria por tempo de contribuição
+      const dP = primeira(c => tc(c) >= tMin && idadeEm(c) + tc(c) / 12 >= ptsMin(c));
+      if (dP) R.push({ id: 'pontos', nome: 'transição por pontos', desde: dP, valor: `${pct(coefNovo(tHoje))} da média de todos os salários`, base: 'EC 103, art. 15' });
+      const dI = primeira(c => tc(c) >= tMin && idadeEm(c) >= idProg(c));
+      if (dI) R.push({ id: 'idade-min', nome: 'transição da idade mínima progressiva', desde: dI, valor: `${pct(coefNovo(tHoje))} da média de todos os salários`, base: 'EC 103, art. 16' });
+      const d50 = ped <= 24 ? primeira(c => tc(c) >= tMin + Math.ceil(ped / 2)) : null;
+      if (d50) R.push({ id: 'pedagio50', nome: 'transição do pedágio de 50%', desde: d50, valor: 'média de todos os salários × fator previdenciário', base: 'EC 103, art. 17' });
+      const d100 = primeira(c => idadeEm(c) >= (F ? 57 : 60) && tc(c) >= tMin + ped);
+      if (d100) R.push({ id: 'pedagio100', nome: 'transição do pedágio de 100%', desde: d100, valor: '100% da média de todos os salários', base: 'EC 103, art. 20' });
+    }
+    if (!tt.lista.some(c => c >= '1994-07' && c <= ate)) R.forEach(r => r.valor = '1 salário mínimo (não há contribuições depois de 07/1994 para formar a média)');
+    // o que falta: projeção supondo uma contribuição por mês daqui para a frente (até 20 anos)
+    const proj = f => { for (let k = 1; k <= 240; k++) { const c = maisMeses(ate, k); if (f(c, k)) return c; } return null; };
+    if (!R.some(r => /^idade/.test(r.id))) {
+      const semContribuir = car(ate) >= carIdade ? proj(c => idadeEm(c) >= idIdade(c)) : null, contribuindo = semContribuir || proj((c, k) => idadeEm(c) >= idIdade(c) && car(ate) + k >= carIdade);
+      falta.push({ id: 'idade', nome: 'aposentadoria por idade', quando: contribuindo, txt: car(ate) >= carIdade ? `já tem as ${carIdade} contribuições; só falta a idade` + (semContribuir ? `, que completa em ${cBR(semContribuir)}` : '') : `tem ${car(ate)} das ${carIdade} contribuições (faltam ${carIdade - car(ate)})` + (idadeEm(ate) >= idIdade(ate) ? ' e já tem a idade' : '') + (contribuindo ? `; contribuindo todo mês, alcança em ${cBR(contribuindo)}` : '') });
+    }
+    if (!R.some(r => !/^idade/.test(r.id)) && tHoje >= tMin - 120) {
+      const cand = [['pontos', (c, k) => tHoje + k >= tMin && idadeEm(c) + (tHoje + k) / 12 >= ptsMin(c)], ['idade mínima progressiva', (c, k) => tHoje + k >= tMin && idadeEm(c) >= idProg(c)], ['pedágio de 100%', (c, k) => idadeEm(c) >= (F ? 57 : 60) && tHoje + k >= tMin + ped]];
+      if (ped <= 24) cand.push(['pedágio de 50%', (c, k) => tHoje + k >= tMin + Math.ceil(ped / 2)]);
+      const melhor = cand.map(([n, f]) => ({ n, q: proj(f) })).filter(x => x.q).sort((a, b) => a.q < b.q ? -1 : 1)[0];
+      falta.push({ id: 'tempo', nome: 'aposentadoria por tempo de contribuição (transição)', quando: melhor ? melhor.q : null, txt: `tem cerca de ${am(tHoje)} dos ${tMin / 12} anos mínimos (em 13/11/2019 tinha ${am(tRef)})` + (melhor ? `; contribuindo todo mês, a primeira regra a fechar é a de ${melhor.n}, em ${cBR(melhor.q)}` : '') });
+    }
+    return { tt, regras: R, faltas: falta, idade: idHoje, tempo: tHoje, tempoReforma: tRef, carencia: car(ate), F };
   }
 
   function analisar(docs, op) {
@@ -45,7 +114,7 @@
     const cns = docs.filter(d => d.tipo === 'cnis'), titular = (ca || hc || cns[0] || {}).nome || '';
     const ehPensao = PENSAO.includes((ca || hc || {}).especie || '');
     // na pensão, o cálculo é sobre a vida do instituidor (falecido): só serve o CNIS dele
-    const cnInst = ca && ca.instituidor ? cns.find(c => root.XYZDocs.mesmoNome(c.nome, ca.instituidor)) : null;
+    const cnInst = (ca && ca.instituidor ? cns.find(c => root.XYZDocs.mesmoNome(c.nome, ca.instituidor)) : null) || (ehPensao ? cns.find(c => c.nome && titular && !root.XYZDocs.mesmoNome(c.nome, titular)) : null) || null;
     const cnTit = cns.find(c => root.XYZDocs.mesmoNome(c.nome, titular)) || (!cnInst ? cns[0] : null) || null;
     const cn = ehPensao ? cnInst : cnTit;                 // CNIS que explica o cálculo
     const benCnis = cnTit ? cnTit.vinculos.filter(v => v.tipo === 'beneficio' && /ATIVO/i.test(v.situacao || '')).pop() : null;
@@ -55,7 +124,7 @@
       dip: (hc && hc.dip) || (ca && ca.dip) || null, primeiroPgto: (ca && ca.primeiroPgto) || null, rmi: ca ? ca.rmi : null, mrAtual: hc ? hc.mr : null, nascimento: (cnTit && cnTit.nascimento) || (hc && hc.nascimento) || null, instituidor: (ca && ca.instituidor) || ''
     };
     const esp = B.especie, dibC = B.dib ? B.dib.slice(0, 7) : null, posReforma = B.dib && B.dib >= REFORMA;
-    let [sexo, sexoFonte] = op.sexo ? [op.sexo, 'informado'] : (ehPensao ? [null, ''] : sexoPalpite(B.nome, ca));
+    let [sexo, sexoFonte] = op.sexo ? [op.sexo, 'informado'] : sexoPalpite(B.nome, ehPensao ? null : ca);
     B.sexo = sexo; B.sexoFonte = sexoFonte; B.idadeDib = B.nascimento && B.dib && !ehPensao ? anos(B.nascimento, B.dib) : (ca && ca.idade) || null;
     const T = [], pedir = new Set();
     const add = (nivel, id, titulo, texto, x) => { const t = Object.assign({ nivel, id, titulo, texto, base: '', numeros: '', ganho: null, decai: true }, x || {}); T.push(t); return t; };
@@ -66,6 +135,10 @@
     { const base = B.primeiroPgto || B.ddb || B.dip || B.dib;
       if (base && !assist) { const ini = maisMeses(base.slice(0, 7), 1), lim = maisMeses(ini, 120), falta = difMeses(hojeC, lim);
         prazo = { limite: lim, faltam: falta, estado: falta < 0 ? 'vencido' : falta <= 12 ? 'urgente' : 'ok', base: B.primeiroPgto ? 'data do primeiro pagamento informada na carta' : B.ddb ? 'data de concessão' : B.dip ? 'data de início do pagamento' : 'data de início do benefício' }; } }
+    const ESP = BASE.info(esp), G = ESP.grupo;
+    if (esp && !ESP.desconhecida && (!B.especieNome || B.especieNome.length < 4)) B.especieNome = ESP.nome;
+    if (prazo && (B.ddb || B.dip || B.dib) < '1997-06-28') prazo = { limite: '2007-08', faltam: difMeses(hojeC, '2007-08'), estado: 'vencido', base: 'regra dos benefícios concedidos antes de 28/06/1997 (STF, Tema 313)' };
+    if (prazo && ['auxdoenca', 'reclusao', 'maternidade', 'diverso'].includes(G)) prazo = null;   // benefício temporário ou acessório: não há renda vitalícia a revisar
     const decaiu = prazo && prazo.estado === 'vencido';
     const nv = n => decaiu ? 'venc' : n;                 // tese sujeita à decadência: se o prazo passou, vai para "prazo vencido"
     const pd = x => { if (!decaiu) pedir.add(x); };       // documento que só interessa se a tese ainda couber
@@ -93,14 +166,14 @@
     if (assist) { /* tratado no bloco do BPC, mais abaixo */ }
     else if (semSaida) add('info', 'vencido', 'Com o prazo vencido, só vale aprofundar em três situações', '(1) o cliente pediu revisão ao INSS ou entrou com ação dentro dos 10 anos — a TNU (Tema 256) conta o prazo da negativa definitiva, só para os pontos pedidos, mas o STJ está julgando isso no Tema 1.370 e o relator votou por prazo único; (2) ganhou ação trabalhista depois da concessão — o prazo conta do trânsito em julgado (STJ, Tema 1.117); (3) o benefício foi concedido ou revisto por decisão judicial em data posterior. Fora disso, não compensa pedir mais documentos.', { decai: false });
     else {
-      if (!ca) add('info', 'sem-carta', 'Falta a carta de concessão', 'Sem a carta de concessão (com a memória de cálculo) só dá para olhar o tempo de contribuição e os vínculos. Peça ao cliente: Meu INSS → "Carta de concessão". Com ela o sistema compara salário por salário com o CNIS e simula as revisões.', { decai: false });
+      if (!ca && esp) add('info', 'sem-carta', 'Falta a carta de concessão', 'Sem a carta de concessão (com a memória de cálculo) só dá para olhar o tempo de contribuição e os vínculos. Peça ao cliente: Meu INSS → "Carta de concessão". Com ela o sistema compara salário por salário com o CNIS e simula as revisões.', { decai: false });
       if (ca && !ca.temMemoria) { add('info', 'sem-memoria', 'A carta veio sem a memória de cálculo', `Benefícios antigos (este é de ${dBR(B.dib)}) costumam sair sem a lista de salários. Para conferir o cálculo, peça a cópia do processo administrativo (Meu INSS → "Cópia de processo") ou os extratos CONBAS/REVSIT/INFBEN em uma agência.`, { decai: false }); pedir.add('Cópia do processo administrativo do benefício (memória de cálculo)'); }
       if (!cn && !ehPensao) { add('info', 'sem-cnis', 'Falta o CNIS', 'Sem o CNIS não dá para comparar os salários usados pelo INSS com os que estão no cadastro, nem achar vínculos fora do cálculo. Peça: Meu INSS → "Extrato de contribuição (CNIS)" completo, com remunerações.', { decai: false }); pedir.add('CNIS completo (extrato de contribuição com remunerações)'); }
     }
     if (ehPensao && !cnInst) { add('info', 'cnis-instituidor', 'Pensão: o cálculo é sobre a vida do instituidor', `A renda da pensão vem do benefício (ou dos salários) de ${B.instituidor || 'quem faleceu'}. ${cns.length ? 'O CNIS anexado é do pensionista e não serve para conferir esse cálculo. ' : ''}Anexe o CNIS do instituidor e, se ele era aposentado, a carta de concessão da aposentadoria dele: o pensionista pode pedir a revisão do benefício originário e receber os reflexos na pensão (STJ, Tema 1.057).`, { decai: false, base: 'STJ Tema 1.057' }); pedir.add('CNIS e carta de concessão do instituidor (falecido)'); }
 
     /* ---- 1. Teto (EC 20/1998 e EC 41/2003) — sem decadência ---- */
-    if (B.dib && B.dib < '2004-01-01' && !TEMP.includes(esp) && !assist) {
+    if (B.dib && B.dib < '2004-01-01' && !TEMP.includes(esp) && !assist && ESP.f.contributivo && !ESP.f.rural) {
       const txt = 'Quando o salário de benefício foi limitado ao teto na concessão, o excedente deve ser reaproveitado nos tetos novos das EC 20/1998 (R$ 1.200) e 41/2003 (R$ 2.400). Não revisa o ato de concessão, então não tem decadência: só prescrevem as parcelas de mais de 5 anos.';
       if (B.dib >= '1988-10-05' && B.dib <= '1991-04-05') add('medio', 'teto', 'Benefício do "buraco negro" (05/10/1988 a 05/04/1991): conferir revisão do teto', txt + ' Para benefícios desse período o STF também admite a readequação (Tema 930). Conferir no processo administrativo se a média superava o teto e se o INSS já revisou.', { decai: false, base: 'STF Temas 76 e 930; art. 144 da Lei 8.213' });
       else if (ca && ca.temMemoria && ca.media.valor > tetoDib * 1.001 && B.dib >= '1994-07-01') { const g = ganhoDe(B.rmi * Math.min(ca.media.valor / tetoDib, 2400 / tetoDib)); add('alto', 'teto', 'Salário de benefício limitado ao teto na concessão', txt, { decai: false, base: 'STF Tema 76 (RE 564.354)', numeros: `Média ${brl(ca.media.valor)} × teto da época ${brl(tetoDib)} — excedente de ${pct(ca.media.valor / tetoDib - 1)}`, ganho: g }); }
@@ -151,10 +224,11 @@
     }
 
     /* ---- 4. Atividade especial ---- */
+    let espTot = 0, espForte = false;
     if (cn && !assist && (APOS.includes(esp) || (posReforma && INCAP.includes(esp)) || !ca)) {
       const cand = cn.vinculos.filter(v => v.tipo === 'emprego' && v.inicio && v.inicio < REFORMA).map(v => { const iean = v.indicadores.includes('IEAN') || v.rem.some(r => r.ind.includes('IEAN')), nome = ESPECIAL_RE.test(semAc(v.origem || '') + ' '); const fim = (v.fim || (v.ultRemun ? v.ultRemun + '-28' : v.inicio)); return (iean || nome) ? { v, iean, meses: Math.max(1, difMeses(v.inicio.slice(0, 7), (fim < REFORMA ? fim : REFORMA).slice(0, 7)) + 1), vig: /VIGILAN|SEGURANCA/.test(semAc(v.origem)) } : null; }).filter(Boolean);
       if (cand.length) {
-        const tot = cand.reduce((a, c) => a + c.meses, 0), fat = sexo === 'M' ? 0.4 : sexo === 'F' ? 0.2 : null, forte = cand.some(c => c.iean);
+        const tot = cand.reduce((a, c) => a + c.meses, 0), fat = sexo === 'M' ? 0.4 : sexo === 'F' ? 0.2 : null, forte = cand.some(c => c.iean); espTot = tot; espForte = forte;
         add(nv(forte ? 'alto' : 'medio'), 'especial', forte ? 'Empresa declarou exposição a agente nocivo (IEAN) — tempo especial' : 'Vínculos em atividade com cara de especial',
           `${cand.length} vínculo(s), cerca de ${am(tot)} até 13/11/2019. Tempo especial reconhecido converte em comum com acréscimo de 40% (homem) ou 20% (mulher) para períodos até a Reforma${fat ? ` — aqui, até ${am(tot * fat)} a mais` : ''}. Isso pode mudar o fator, o coeficiente ou até a espécie (aposentadoria especial com 25 anos). Prova: PPP e LTCAT de cada empresa; até 28/04/1995 basta a categoria profissional.` + (cand.some(c => c.vig) ? ' Atenção ao vigilante: o STF (Tema 1.209, fev/2026) decidiu que a atividade não é especial pelo risco — só resta o enquadramento por categoria até 28/04/1995.' : '') + (ca && ca.tc && tC && ca.tc.meses - tC.meses >= 6 ? ` A carta já tem ${am(ca.tc.meses - tC.meses)} a mais que o CNIS — parte pode já ter sido convertida.` : '') + obsDec,
           { base: 'arts. 57 e 58 da Lei 8.213; EC 103, art. 25, § 2º; STF Temas 555 e 1.209', numeros: cand.map(c => `${c.v.origem} (${dBR(c.v.inicio)} a ${c.v.fim ? dBR(c.v.fim) : cBR(c.v.ultRemun)})${c.iean ? ' — IEAN' : ''}`).join(' | ') });
@@ -163,7 +237,7 @@
     }
 
     /* ---- 5. Regra 85/95 (afasta o fator previdenciário) ---- */
-    if (ca && esp === '42' && B.dib >= MP676 && B.dib < REFORMA && fatorAplicado && ca.fator < 1 && ca.tc) {
+    if (ca && ['42', '49'].includes(esp) && B.dib >= MP676 && B.dib < REFORMA && fatorAplicado && ca.fator < 1 && ca.tc) {
       const idade = B.nascimento ? dias(B.nascimento, B.der || B.dib) / 365.25 : (ca.idade != null ? ca.idade + 0.5 : null);
       if (idade != null) {
         const pontos = idade + ca.tc.meses / 12, extra = B.dib >= '2018-12-31' ? 1 : 0, rF = 85 + extra, rM = 95 + extra, req = sexo === 'M' ? rM : sexo === 'F' ? rF : null;
@@ -174,7 +248,7 @@
     }
 
     /* ---- 6. Benefícios pós-Reforma (EC 103/2019): regra mais vantajosa, coeficiente, descarte e divisor ---- */
-    if (ca && ca.temMemoria && posReforma && (APOS.includes(esp) || esp === '32')) {
+    if (ca && ca.temMemoria && posReforma && (APOS.includes(esp) || INCAP.includes(esp))) {
       const naoDesc = ca.salarios.filter(s => !s.desc), todosCorr = ca.salarios.map(s => s.corr).sort((a, b) => b - a), n = naoDesc.length, coef = ca.coef || 1;
       // 6a. divisor mínimo
       if (ca.media.div > n) {
@@ -184,31 +258,31 @@
       // 6b. coeficiente esperado
       if (tcMeses && sexo && coef < 1 && !['46'].includes(esp)) { const esper = Math.min(1, 0.6 + 0.02 * Math.max(0, Math.floor(tcMeses / 12) - limiar)); if (esper > coef + 0.019) { const g = ganhoDe(rmiDe(ca.media.valor, esper)); add(nv('medio'), 'coef', `Coeficiente de ${pct(coef)} parece baixo para ${am(tcMeses)} de contribuição`, `Pela regra da Reforma o coeficiente é 60% + 2% por ano que passar de ${limiar} anos (${sexo === 'M' ? 'homem' : 'mulher'}): daria ${pct(esper)}. Conferir se o INSS deixou tempo de fora.` + obsDec, { base: 'EC 103, art. 26, § 2º', ganho: g }); } }
       // 6c. pedágio de 100% (art. 20): 100% da média
-      if (APOS.includes(esp) && esp !== '41' && coef < 1 && sexo && tcReforma != null && tcMeses && B.idadeDib != null) { const falta = Math.max(0, tcMin - tcReforma), idMin = sexo === 'M' ? 60 : 57; if (B.idadeDib >= idMin && tcMeses >= tcMin + falta) { const g = ganhoDe(rmiDe(ca.media.valor, 1)); add(nv('alto'), 'pedagio100', 'Tinha direito à regra do pedágio de 100%: benefício de 100% da média', `Na data do requerimento tinha ${B.idadeDib} anos e ${am(tcMeses)} de contribuição; em 13/11/2019 faltavam ${am(falta)} para os ${tcMin / 12} anos, e o pedágio (o dobro do que faltava) foi cumprido. Essa regra paga 100% da média, e o INSS concedeu com coeficiente de ${pct(coef)} — ele é obrigado a conceder o melhor benefício.` + obsDec, { base: 'EC 103, art. 20; STF Tema 334 (melhor benefício)', numeros: `${pct(coef)} → 100% da média de ${brl(ca.media.valor)}`, ganho: g }); } }
+      if (APOS.includes(esp) && G !== 'idade' && coef < 1 && sexo && tcReforma != null && tcMeses && B.idadeDib != null) { const falta = Math.max(0, tcMin - tcReforma), idMin = sexo === 'M' ? 60 : 57; if (B.idadeDib >= idMin && tcMeses >= tcMin + falta) { const g = ganhoDe(rmiDe(ca.media.valor, 1)); add(nv('alto'), 'pedagio100', 'Tinha direito à regra do pedágio de 100%: benefício de 100% da média', `Na data do requerimento tinha ${B.idadeDib} anos e ${am(tcMeses)} de contribuição; em 13/11/2019 faltavam ${am(falta)} para os ${tcMin / 12} anos, e o pedágio (o dobro do que faltava) foi cumprido. Essa regra paga 100% da média, e o INSS concedeu com coeficiente de ${pct(coef)} — ele é obrigado a conceder o melhor benefício.` + obsDec, { base: 'EC 103, art. 20; STF Tema 334 (melhor benefício)', numeros: `${pct(coef)} → 100% da média de ${brl(ca.media.valor)}`, ganho: g }); } }
       // 6d. direito adquirido antes da Reforma
       if (APOS.includes(esp) && sexo && tcReforma != null && B.nascimento) {
         const idRef = anos(B.nascimento, REFORMA), pre = ca.salarios.filter(s => s.comp < '2019-11').map(s => s.corr).sort((a, b) => b - a), n80 = Math.max(1, Math.floor(pre.length * 0.8 + 1e-9)), m80 = pre.length ? pre.slice(0, n80).reduce((a, b) => a + b, 0) / n80 : 0;
         const pontos = idRef + tcReforma / 12;
         if (tcReforma >= tcMin && pontos >= (sexo === 'M' ? 96 : 86) && m80) { const nr = rmiDe(m80, 1), g = nr > B.rmi * 1.02 ? ganhoDe(nr) : null; if (g) add(nv('alto'), 'adquirido', 'Direito adquirido antes da Reforma: aposentadoria integral sem fator (86/96 pontos)', `Em 13/11/2019 já tinha cerca de ${am(tcReforma)} de contribuição e ${idRef} anos (${pontos.toFixed(1)} pontos). Pela regra antiga, a renda é 100% da média dos 80% maiores salários, sem fator. O INSS deve conceder o benefício mais vantajoso.` + obsDec, { base: 'EC 103, art. 3º; STF Tema 334; art. 29-C da Lei 8.213', numeros: `Média dos 80% maiores até 10/2019 ≈ ${brl(m80)} × RMI concedida ${brl(B.rmi)}`, ganho: g }); }
         else if (tcReforma >= tcMin && coef < 1) add(nv('medio'), 'adquirido', 'Já tinha tempo para se aposentar antes da Reforma: simular a regra antiga', `Em 13/11/2019 já tinha cerca de ${am(tcReforma)} de contribuição (mínimo de ${tcMin / 12} anos). Pela regra antiga a renda é a média dos 80% maiores salários × fator previdenciário; dependendo da idade pode superar os ${pct(coef)} concedidos. Precisa de simulação com a tábua do IBGE.` + obsDec, { base: 'EC 103, art. 3º; STF Tema 334' });
-        if (esp === '41' && idRef >= (sexo === 'M' ? 65 : 60) && tC && tC.ateReforma >= 180 && m80) { const c0 = Math.min(1, 0.7 + 0.01 * Math.floor(tC.ateReforma / 12)), nr = rmiDe(m80, c0), g = nr > B.rmi * 1.02 ? ganhoDe(nr) : null; if (g) add(nv('alto'), 'adquirido-idade', 'Direito adquirido à aposentadoria por idade pela regra antiga', `Em 13/11/2019 já tinha ${idRef} anos e ${tC.ateReforma} contribuições. Regra antiga: 70% + 1% por ano de contribuição (aqui ${pct(c0)}) sobre a média dos 80% maiores salários.` + obsDec, { base: 'EC 103, art. 3º; art. 50 da Lei 8.213', numeros: `≈ ${brl(nr)} × RMI concedida ${brl(B.rmi)}`, ganho: g }); }
+        if (G === 'idade' && idRef >= (sexo === 'M' ? 65 : 60) && tC && tC.ateReforma >= 180 && m80) { const c0 = Math.min(1, 0.7 + 0.01 * Math.floor(tC.ateReforma / 12)), nr = rmiDe(m80, c0), g = nr > B.rmi * 1.02 ? ganhoDe(nr) : null; if (g) add(nv('alto'), 'adquirido-idade', 'Direito adquirido à aposentadoria por idade pela regra antiga', `Em 13/11/2019 já tinha ${idRef} anos e ${tC.ateReforma} contribuições. Regra antiga: 70% + 1% por ano de contribuição (aqui ${pct(c0)}) sobre a média dos 80% maiores salários.` + obsDec, { base: 'EC 103, art. 3º; art. 50 da Lei 8.213', numeros: `≈ ${brl(nr)} × RMI concedida ${brl(B.rmi)}`, ganho: g }); }
       }
       // 6e. descarte de contribuições (art. 26, § 6º)
-      const tcSim = tcMeses != null ? tcMeses : (esp === '32' && coef <= 0.6 ? n : null);
+      const tcSim = tcMeses != null ? tcMeses : (G === 'invalidez' && coef <= 0.6 ? n : null);
       if (ca.media.pct === 100 && n >= 2 && tcSim != null) {
         const asc = naoDesc.map(s => s.corr).sort((a, b) => a - b), soma = asc.reduce((a, b) => a + b, 0), filiadoAntes94 = !tC || !tC.primeiro || tC.primeiro < '1994-07';
-        const divMin = B.dib >= L14331 && esp !== '32' && filiadoAntes94 ? 108 : 0, lim = sexo ? limiar : 15, coefFixo = coef === 1;
-        const minMeses = esp === '32' ? 12 : esp === '41' ? 180 : (sexo === 'M' ? 420 : 360);
+        const divMin = B.dib >= L14331 && G !== 'invalidez' && filiadoAntes94 ? 108 : 0, lim = sexo ? limiar : 15, coefFixo = coef === 1;
+        const minMeses = G === 'invalidez' ? 12 : G === 'idade' ? 180 : (sexo === 'M' ? 420 : 360);
         let melhor = null, acum = 0;
-        for (let k = 1; k < n; k++) { acum += asc[k - 1]; const tk = tcSim - k; if (tk < minMeses || n - k < (esp === '32' ? 12 : 1)) break; const ck = coefFixo ? 1 : Math.min(1, 0.6 + 0.02 * Math.max(0, Math.floor(tk / 12) - lim)), mk = (soma - acum) / Math.max(n - k, divMin), r = rmiDe(mk, ck); if (!melhor || r > melhor.rmi) melhor = { k, rmi: r, media: mk, coef: ck }; }
+        for (let k = 1; k < n; k++) { acum += asc[k - 1]; const tk = tcSim - k; if (tk < minMeses || n - k < (G === 'invalidez' ? 12 : 1)) break; const ck = coefFixo ? 1 : Math.min(1, 0.6 + 0.02 * Math.max(0, Math.floor(tk / 12) - lim)), mk = (soma - acum) / Math.max(n - k, divMin), r = rmiDe(mk, ck); if (!melhor || r > melhor.rmi) melhor = { k, rmi: r, media: mk, coef: ck }; }
         const atual = rmiDe(soma / Math.max(n, divMin, ca.media.div > n && B.dib >= L14331 ? ca.media.div : 0), coef);
-        if (melhor && melhor.rmi > Math.max(atual, B.rmi) * 1.01) { const g = ganhoDe(melhor.rmi); add(nv(g && g.pct >= 0.03 && esp !== '32' ? 'alto' : 'medio'), 'descarte', `Descarte de ${melhor.k} contribuição(ões) baixas aumenta a renda`, `A Reforma permite excluir da média as contribuições que reduzem o benefício, desde que sobre o tempo mínimo exigido — o tempo descartado não conta para mais nada. Simulação: tirando as ${melhor.k} menores, a média vai de ${brl(soma / n)} para ${brl(melhor.media)} e o coeficiente ${melhor.coef === coef ? 'continua em ' + pct(coef) : 'passa de ' + pct(coef) + ' para ' + pct(melhor.coef)}.${!sexo ? ' (Simulado com limiar de 15 anos: confirme o sexo acima.)' : ''}${coefFixo ? ' Como o coeficiente é de 100%, confira se o tempo que sobra ainda cumpre a regra usada na concessão.' : ''}${esp === '32' ? ' Atenção: o INSS só aplica o descarte às aposentadorias programadas; para incapacidade é tese a sustentar em juízo.' : ''}${B.dib < L14331 && APOS.includes(esp) ? ' Na lacuna de 13/11/2019 a 04/05/2022 não há divisor mínimo (TNU Tema 353), o que permite descartar até ficar com poucas contribuições altas.' : ''}` + obsDec, { base: 'EC 103, art. 26, § 6º; TNU Tema 353', numeros: `RMI ${brl(B.rmi)} → ${brl(melhor.rmi)} (estimativa)`, ganho: g }); }
+        if (melhor && melhor.rmi > Math.max(atual, B.rmi) * 1.01) { const g = ganhoDe(melhor.rmi); add(nv(g && g.pct >= 0.03 && G !== 'invalidez' ? 'alto' : 'medio'), 'descarte', `Descarte de ${melhor.k} contribuição(ões) baixas aumenta a renda`, `A Reforma permite excluir da média as contribuições que reduzem o benefício, desde que sobre o tempo mínimo exigido — o tempo descartado não conta para mais nada. Simulação: tirando as ${melhor.k} menores, a média vai de ${brl(soma / n)} para ${brl(melhor.media)} e o coeficiente ${melhor.coef === coef ? 'continua em ' + pct(coef) : 'passa de ' + pct(coef) + ' para ' + pct(melhor.coef)}.${!sexo ? ' (Simulado com limiar de 15 anos: confirme o sexo acima.)' : ''}${coefFixo ? ' Como o coeficiente é de 100%, confira se o tempo que sobra ainda cumpre a regra usada na concessão.' : ''}${G === 'invalidez' ? ' Atenção: o INSS só aplica o descarte às aposentadorias programadas; para incapacidade é tese a sustentar em juízo.' : ''}${B.dib < L14331 && APOS.includes(esp) ? ' Na lacuna de 13/11/2019 a 04/05/2022 não há divisor mínimo (TNU Tema 353), o que permite descartar até ficar com poucas contribuições altas.' : ''}` + obsDec, { base: 'EC 103, art. 26, § 6º; TNU Tema 353', numeros: `RMI ${brl(B.rmi)} → ${brl(melhor.rmi)} (estimativa)`, ganho: g }); }
       }
     }
 
     /* ---- 7. Incapacidade permanente ---- */
     if (INCAP.includes(esp) && B.dib) {
-      if (posReforma && esp === '32') {
+      if (posReforma && G === 'invalidez' && !ESP.f.acid) {
         const antes = cnTit ? cnTit.vinculos.filter(v => v.tipo === 'beneficio' && TEMP.includes(v.especie) && v.inicio && v.inicio < REFORMA && v.fim && Math.abs(dias(v.fim, B.dib)) <= 62).pop() : null;
         if (antes) { let g = null, num = ''; if (ca && ca.temMemoria) { const v = ca.salarios.map(s => s.corr).sort((a, b) => b - a), n80 = Math.max(1, Math.floor(v.length * 0.8 + 1e-9)), m80 = v.slice(0, n80).reduce((a, b) => a + b, 0) / n80, nr = rmiDe(m80, 1); g = ganhoDe(nr); num = `Coeficiente ${pct(ca.coef || 0.6)} sobre ${brl(ca.media.valor)} → 100% da média dos 80% maiores ≈ ${brl(nr)}`; }
           add(nv('alto'), 'incap-anterior', 'Incapacidade começou antes da Reforma: cálculo pela regra antiga (100%)', `O CNIS mostra auxílio por incapacidade de ${dBR(antes.inicio)} a ${dBR(antes.fim)}, emendado na aposentadoria de ${dBR(B.dib)}. Se a incapacidade vem de antes de 13/11/2019, aplica-se a lei da data do fato gerador: 100% do salário de benefício, e não os 60% + 2% da Reforma. O Tema 1.300 do STF só validou a regra nova para incapacidade constatada DEPOIS da Reforma. Prova: laudos e a data de início da incapacidade (DII) fixada pela perícia.` + obsDec, { base: 'art. 44 da Lei 8.213 (redação anterior); tempus regit actum; STF Tema 1.300 a contrario sensu', numeros: num, ganho: g }); pd('Laudo da perícia do INSS com a data de início da incapacidade (DII) — Meu INSS → "Laudo médico pericial"'); }
@@ -231,16 +305,16 @@
     }
 
     /* ---- 10. Aposentadoria por idade antes da Reforma: coeficiente ---- */
-    if (ca && esp === '41' && B.dib < REFORMA && ca.coef && ca.coef < 1 && tC) { const esper = Math.min(1, 0.7 + 0.01 * Math.floor(tC.meses / 12)); if (esper > ca.coef + 0.009) { const g = ca.media ? ganhoDe(rmiDe(ca.media.valor, esper * (fatorAplicado ? ca.fator : 1))) : null; add(nv('medio'), 'coef-idade', `Coeficiente de ${pct(ca.coef)} com cerca de ${am(tC.meses)} no CNIS`, `Na aposentadoria por idade anterior à Reforma o coeficiente é 70% + 1% a cada 12 contribuições (até 100%). Pelo CNIS daria ${pct(esper)} — conferir quais vínculos ficaram fora.` + obsDec, { base: 'art. 50 da Lei 8.213', ganho: g }); } }
+    if (ca && G === 'idade' && B.dib < REFORMA && ca.coef && ca.coef < 1 && tC) { const esper = Math.min(1, 0.7 + 0.01 * Math.floor(tC.meses / 12)); if (esper > ca.coef + 0.009) { const g = ca.media ? ganhoDe(rmiDe(ca.media.valor, esper * (fatorAplicado ? ca.fator : 1))) : null; add(nv('medio'), 'coef-idade', `Coeficiente de ${pct(ca.coef)} com cerca de ${am(tC.meses)} no CNIS`, `Na aposentadoria por idade anterior à Reforma o coeficiente é 70% + 1% a cada 12 contribuições (até 100%). Pelo CNIS daria ${pct(esper)} — conferir quais vínculos ficaram fora.` + obsDec, { base: 'art. 50 da Lei 8.213', ganho: g }); } }
 
     /* ---- BPC/LOAS (espécies 87 e 88): não se revisa valor; procura-se benefício melhor e atrasados ---- */
     if (assist) {
-      add('info', 'bpc', 'BPC/LOAS não tem revisão de cálculo', 'O benefício assistencial é sempre de 1 salário mínimo, não paga 13º e não deixa pensão por morte. O que pode existir é (1) direito a um benefício previdenciário no lugar dele, com 13º e pensão, e (2) atrasados de pedido negado antes da concessão. É isso que a triagem procura abaixo.', { decai: false, base: 'Lei 8.742/1993 (LOAS), art. 20' });
+      add('info', 'bpc', G === 'rmv' ? 'Renda mensal vitalícia não tem revisão de cálculo' : 'BPC/LOAS não tem revisão de cálculo', 'O benefício assistencial é sempre de 1 salário mínimo, não paga 13º e não deixa pensão por morte. O que pode existir é (1) direito a um benefício previdenciário no lugar dele, com 13º e pensão, e (2) atrasados de pedido negado antes da concessão. É isso que a triagem procura abaixo.', { decai: false, base: 'Lei 8.742/1993 (LOAS), art. 20' });
       const V = cnTit ? cnTit.vinculos : [], bpcIni = B.dib || (benCnis && benCnis.inicio);
       if (!cnTit) { add('info', 'sem-cnis', 'Falta o CNIS', 'É no CNIS que aparecem os benefícios anteriores (auxílio cessado, pedidos negados) e as contribuições. Peça: Meu INSS → "Extrato de contribuição (CNIS)".', { decai: false }); pedir.add('CNIS completo (extrato de contribuição)'); }
       // auxílio por incapacidade cessado antes do BPC por deficiência: indício de que a incapacidade nunca acabou
       const ces = V.filter(v => v.tipo === 'beneficio' && [...TEMP, ...INCAP].includes(v.especie) && v.inicio && v.fim && /CESSADO/i.test(v.situacao || '') && (!bpcIni || v.fim < bpcIni)).sort((a, b) => b.fim.localeCompare(a.fim))[0];
-      if (ces && esp === '87') {
+      if (ces && ['87', '30', '11'].includes(esp)) {
         const dur = difMeses(ces.inicio.slice(0, 7), ces.fim.slice(0, 7)), vao = bpcIni ? difMeses(ces.fim.slice(0, 7), bpcIni.slice(0, 7)) : null;
         // piso dos atrasados: salário mínimo dos meses sem benefício dentro dos últimos 5 anos + 13º que o BPC não paga
         const de = [maisMeses(ces.fim.slice(0, 7), 1), maisMeses(hojeC, -60)].sort().pop(), ate = bpcIni ? maisMeses(bpcIni.slice(0, 7), -1) : hojeC; let atras = 0, n = 0;
@@ -256,8 +330,9 @@
       const neg = V.filter(v => v.tipo === 'beneficio' && /INDEFERIDO/i.test(v.situacao || ''));
       if (neg.length) { const porEsp = {}; neg.forEach(v => porEsp[v.especie] = (porEsp[v.especie] || 0) + 1);
         add('medio', 'indeferidos', `${neg.length} pedido(s) negado(s) antes: conferir as datas para cobrar atrasados`, `O CNIS registra pedidos indeferidos (${Object.entries(porEsp).map(([e, q]) => q + ' da espécie ' + e).join(', ')}), mas não mostra a data. Se o BPC foi negado antes e a deficiência e a renda da família já eram as mesmas, cabe cobrar as parcelas desde o primeiro requerimento (limitadas aos últimos 5 anos). Indeferimento não tem prazo de decadência.`, { decai: false, base: 'STF ADI 6.096; Súmula 85 do STJ; LOAS, art. 20' }); pedir.add('Datas e motivos dos pedidos negados (Meu INSS → "Consultar pedidos" / cópia dos processos)'); }
-      if (tC && tC.meses >= 180) add('alto', 'bpc-aposentadoria', `Tem cerca de ${am(tC.meses)} de contribuição: pode ter direito a aposentadoria no lugar do BPC`, esp === '88' ? 'Com 180 contribuições e a idade mínima, a aposentadoria por idade substitui o BPC com vantagem: paga 13º, deixa pensão e não depende da renda da família. Conferir a idade na data do pedido e, se faltar pouco, tempo rural ou vínculos fora do CNIS (aposentadoria híbrida, STJ Tema 1.007).' : 'Com 15 anos de contribuição na condição de pessoa com deficiência, cabe a aposentadoria por idade da pessoa com deficiência (60 anos homem, 55 mulher) ou, com mais tempo, a por tempo de contribuição da LC 142/2013 — ambas com 13º e pensão.', { decai: false, base: esp === '88' ? 'art. 48 da Lei 8.213; STJ Tema 1.007' : 'LC 142/2013' });
-      else if (tC && tC.meses >= 120 && esp === '88') add('info', 'bpc-aposentadoria', `Faltam cerca de ${180 - tC.meses} contribuições para a aposentadoria por idade`, 'Vale procurar tempo que não está no CNIS (rural, CTPS antiga, carnês) — completando 180 contribuições, a aposentadoria por idade substitui o BPC com 13º e pensão.', { decai: false, base: 'art. 48 da Lei 8.213; STJ Tema 1.007' });
+      const semMotor = !(cnTit && cnTit.nascimento && sexo);
+      if (!semMotor) ; else if (tC && tC.meses >= 180) add('alto', 'bpc-aposentadoria', `Tem cerca de ${am(tC.meses)} de contribuição: pode ter direito a aposentadoria no lugar do BPC`, ['88', '40', '12'].includes(esp) ? 'Com 180 contribuições e a idade mínima, a aposentadoria por idade substitui o BPC com vantagem: paga 13º, deixa pensão e não depende da renda da família. Conferir a idade na data do pedido e, se faltar pouco, tempo rural ou vínculos fora do CNIS (aposentadoria híbrida, STJ Tema 1.007).' : 'Com 15 anos de contribuição na condição de pessoa com deficiência, cabe a aposentadoria por idade da pessoa com deficiência (60 anos homem, 55 mulher) ou, com mais tempo, a por tempo de contribuição da LC 142/2013 — ambas com 13º e pensão.', { decai: false, base: ['88', '40', '12'].includes(esp) ? 'art. 48 da Lei 8.213; STJ Tema 1.007' : 'LC 142/2013' });
+      else if (tC && tC.meses >= 120 && ['88', '40', '12'].includes(esp)) add('info', 'bpc-aposentadoria', `Faltam cerca de ${180 - tC.meses} contribuições para a aposentadoria por idade`, 'Vale procurar tempo que não está no CNIS (rural, CTPS antiga, carnês) — completando 180 contribuições, a aposentadoria por idade substitui o BPC com 13º e pensão.', { decai: false, base: 'art. 48 da Lei 8.213; STJ Tema 1.007' });
       add('info', 'bpc-cuidados', 'Cuidados para não perder o BPC', 'Manter o CadÚnico atualizado (no máximo 2 anos sem atualizar) e avisar mudança de renda ou de endereço: o INSS revisa o benefício periodicamente. Se a pessoa com deficiência começar a trabalhar, o BPC é suspenso e ela pode pedir o auxílio-inclusão (metade do BPC).', { decai: false, base: 'LOAS, arts. 21 e 26-A (Lei 14.176/2021); Decreto 11.016/2022' });
     }
 
@@ -301,7 +376,52 @@
       if (antigos.length) add('info', 'pis-pasep', 'Trabalhou registrado antes de outubro de 1988: conferir cotas do PIS/Pasep', `O CNIS tem ${antigos.length} vínculo(s) anteriores a 04/10/1988. Quem trabalhou de 1971 a 1988 pode ter cotas do antigo fundo que nunca sacou (herdeiros também recebem). A consulta e o pedido são gratuitos, pelo portal Repis Cidadão ou pelo aplicativo do FGTS — não é ação judicial; o prazo divulgado vai até setembro de 2028.${publico.length ? ' Como houve vínculo com órgão público, vale conferir também se o saldo do Pasep sacado na aposentadoria veio corrigido: cabe ação contra o Banco do Brasil (STJ, Tema 1.150).' : ''}`, { decai: false, area: 'Fora do INSS', base: 'LC 26/1975; Lei 13.932/2019' + (publico.length ? '; STJ Tema 1.150' : '') }); }
     if (B.dib && B.dib >= '1994-03-01' && B.dib <= '1997-02-28' && !assist) add('info', 'irsm', 'Benefício de 1994–1997: conferir a revisão do IRSM de fevereiro de 1994', 'Benefícios com início entre março de 1994 e fevereiro de 1997 deveriam ter os salários corrigidos pelo IRSM de 39,67%. O INSS revisou por acordo (Lei 10.999/2004); vale conferir no Meu INSS se a revisão foi feita e paga.', { decai: false, base: 'Lei 10.999/2004' });
     // revisão que depende de prova nova: começar pelo pedido administrativo
-    if (T.some(t => ['salarios', 'sal-minimo', 'tempo', 'pendencias', 'especial'].includes(t.id) && ['alto', 'medio'].includes(t.nivel))) add('info', 'tema1124', 'Comece pelo pedido de revisão no INSS, já com as provas', 'Quando a prova (PPP, holerites, CTPS) não esteve no processo de concessão, as diferenças só são devidas a partir do momento em que o INSS a recebe — na Justiça, da citação. Por isso o pedido administrativo de revisão com todos os documentos vem primeiro: ele fixa a data dos atrasados e ainda pode resolver sem ação. As estimativas de atrasados acima supõem que a prova já estava com o INSS.', { decai: false, base: 'STJ Tema 1.124' });
+    if (!esp && T.some(t => ['especial', 'eleg-especial', 'eleg-apos-especial', 'elegivel'].includes(t.id))) add('info', 'tema1124', 'Junte todas as provas já no pedido ao INSS', 'Se o PPP, a carteira de trabalho e os demais documentos não forem entregues no pedido administrativo, os atrasados podem contar só a partir da citação na Justiça. Com tudo no requerimento, o pagamento vale desde a data do pedido.', { decai: false, area: 'Direito pelo CNIS', base: 'STJ Tema 1.124' });
+    else if (esp && T.some(t => ['salarios', 'sal-minimo', 'tempo', 'pendencias', 'especial'].includes(t.id) && ['alto', 'medio'].includes(t.nivel))) add('info', 'tema1124', 'Comece pelo pedido de revisão no INSS, já com as provas', 'Quando a prova (PPP, holerites, CTPS) não esteve no processo de concessão, as diferenças só são devidas a partir do momento em que o INSS a recebe — na Justiça, da citação. Por isso o pedido administrativo de revisão com todos os documentos vem primeiro: ele fixa a data dos atrasados e ainda pode resolver sem ação. As estimativas de atrasados acima supõem que a prova já estava com o INSS.', { decai: false, base: 'STJ Tema 1.124' });
+
+    /* ---- 11c. A que aposentadoria o CNIS dá direito ---- */
+    const jaAposentado = APOS.includes(esp) || INCAP.includes(esp); let eleg = null;
+    const podeEleg = !!(cnTit && cnTit.nascimento && tempoCnis(cnTit, hojeC).lista.length), ressalva = ' Contagem aproximada, por competência do CNIS, sem tempo rural, especial não declarado ou de outro regime — que só ajudam.';
+    const frase = R => R.map(r => `${r.nome}, desde ${cBR(r.desde)} — ${r.valor}`).join('; '), bases = R => [...new Set(R.map(r => r.base))].join(' · ');
+    if (podeEleg && !sexo && (!jaAposentado || posReforma)) add('info', 'eleg-sexo', 'Informe o sexo para ver a que aposentadoria a pessoa tem direito', 'As regras de idade, tempo e pontos são diferentes para homem e mulher. Marque o sexo no alto do cartão que o sistema refaz a conta.', { decai: false, area: 'Direito pelo CNIS' });
+    else if (podeEleg && !jaAposentado) {
+      const E = eleg = elegib(cnTit, sexo, hojeC), R = E.regras, tt = E.tt, F = E.F;
+      const ctxBenef = G === 'pensao' ? ' Pode acumular com a pensão: recebe inteiro o benefício de maior valor e uma parte do menor (faixas do art. 24 da EC 103).' : assist ? ' A aposentadoria substitui o benefício assistencial com vantagem: paga 13º, deixa pensão aos dependentes e não depende da renda da família.' : G === 'auxacidente' ? ' O auxílio-acidente cessa com a aposentadoria, mas o valor dele entra no cálculo.' : G === 'auxdoenca' ? ' Pode pedir a aposentadoria sem abrir mão do auxílio até a concessão.' : '';
+      const negado = cnTit.vinculos.filter(v => v.tipo === 'beneficio' && APOS.includes(v.especie) && /INDEFERIDO/i.test(v.situacao || '')).length;
+      const quem = `Com ${Math.floor(E.idade)} anos e cerca de ${am(E.tempo)} de contribuição (${am(E.tempoReforma)} até a Reforma)`;
+      if (R.length) add('alto', 'elegivel', `Pelo CNIS, já tem direito a aposentadoria${R.length > 1 ? ' por ' + R.length + ' regras' : ''}`, `${quem}, cumpre: ${frase(R)}.` + (R.length > 1 ? ' Simule todas: o INSS é obrigado a conceder a mais vantajosa.' : '') + ctxBenef + (negado ? ` O CNIS registra ${negado} pedido(s) de aposentadoria indeferido(s): se os requisitos já estavam cumpridos na data do pedido, os atrasados contam desde lá; se foram completados durante o processo, cabe a reafirmação da data do requerimento (STJ, Tema 995).` : ' O benefício só é pago a partir do requerimento — quanto antes pedir, melhor.') + ressalva, { decai: false, area: 'Direito pelo CNIS', base: bases(R) + ' · Decreto 3.048, art. 176-E', numeros: R.map(r => `${r.nome}: desde ${cBR(r.desde)}`).join(' | ') });
+      if (E.faltas.length && !R.length) add('info', 'elegivel-falta', 'Aposentadoria: o que falta pelo CNIS', `${quem}: ` + E.faltas.map(f => `${f.nome} — ${f.txt}`).join('. ') + '. Caminhos que antecipam: tempo rural (aposentadoria rural aos 55/60 anos, ou híbrida somando roça e cidade, mesmo sem contribuição do período rural), tempo especial convertido (até 13/11/2019), pessoa com deficiência (idade de 55/60 anos com 15 de contribuição, ou tempo reduzido), professor (5 anos a menos), serviço militar, tempo de outro regime por certidão e vínculos da carteira que não estão no CNIS.' + ressalva, { decai: false, area: 'Direito pelo CNIS', base: 'EC 103, arts. 15 a 20; Lei 8.213, art. 48, §§ 1º a 3º; STJ Tema 1.007; LC 142/2013' });
+      else if (E.faltas.length && R.every(r => /^idade/.test(r.id)) && E.faltas.some(f => f.id === 'tempo' && f.quando)) { const f = E.faltas.find(x => x.id === 'tempo'); add('info', 'elegivel-falta', 'Esperar pode valer mais: regra de tempo de contribuição próxima', `Além da aposentadoria por idade, ${f.txt}. Compare os valores antes de pedir.`, { decai: false, area: 'Direito pelo CNIS', base: 'EC 103, arts. 15 a 20' }); }
+      // tempo especial declarado pela empresa (IEAN): conversão e aposentadoria especial
+      const ieRef = mesesIean(cnTit, '2019-11'), ieTot = mesesIean(cnTit, hojeC), baseEsp = ieRef >= 12 ? ieRef : espTot;
+      if (baseEsp >= 12) { const bonus = Math.floor(baseEsp * (F ? 0.2 : 0.4)), E2 = elegib(cnTit, sexo, hojeC, bonus), novas = E2.regras.filter(r => { const x = R.find(y => y.id === r.id); return !x || r.desde < x.desde; }), declarado = ieRef >= 12;
+        if (novas.length) add('medio', 'eleg-especial', declarado ? 'Convertendo o tempo especial que o CNIS indica, cumpre regra que sem ele não cumpre' : 'Se o tempo especial for reconhecido, já tem direito a aposentadoria', (declarado ? `O CNIS traz ${am(ieRef)} com indicador de exposição a agente nocivo até a Reforma` : `Há ${am(espTot)} até a Reforma em empresa(s) de atividade típica de exposição a agente nocivo (veja o cartão do tempo especial)`) + `; convertidos, somam ${am(bonus)} a mais de tempo de contribuição. Com isso: ${frase(novas)}. Depende do PPP de cada empresa${declarado ? '' : ' — sem ele, vale a conta do cartão "o que falta"'}.`, { decai: false, area: 'Direito pelo CNIS', base: 'art. 57, § 5º, da Lei 8.213; EC 103, art. 25, § 2º · ' + bases(novas) }); }
+      if (ieRef >= 300) add('medio', 'eleg-apos-especial', 'Tem 25 anos com indicador de exposição antes da Reforma: aposentadoria especial por direito adquirido', `São ${am(ieRef)} com indicador de exposição a agente nocivo até 13/11/2019. Com o PPP confirmando, a aposentadoria especial é de 100% da média dos 80% maiores salários, sem fator e sem idade mínima.`, { decai: false, area: 'Direito pelo CNIS', base: 'art. 57 da Lei 8.213; EC 103, art. 3º' });
+      else if (ieTot >= 300 && (E.idade + E.tempo / 12 >= 86 || E.idade >= 60)) add('medio', 'eleg-apos-especial', 'Tem 25 anos com indicador de exposição: aposentadoria especial pelas regras da Reforma', `São ${am(ieTot)} com indicador de exposição a agente nocivo. Fecha a transição dos 86 pontos (idade + tempo) ou a regra dos 60 anos de idade. Valor: 60% da média + 2% por ano acima de ${F ? 15 : 20} de contribuição. Depende do PPP.`, { decai: false, area: 'Direito pelo CNIS', base: 'EC 103, arts. 19, § 1º, e 21' });
+      // qualidade de segurado (para auxílio por incapacidade e para a pensão dos dependentes)
+      { const ultBen = cnTit.vinculos.filter(v => v.tipo === 'beneficio' && [...TEMP, ...INCAP].includes(v.especie) && v.fim && /CESSADO/i.test(v.situacao || '')).map(v => v.fim.slice(0, 7)).sort().pop() || '', ult = maisRecente(tt.ultimo, ultBen);
+        if (ult && !(TEMP.includes(esp) || G === 'auxacidente')) { const graca = E.carencia >= 120 ? 24 : 12, ate = maisMeses(ult, graca + 2);
+          if (ate >= hojeC) add('info', 'qualidade', `Mantém a qualidade de segurado até cerca de ${cBR(ate)}`, `Última contribuição ou benefício em ${cBR(ult)}; o período de graça aqui é de ${graca} meses${graca === 24 ? ' (tem mais de 120 contribuições — vale se não houve perda da qualidade no meio)' : ''}, mais 12 se comprovar desemprego. Enquanto durar, se ficar incapaz para o trabalho tem direito a auxílio por incapacidade, e os dependentes têm direito à pensão por morte.`, { decai: false, area: 'Direito pelo CNIS', base: 'art. 15 da Lei 8.213' });
+          else if (!R.length && E.idade < 65) add('info', 'qualidade', `Perdeu a qualidade de segurado por volta de ${cBR(ate)}`, `Última contribuição ou benefício em ${cBR(ult)}. Para benefício por incapacidade, precisa voltar a contribuir e cumprir metade da carência (6 contribuições) — salvo se a incapacidade começou quando ainda era segurado, caso em que o direito se mantém.`, { decai: false, area: 'Direito pelo CNIS', base: 'arts. 15, 27-A e 102 da Lei 8.213' }); } }
+      if (!esp && E.idade >= 65 && !R.length) add('info', 'bpc-idoso', 'Tem 65 anos ou mais e não se aposenta pelo CNIS: avaliar BPC ao idoso', 'Sem contribuições suficientes, o caminho é o benefício assistencial ao idoso, de 1 salário mínimo, para família com renda por pessoa de até 1/4 do salário mínimo (critério que a Justiça flexibiliza). Exige CadÚnico atualizado. Antes, vale procurar tempo rural para a aposentadoria híbrida, que paga 13º e deixa pensão.', { decai: false, area: 'Direito pelo CNIS', base: 'LOAS, art. 20; Lei 8.213, art. 48, § 3º' });
+    }
+    else if (podeEleg && jaAposentado && posReforma && dibC && (INCAP.includes(esp) || !(ca && ca.temMemoria))) {
+      // já aposentado depois da Reforma: na data da concessão, cumpria regra melhor do que a aplicada?
+      const E = eleg = elegib(cnTit, sexo, dibC), R = E.regras;
+      if (INCAP.includes(esp) && R.length) add(nv('medio'), 'melhor-beneficio', 'Quando se aposentou por incapacidade, já cumpria requisito de aposentadoria programada', `Na data da concessão tinha ${Math.floor(E.idade)} anos e cerca de ${am(E.tempo)} de contribuição, o que dava direito a: ${frase(R)}. A aposentadoria por incapacidade concedida depois da Reforma parte de 60% da média; se a programada der mais, cabe pedir o benefício mais vantajoso — e ela não depende de perícia.` + ressalva, { area: 'Direito pelo CNIS', base: 'STF Tema 334; Decreto 3.048, art. 176-E · ' + bases(R) });
+      else if (APOS.includes(esp) && R.length > 1) add(nv('medio'), 'melhor-beneficio', `Na data da concessão cumpria ${R.length} regras: conferir se o INSS aplicou a melhor`, `Com ${Math.floor(E.idade)} anos e cerca de ${am(E.tempo)} de contribuição na concessão, cumpria: ${frase(R)}. Sem a memória de cálculo não dá para ver qual foi aplicada; a carta de concessão completa mostra, e a diferença entre as regras pode ser grande.` + ressalva, { area: 'Direito pelo CNIS', base: 'STF Tema 334; Decreto 3.048, art. 176-E · ' + bases(R) });
+    }
+
+    /* ---- 11d. Ficha da espécie: o que a lei manda conferir neste tipo de benefício ---- */
+    if (esp) {
+      if (ESP.desconhecida) add('info', 'especie', `Espécie ${esp} não está catalogada`, 'Código de espécie fora da tabela do INSS usada pela triagem. As conferências gerais (tempo, salários, direito a aposentadoria) foram feitas; as específicas da espécie precisam de análise manual.', { decai: false });
+      const fichas = (BASE.FICHAS[G] || []).slice(); if (ESP.f.excomb) fichas.push(BASE.FICHA_EXCOMB); if (ESP.f.rural && ESP.f.extinta) fichas.push(BASE.FICHA_RURAL);
+      fichas.forEach((f, i) => add(f[0], 'ficha-' + G + i, f[1], f[2], { decai: false, area: 'Espécie ' + esp, base: f[3] }));
+      if (G === 'invalidez' && B.nascimento && B.dib) { const id = anos(B.nascimento, hoje), anosBen = difMeses(dibC, hojeC) / 12; if (id >= 60 || (id >= 55 && anosBen >= 15)) add('info', 'isento-pericia', 'Não pode mais ser convocado para perícia de revisão', `Tem ${id} anos${id < 60 ? ' e ' + Math.floor(anosBen) + ' anos de benefício' : ''}: a lei dispensa a perícia periódica. Se o INSS convocar ou cessar o benefício por "recuperação", cabe restabelecer.`, { decai: false, area: 'Espécie ' + esp, base: 'art. 101, § 1º, da Lei 8.213' }); }
+      if (G === 'especial' && B.dib && cnTit && cnTit.vinculos.filter(v => v.tipo === 'emprego' && (v.indicadores.includes('IEAN') || v.rem.some(r => r.ind.includes('IEAN')))).flatMap(v => v.rem).filter(r => r.comp > dibC).length >= 3) add('medio', 'tema709', 'Continua trabalhando exposto a agente nocivo depois da aposentadoria especial', 'O CNIS mostra remunerações com indicador de exposição (IEAN) depois da concessão. O STF decidiu que a aposentadoria especial é suspensa enquanto durar a atividade nociva — oriente o cliente antes que o INSS cobre.', { decai: false, area: 'Espécie ' + esp, base: 'STF Tema 709' });
+      if (['57'].includes(esp) && fatorAplicado) add('nao', 'professor-fator', 'Tirar o fator previdenciário da aposentadoria de professor — tese encerrada', 'O STF considerou constitucional aplicar o fator previdenciário à aposentadoria de professor concedida antes da Reforma.', { decai: false, base: 'STF Tema 1.091' });
+    }
+    if (B.dib && B.dib < '1997-06-28' && ESP.f.contributivo && !ESP.f.rural && !['auxdoenca', 'reclusao', 'maternidade'].includes(G)) add('nao', 'antigas', 'Revisões antigas do cálculo (ORTN/OTN, Súmula 260, buraco verde, IRSM) — prazo encerrado em 2007', 'Para benefícios concedidos antes de 28/06/1997, o prazo de 10 anos para rever o ato de concessão começou em 01/08/1997 e terminou em 01/08/2007. Continuam possíveis a readequação ao teto das EC 20 e 41, que não mexe na concessão, e os direitos que não são revisão de cálculo (adicional de 25%, isenção de IR, pensão, acumulação).', { decai: false, base: 'STF Tema 313 (RE 626.489)' });
 
     /* ---- 12. Teses que NÃO cabem mais (para ninguém vender tese morta) ---- */
     const pre94Carta = ca && ca.temMemoria && ca.salarios.some(x => x.comp <= '1994-09');
@@ -314,14 +434,15 @@
     perguntas.push('É viúvo(a) ou perdeu companheiro(a) que era aposentado ou contribuía para o INSS e nunca pediu pensão? A pensão pode ser pedida a qualquer tempo.');
     perguntas.push('Tem doença grave (câncer, coração, rim, Parkinson, cegueira de um olho...)? Pode haver isenção de imposto de renda e outros direitos.');
     if (!assist) perguntas.push('Sofreu acidente (de trabalho ou não) e ficou com sequela depois de um auxílio-doença? Pode caber auxílio-acidente desde a alta.');
-    if (!assist) perguntas.push('Ganhou ação trabalhista depois da concessão? As verbas entram no cálculo (prazo conta do trânsito em julgado).');
+    if (!assist && esp) perguntas.push('Ganhou ação trabalhista depois da concessão? As verbas entram no cálculo (prazo conta do trânsito em julgado).');
+    if (!esp) { perguntas.push('Tem carteira de trabalho antiga, carnês ou holerites de período que não aparece no CNIS? Vínculo anotado na carteira conta mesmo sem recolhimento da empresa.'); perguntas.push('Tem deficiência (física, auditiva, visual, mental) ou foi professor(a) na educação básica? As duas situações têm aposentadoria com requisitos menores.'); }
     if (!INCAP.includes(esp) && !assist) perguntas.push('Trabalhou com ruído, produto químico, hospital, frio, eletricidade? Pedir o PPP de cada empresa.');
     if (APOS.includes(esp)) perguntas.push('Tem deficiência (física, auditiva, visual, mental) desde antes de se aposentar? A aposentadoria da pessoa com deficiência (LC 142/2013) tem regras melhores.');
     if (noMinimo && !assist) add('info', 'minimo', 'Benefício concedido no salário mínimo', 'Revisão só compensa se a renda recalculada passar do salário mínimo — as estimativas acima já consideram isso.', { decai: false });
 
     const ord = { alto: 0, medio: 1, info: 2, venc: 3, nao: 4 }; T.sort((a, b) => ord[a.nivel] - ord[b.nivel] || ((b.ganho && b.ganho.mensal) || 0) - ((a.ganho && a.ganho.mensal) || 0));
     const melhor = T.filter(t => t.ganho && t.nivel !== 'nao' && t.nivel !== 'venc').sort((a, b) => b.ganho.mensal - a.ganho.mensal)[0] || null;
-    return { B, prazo, teses: T, pedir: [...pedir], perguntas, comparacao, tempoCnis: tC, melhor, temCarta: !!ca, temCnis: !!cn, cnis: cn, carta: ca, docs };
+    return { B, especie: ESP, elegibilidade: eleg, prazo, teses: T, pedir: [...pedir], perguntas, comparacao, tempoCnis: tC || (cnTit ? tempoCnis(cnTit, hojeC) : null), melhor, temCarta: !!ca, temCnis: !!cn, cnis: cn, carta: ca, docs };
   }
 
   root.XYZPrevid = { analisar, sexoPalpite, util: { am, pct, maisMeses, difMeses, em, TETO, SM } };
