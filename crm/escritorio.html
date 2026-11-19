@@ -1304,6 +1304,7 @@ async function carregarDesafio(abrir) {
   desafio = (data || [])[0] || null; painelDz = [];
   if (desafio) { const { data: p } = await sb.rpc('desafio_painel', { did: desafio.id }); painelDz = p || []; }
   const b = $('#dz-btn'); b.hidden = !desafio; b.onclick = abrirDesafio;
+  { const rk = document.getElementById('rk-btn'); if (rk) rk.style.top = desafio ? '180px' : '126px'; }
   if (desafio) { const nd = b.querySelector('.neon'); if (nd) nd.textContent = 'Desafio · até ' + new Date(desafio.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); }
   // animação: só em quem recebeu algum desafio ativo (geral = todas; direcionado = só a escolhida)
   const { data: todos } = await sb.from('desafios').select('id').lte('inicio', agora).gt('fim', agora);
