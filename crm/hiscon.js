@@ -383,16 +383,20 @@
     r.banco = bm ? (bm[1] || bm[2]).toUpperCase().replace(/\s+/g, ' ') : '';
     const vistos = new Set(), uniq = a => a.filter(x => { const k = x.v.toFixed(2); if (vistos.has(k)) return false; vistos.add(k); return true; });
     r.seguro = uniq(acharValores(T, ROT_SEGURO));
+    // quadro "Seguro Prestamista ( )SIM (X)NÃO" (Paraná Banco e parecidos): o seguro NÃO foi contratado e o número que vem
+    // depois de "Valor do Seguro R$" é o valor da parcela, que fica na mesma linha do quadro
+    const semSeguro = /SeguroPrestamista\*?\(\)SIM\(X\)N[ÃA]O/i.test(T.replace(/\s+/g, ''));
+    if (semSeguro) { r.seguro = []; r.seguroNaoMarcado = true; }
     r.pacote = uniq(acharValores(T, ROT_PACOTE));
     // layout tipo Paraná Banco: rótulos num bloco e valores preenchidos depois ("15,06 X 95,43 ...")
-    if (!r.seguro.length && /Seguro Prestamista\*?\s*\(\s*X?\s*\)\s*SIM.{0,40}Valor do Seguro R\$/i.test(T)) {
+    if (!semSeguro && !r.seguro.length && /Seguro Prestamista\*?\s*\(\s*X?\s*\)\s*SIM.{0,40}Valor do Seguro R\$/i.test(T)) {
       const i = T.search(/Valor do Seguro R\$/i), bloco = T.slice(i, i + 900);
       const mx = bloco.match(/\d,\d{2}\s+X\s+(\d{1,3}(?:\.\d{3})*,\d{2})/) || bloco.match(/\(\s*X\s*\)\s*SIM.{0,60}?R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})/i);
       const v = mx ? Number(mx[1].replace(/\./g, '').replace(',', '.')) : 0;
       if (v > 0) r.seguro.push({ v, trecho: 'Quadro "Seguro Prestamista (X) SIM" · valor ' + mx[1] + ' (conferir)' });
     }
     // layout QI / VCTEX (CCB): tabela "12. Valor do Prêmio do Seguro" com uma linha por data — usa a linha da data de emissão
-    if (!r.seguro.length && /Pr[êe]mio/i.test(T) && /do\s+Seguro/i.test(T)) {
+    if (!semSeguro && !r.seguro.length && /Pr[êe]mio/i.test(T) && /do\s+Seguro/i.test(T)) {
       const em = (T.match(/Data de Emiss[ãa]o:?\s*(\d{2}\/\d{2}\/\d{4})/i) || [])[1];
       const RX = /(\d{2}\/\d{2}\/\d{4})\s+(?:R\$\s?[\d.]+,\d{2}\s+){4,6}[\d.,]+\s?%\s+[\d.,]+\s?%\s+R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})/g;
       let mq, pri = null, certo = null;
@@ -401,7 +405,7 @@
       if (v > 0) r.seguro.push({ v, trecho: 'Tabela · Valor do Prêmio do Seguro R$ ' + mm[2] + ' (' + mm[1] + ')' });
     }
     // PDFs que quebram palavras ("Prestam ista", "Seg uro"): tenta no texto sem espaços
-    if (!r.seguro.length) {
+    if (!semSeguro && !r.seguro.length) {
       const C = T.replace(/\s+/g, '');
       const mc = C.match(/(?:ValordoSeguro|Pr[êe]miodoSeguro|SeguroPrestamista|ValordoPr[êe]mio)R?\$?:?(\d{1,3}(?:\.\d{3})*,\d{2})(?!%)/i);
       const naoMarcado = /\(\)SIM\(X\)N[ÃA]O/i.test(C);
