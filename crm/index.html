@@ -494,7 +494,7 @@ body.embed{background:transparent}
       <div class="barra">
         <div class="busca"><label>Buscar (nome, CPF ou telefone)</label><input id="f-busca" placeholder="Digite e aguarde…"></div>
         <div><label>Advogado</label><select id="f-adv"><option value="">Todos</option></select></div>
-        <div><label>Mês inteiro</label><input type="month" id="f-mes"></div>
+        <div><label>Mês inteiro</label><select id="f-mes"><option value="">—</option></select></div>
         <div><label>Fechado de</label><input type="date" id="f-de"></div>
         <div><label>até</label><input type="date" id="f-ate"></div>
         <div id="f-at-box" hidden><label>Atendente</label><select id="f-at"><option value="">Todos</option></select></div>
@@ -1525,7 +1525,8 @@ let tb;
 $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(carregarClientes, 350); };
 ['#f-at', '#f-adv'].forEach(s => $(s).onchange = carregarClientes);
 ['#f-de', '#f-ate'].forEach(s => $(s).onchange = () => { $('#f-mes').value = ''; carregarClientes(); });
-// mês inteiro: preenche as duas datas de uma vez
+// mês inteiro: lista de janeiro a dezembro do ano corrente; preenche as duas datas de uma vez
+{ const ano = new Date().getFullYear(); $('#f-mes').insertAdjacentHTML('beforeend', ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((n, i) => `<option value="${ano}-${String(i + 1).padStart(2, '0')}">${n}</option>`).join('')); }
 $('#f-mes').onchange = e => { const m = e.target.value; if (m) { const [a, me] = m.split('-').map(Number); $('#f-de').value = m + '-01'; $('#f-ate').value = m + '-' + String(new Date(a, me, 0).getDate()).padStart(2, '0'); } else { $('#f-de').value = ''; $('#f-ate').value = ''; } carregarClientes(); };
 
 async function carregarClientes() {
