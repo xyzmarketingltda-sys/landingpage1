@@ -24,9 +24,21 @@ section{margin-top:14px}section>h2{font-size:14px;margin:0 0 8px;color:var(--sua
 .barra{height:6px;border-radius:99px;background:rgba(30,144,255,.15);margin-top:4px;overflow:hidden}.barra i{display:block;height:100%;background:linear-gradient(90deg,#1e90ff,#22d3ee)}
 .abas{display:flex;gap:6px;margin-bottom:8px}.abas button.sel{background:#1e90ff;border-color:#1e90ff;color:#fff}
 .aviso{font-size:12px;color:var(--suave);margin-top:16px;text-align:center}.dz{border-color:rgba(239,68,68,.6)}
+input{background:#061230;color:var(--txt);border:1px solid var(--borda);border-radius:10px;padding:12px;font-size:16px;width:100%}
 </style>
 </head>
-<body hidden>
+<body>
+<form id="login" hidden autocomplete="on" style="max-width:340px;margin:18vh auto 0">
+  <h1 style="text-align:center;margin-bottom:16px">XYZ — Painel</h1>
+  <div class="card" style="display:grid;gap:10px">
+    <input id="l-email" name="username" type="email" autocapitalize="none" autocomplete="username" placeholder="E-mail" required>
+    <input id="l-senha" name="password" type="password" autocomplete="current-password" placeholder="Senha" required>
+    <button type="submit" style="background:#1e90ff;border-color:#1e90ff;color:#fff;font-weight:700;padding:12px">Entrar</button>
+    <div class="sub" id="l-erro"></div>
+  </div>
+  <p class="aviso">Você entra uma vez só: o celular guarda o acesso e abre direto no painel.</p>
+</form>
+<div id="app" hidden>
 <header><div><h1>XYZ — Painel</h1><small id="quando">carregando…</small></div><div><button id="atualizar">↻</button> <button onclick="location.href='./'">CRM</button></div></header>
 <div class="grade">
   <div class="card"><h3>Fechados hoje</h3><div class="num" id="h-cli">–</div><div class="sub" id="h-sub"></div></div>
@@ -39,6 +51,7 @@ section{margin-top:14px}section>h2{font-size:14px;margin:0 0 8px;color:var(--sua
 <section><h2>Por advogado no mês</h2><div class="card" id="adv"></div></section>
 <section><h2>Robôs e filas</h2><div class="card" id="robos"></div></section>
 <p class="aviso">Atualiza sozinho a cada minuto. Para instalar: menu do navegador → "Adicionar à tela inicial".</p>
+</div>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="comissao.js?v=5"></script>
@@ -91,13 +104,23 @@ async function carregar() {
 }
 document.querySelectorAll('[data-rk]').forEach(b => b.onclick = () => { RK = b.dataset.rk; document.querySelectorAll('[data-rk]').forEach(x => x.classList.toggle('sel', x === b)); ranking(); });
 $('#atualizar').onclick = carregar;
-(async () => {
-  const { data: { session } } = await sb.auth.getSession(); if (!session) return location.replace('./');
+const loginEmail = v => String(v || '').trim();
+let timer = null;
+async function entrar() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { $('#app').hidden = true; $('#login').hidden = false; return; }
   const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).maybeSingle();
   if (!eu || !eu.ativo || eu.papel !== 'admin') return location.replace('./');     // os ganhos são só do admin
-  document.body.hidden = false; carregar(); setInterval(carregar, 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) carregar(); });
-})();
+  $('#login').hidden = true; $('#app').hidden = false; carregar(); clearInterval(timer); timer = setInterval(carregar, 60000);
+}
+$('#login').onsubmit = async e => {
+  e.preventDefault(); $('#l-erro').textContent = 'entrando…';
+  const { error } = await sb.auth.signInWithPassword({ email: loginEmail($('#l-email').value), password: $('#l-senha').value });
+  if (error) { $('#l-erro').textContent = 'E-mail ou senha incorretos.'; return; }
+  $('#l-erro').textContent = ''; $('#l-senha').value = ''; entrar();
+};
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('#app').hidden) carregar(); });
+entrar();
 </script>
 </body>
 </html>
