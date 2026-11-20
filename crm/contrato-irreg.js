@@ -116,6 +116,7 @@
     const S = root.detectarSeguro ? root.detectarSeguro(texto, arquivo) : null;
     if (S) { R.seguro = S.totalSeguro || 0; R.pacote = S.totalPacote || 0; }
 
+    R.loas = /esp[ée]cie(?:\s+do\s+benef[íi]cio)?\s*:?\s*8[78]\b|\b8[78]\s*[-–]\s*(?:amparo|benef)/i.test(T);   // BPC/LOAS (espécies 87 e 88)
     /* ---------- apontamentos ---------- */
     const quando = data ? (aprox ? 'por volta de ' : 'em ') + dBR(data) : 'em data não identificada';
     const regraRep = !data ? 'Confira a data do contrato: fora do período de ago/2022 a jun/2025 a contratação por representante exigia autorização judicial.'
@@ -138,6 +139,7 @@
     if (R.assinatura === 'física ou não identificada') add('sem-assinatura', 'info', 'Assinatura não identificada no PDF', 'O texto não mostra assinatura eletrônica. Pode ser contrato físico (assinatura em imagem) ou via sem assinatura: abrir e conferir.');
     if (R.liberado != null && R.financiado > 0 && R.liberado / R.financiado < 0.1 && /refinanc|quita[çc][ãa]o\s+d[ae]\s+d[íi]vida/i.test(T)) add('troco', 'info', 'Refinanciamento com troco baixo: R$ ' + R.liberado.toFixed(2).replace('.', ','), 'O cliente recebeu menos de 10% do valor financiado (R$ ' + R.financiado.toFixed(2).replace('.', ',') + '); o resto quitou dívida anterior. Perguntar se ele pediu o refinanciamento — é padrão comum em contratação não solicitada.');
     if (R.cartao) add('cartao', 'info', 'Contrato de cartão consignado (RMC/RCC)', 'Verificar se o cliente sabia que contratava CARTÃO e não empréstimo (CDC arts. 6º, III, e 52). Tese de conversão em empréstimo consignado e devolução em dobro.');
+    if (R.loas) R.alertas.forEach(x => { if (x.cod === 'menor' || x.cod === 'representante') { x.nivel = 'alto'; x.titulo = 'BPC/LOAS · ' + x.titulo; x.tese += ' O benefício é BPC/LOAS (assistencial, de subsistência): empréstimo feito pelo representante em nome do menor ou incapaz compromete o mínimo existencial e reforça a tese de nulidade.'; } });
     const peso = { alto: 0, medio: 1, info: 2 }; R.alertas.sort((a, b) => peso[a.nivel] - peso[b.nivel]);
     R.nivel = (R.alertas[0] || {}).nivel || 'ok';
     return R;
