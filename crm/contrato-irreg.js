@@ -143,7 +143,24 @@
       else if (fotos == null && !bio) add('sem-selfie', 'medio', 'Contrato digital sem registro de biometria no texto', 'O texto não menciona biometria nem prova de vida. Abrir o PDF e conferir se há a selfie do cliente.' + regra);
       else if (fotos > 0 && !bio) add('foto', 'info', 'Tem foto no PDF, sem menção a biometria no texto', 'O arquivo traz ' + fotos + ' foto(s). Conferir se uma delas é a selfie do próprio cliente (e não só a foto do documento).');
     }
-    if ((eletr || bio) && !geo && !ip) add('sem-trilha', 'info', 'Sem IP nem geolocalização no registro da assinatura', 'Falta trilha de auditoria. Útil para pedir perícia e inversão do ônus da prova (CDC art. 6º, VIII).');
+    // requisitos técnicos e de segurança do contrato digital (IN INSS 138/2022, art. 5º, e nota técnica Dataprev NT/DRN/001/2022):
+    // o robô só consegue ver se o PDF TRAZ cada registro; não tem como validar se o hash confere ou se a prova de vida é certificada
+    if (eletr || bio) {
+      const REQ = [
+        ['Selfie / biometria facial', bio || fotos > 0],
+        ['Prova de vida (liveness)', /liveness|prova de vida|vivacidade/i.test(T)],
+        ['Documento de identificação do cliente', fotos >= 2 || /documento de identifica[çc][ãa]o|foto do documento|\b(?:RG|CNH)\b[^.]{0,40}(?:capturad|anexad|apresentad|frente|verso)/i.test(T)],
+        ['Geolocalização', geo],
+        ['Endereço IP', ip],
+        ['Data e hora da assinatura', todas.some(d => d.hora)],
+        ['Hash / código de integridade do documento', /\bhash\b|SHA-?(?:1|256|512)|c[óo]digo de (?:verifica|autentica|integridade|valida)|\b[0-9a-f]{40,}\b/i.test(T)],
+        ['Identificação do aparelho ou navegador', /user-?agent|Mozilla\/|navegador|identificador do aparelho|dispositivo utilizado|modelo do (?:celular|aparelho)|IMEI/i.test(T)],
+        ['Plataforma ou certificado de assinatura', icp || /clicksign|docusign|bemsign|certisign|unico\b|serasa|plataforma de assinatura|certificado digital|MP n?[ºo°]? ?2\.200/i.test(T)]];
+      const falta = REQ.filter(r => !r[1]).map(r => r[0]);
+      R.requisitos = { total: REQ.length, ok: REQ.length - falta.length, falta };
+      const trilha = falta.filter(f => !/Selfie/.test(f));     // a selfie tem apontamento próprio
+      if (trilha.length) add('requisitos', trilha.length >= 4 ? 'medio' : 'info', 'Contrato digital sem ' + trilha.length + ' de ' + REQ.length + ' registros de segurança', 'Não aparecem no PDF: ' + trilha.join('; ') + '. A IN INSS 138/2022 (art. 5º) e a nota técnica da Dataprev (NT/DRN/001/2022) exigem biometria com prova de vida, registro de data e hora e mecanismo que mostre que o documento não foi alterado; a jurisprudência cobra ainda IP, geolocalização e hash. Faltando esses registros, cabe pedir o dossiê completo ao banco e a inversão do ônus da prova (CDC art. 6º, VIII).');
+    }
     if (R.assinatura === 'física ou não identificada') add('sem-assinatura', 'info', 'Assinatura não identificada no PDF', 'O texto não mostra assinatura eletrônica. Pode ser contrato físico (assinatura em imagem) ou via sem assinatura: abrir e conferir.');
     if (R.liberado != null && R.financiado > 0 && R.liberado / R.financiado < 0.1 && /refinanc|quita[çc][ãa]o\s+d[ae]\s+d[íi]vida/i.test(T)) add('troco', 'info', 'Refinanciamento com troco baixo: R$ ' + R.liberado.toFixed(2).replace('.', ','), 'O cliente recebeu menos de 10% do valor financiado (R$ ' + R.financiado.toFixed(2).replace('.', ',') + '); o resto quitou dívida anterior. Perguntar se ele pediu o refinanciamento — é padrão comum em contratação não solicitada.');
     if (R.cartao) add('cartao', 'info', 'Contrato de cartão consignado (RMC/RCC)', 'Verificar se o cliente sabia que contratava CARTÃO e não empréstimo (CDC arts. 6º, III, e 52). Tese de conversão em empréstimo consignado e devolução em dobro.');
