@@ -421,26 +421,52 @@
   // Giro de carteira: quantos contratos do HISCON foram trocados (refinanciamento/portabilidade) e em quanto tempo.
   // Usado pelo robô de irregularidades para cruzar com os contratos baixados na pasta do cliente.
   function giroCarteira(h) {
-    const vistos = new Set(), L = [];
+    const vistos = new Set(), L = [], dd = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
+    const cod = c => (String(c.banco || '').match(/^\d{3}/) || [String(c.banco || '').toLowerCase()])[0], curto = s => String(s || '').replace(/^\d{3}\s*-\s*/, '');
     (h.contratos || []).forEach(c => {
       const k = c.contrato + '|' + c.inclusao; if (!c.contrato || vistos.has(k)) return; vistos.add(k);
-      const mot = /refinanc/i.test(c.motivoExcl || '') ? 'refin' : /portab/i.test(c.motivoExcl || '') ? 'port' : '';
+      if (c.parcelas > 200 || !c.inclusao) return;                       // linha mal lida
+      const me = c.motivoExcl || '', mot = /refinanc/i.test(me) ? 'refin' : /portab/i.test(me) ? 'port' : me.trim() ? 'outro' : '';
       const org = /refinanc/i.test(c.origem || '') ? 'refin' : /portab/i.test(c.origem || '') ? 'port' : /nova/i.test(c.origem || '') ? 'nova' : '';
-      const dias = mot && c.inclusao && c.exclusao ? Math.round((new Date(c.exclusao) - new Date(c.inclusao)) / 864e5) : null;
-      L.push({ n: c.contrato, banco: c.banco, inc: c.inclusao || null, exc: c.exclusao || null, org, mot, dias, parcela: c.parcela, parcelas: c.parcelas, emprestado: c.emprestado });
+      L.push({ n: c.contrato, banco: c.banco, inc: c.inclusao, exc: c.exclusao || null, org, mot, dias: null, parcela: c.parcela, parcelas: c.parcelas, emprestado: c.emprestado });
     });
-    const trocas = L.filter(c => c.mot), curtos = trocas.filter(c => c.dias != null && c.dias >= 0 && c.dias < 365), relampago = curtos.filter(c => c.dias <= 10);
+    L.sort((a, b) => a.inc < b.inc ? -1 : a.inc > b.inc ? 1 : 0);
+    // liga cada contrato ao anterior: o que foi encerrado na mesma data (ou poucos dias antes) em que este entrou
+    const usado = new Set();
+    L.forEach((B, i) => {
+      if (B.org === 'nova') return;
+      let best = null, bs = 1e9;
+      L.forEach((A, j) => {
+        if (j === i || !A.exc || A.inc >= B.inc || usado.has(j) || A.mot === 'outro') return;
+        const d = dd(A.exc, B.inc), semPista = !A.mot && !B.org;
+        if (d < -2 || d > (semPista ? 5 : 7)) return;
+        const sc = Math.abs(d) * 10 + (A.parcela && B.parcela ? Math.min(50, Math.abs(A.parcela - B.parcela) / A.parcela * 50) : 25)
+          + ((B.org === 'refin' || A.mot === 'refin') && cod(A) !== cod(B) ? 40 : 0) + ((B.org === 'port' || A.mot === 'port') && cod(A) === cod(B) ? 40 : 0);
+        if (sc < bs) { bs = sc; best = j; }
+      });
+      if (best == null) return;
+      const A = L[best]; usado.add(best); B.a = best; A.s = i;
+      if (!A.mot) { A.mot = cod(A) === cod(B) ? 'refin' : 'port'; A.inf = true; }     // motivo deduzido pela data
+      if (!B.org) B.org = A.mot;
+    });
+    L.forEach(c => { if ((c.mot === 'refin' || c.mot === 'port') && c.exc) c.dias = dd(c.inc, c.exc); });
+    const tempo = d => d == null ? '' : d < 60 ? d + ' dia(s)' : Math.floor(d / 30.4) + ' meses';
+    const passo = c => `${curto(c.banco)} nº ${c.n} (${dBR(c.inc)}${c.exc ? ' a ' + dBR(c.exc) : ', ainda ativo'})`;
+    const cadeiaTxt = idx => idx.map((i, k) => passo(L[i]) + (k < idx.length - 1 ? ` → ${L[i].mot === 'port' ? 'portabilidade' : 'refinanciamento'}${L[i].dias != null ? ' após ' + tempo(L[i].dias) : ''} → ` : '')).join('');
+    const cadeias = L.map((c, i) => i).filter(i => L[i].a == null && L[i].s != null).map(i => { const r = [i]; let g = 0; while (L[r[r.length - 1]].s != null && g++ < 40) r.push(L[r[r.length - 1]].s); return r; })
+      .sort((a, b) => b.length - a.length);
+    const trocas = L.filter(c => c.mot === 'refin' || c.mot === 'port'), curtos = trocas.filter(c => c.dias != null && c.dias >= 0 && c.dias < 365), relampago = curtos.filter(c => c.dias <= 10);
     const porBanco = {}; trocas.forEach(c => { porBanco[c.banco] = (porBanco[c.banco] || 0) + 1; });
     const maior = Object.entries(porBanco).sort((a, b) => b[1] - a[1])[0] || null;
     const nivel = curtos.length >= 3 || relampago.length >= 2 ? 'alto' : curtos.length >= 1 || trocas.length >= 4 ? 'medio' : 'ok';
     const g = { total: L.length, trocas: trocas.length, curtos: curtos.length, relampago: relampago.length, nascidos: L.filter(c => c.org === 'refin' || c.org === 'port').length,
-      maiorBanco: maior ? { banco: maior[0], n: maior[1] } : null, nivel, lista: L.slice(0, 150), alerta: null };
-    if (nivel !== 'ok') {
-      const ex = [...(curtos.length ? curtos : trocas)].sort((a, b) => (a.dias == null ? 1e9 : a.dias) - (b.dias == null ? 1e9 : b.dias)).slice(0, 6)
-        .map(c => `nº ${c.n} (${c.banco}): ${dBR(c.inc)} a ${dBR(c.exc)}${c.dias != null ? ' — ' + (c.dias < 60 ? c.dias + ' dia(s)' : Math.floor(c.dias / 30.4) + ' meses') : ''}, ${c.mot === 'port' ? 'portabilidade' : 'refinanciamento'}`).join('; ');
-      g.alerta = { cod: 'giro', nivel, titulo: `Giro de carteira: ${trocas.length} contrato(s) trocado(s) por refinanciamento/portabilidade` + (curtos.length ? `, ${curtos.length} com menos de 12 meses` : ''),
-        tese: `O HISCON mostra ${L.length} contrato(s) de empréstimo; ${trocas.length} foram encerrados por refinanciamento ou portabilidade` + (curtos.length ? `, sendo ${curtos.length} antes de completar 12 meses` : '') + (relampago.length ? ` (${relampago.length} em até 10 dias)` : '') + (maior && maior[1] > 1 ? `. Só no ${maior[0]} foram ${maior[1]} trocas` : '')
-          + `. Trocas sucessivas em pouco tempo indicam "giro de carteira": a operação serve para gerar comissão e alongar a dívida, sem vantagem real ao cliente — prática abusiva e falha no dever de informação (CDC arts. 6º, III, e 39, IV e V). Conferir em cada troca se houve troco de verdade e se o cliente pediu. Exemplos: ${ex}.` };
+      maiorBanco: maior ? { banco: maior[0], n: maior[1] } : null, maiorCadeia: cadeias[0] ? cadeias[0].length : 0, nivel, lista: L.slice(0, 150), cadeias: cadeias.slice(0, 8).map(cadeiaTxt), alerta: null };
+    if (nivel !== 'ok' || cadeias.length) {
+      g.alerta = { cod: 'giro', nivel: nivel === 'ok' ? 'info' : nivel, titulo: `Giro de carteira: ${trocas.length} contrato(s) trocado(s) por refinanciamento/portabilidade` + (curtos.length ? `, ${curtos.length} com menos de 12 meses` : ''),
+        tese: `O HISCON mostra ${L.length} contrato(s) de empréstimo; ${trocas.length} foram encerrados por refinanciamento ou portabilidade` + (curtos.length ? `, sendo ${curtos.length} antes de completar 12 meses` : '') + (relampago.length ? ` (${relampago.length} em até 10 dias)` : '') + (maior && maior[1] > 1 ? `. Só no ${curto(maior[0])} foram ${maior[1]} trocas` : '')
+          + `. Trocas sucessivas em pouco tempo indicam "giro de carteira": a operação serve para gerar comissão e alongar a dívida, sem vantagem real ao cliente — prática abusiva e falha no dever de informação (CDC arts. 6º, III, e 39, IV e V). Conferir em cada troca se houve troco de verdade e se o cliente pediu.`
+          + (cadeias.length ? ' HISTÓRICO DAS TROCAS — ' + cadeias.slice(0, 5).map((c, k) => `(${k + 1}) ` + cadeiaTxt(c)).join(' · ') + '.' : '')
+          + (L.some(c => c.inf) ? ' Parte das ligações foi deduzida pela data (um contrato encerrado no dia em que o outro entrou).' : '') };
     }
     return g;
   }
