@@ -94,6 +94,7 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="hiscon.js?v=20261120a"></script>
+<script src="contrato-irreg.js?v=20261120a"></script>
 <script src="docs-inss.js?v=20261119a"></script>
 <script src="presenca.js?v=20261118e"></script>
 <script type="module">
@@ -108,7 +109,7 @@ const dBR = s => s ? s.split('-').reverse().join('/') : '—';
 try {
   const C = window.CRM_CONFIG || {};
   const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
-  const { data: { session } } = await sb.auth.getSession();
+  const { data: { session } } = await sb.auth.getSession(); window.__sb = sb;
   if (!session) location.href = './';
   else sb.from('perfis').select('id,nome,papel').eq('id', session.user.id).single().then(({ data }) => {
     if (data && ['admin', 'advogado'].includes(data.papel)) { window.PODE_PREV = true; $('#prev-box').hidden = false; }
@@ -192,7 +193,8 @@ async function lote(arqs) {
     k++; $('#lote-prog').textContent = `Lendo ${k} de ${pdfs.length}: ${f.name}…`;
     try {
       const doc = await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
-      const r = detectarSeguro(await textoPdf(doc), f.webkitRelativePath || f.name); r.arquivo = f.name; r.pasta = (f.webkitRelativePath || '').split('/').slice(0, -1).join('/');
+      const txt = await textoPdf(doc), r = detectarSeguro(txt, f.webkitRelativePath || f.name); r.arquivo = f.name; r.pasta = (f.webkitRelativePath || '').split('/').slice(0, -1).join('/');
+      r._f = f; r._txt = (!r.tem && !r.imagem) ? txt : '';
       LOTE.push(r); doc.destroy();
     } catch (e) { LOTE.push({ arquivo: f.name, erro: e.message, seguro: [], pacote: [], totalSeguro: 0, totalPacote: 0 }); }
     if (k % 10 === 0) desenharLote();
@@ -200,6 +202,34 @@ async function lote(arqs) {
   const com = LOTE.filter(r => r.tem).length, img = LOTE.filter(r => r.imagem && !r.tem).length;
   $('#lote-prog').innerHTML = `✅ ${LOTE.length} contratos lidos · <b style="color:#fca5a5">${com} com seguro/pacote</b> · ${LOTE.length - com - img} sem${img ? ` · <b>${img} são imagem (escaneados) — conferir à mão</b>` : ''}`;
   desenharLote();
+  guardarSemSeguro().catch(e => console.warn('triagem', e));
+}
+// Os contratos SEM seguro não precisam mais ser guardados à mão: o sistema guarda uma cópia e o robô leva para a pasta
+// "TRIAGEM - contratos sem seguro" do Drive, já com a leitura de irregularidades. (Os que TÊM seguro a atendente lança normalmente.)
+async function guardarSemSeguro() {
+  const sb = window.__sb, sem = LOTE.filter(r => !r.tem && !r.imagem && !r.erro && r._f && r._f.size < 20 * 1024 * 1024);
+  if (!sb || !sem.length) return;
+  const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+  for (const r of sem) r._h = hex(await crypto.subtle.digest('SHA-256', await r._f.arrayBuffer()));
+  const { data: ja } = await sb.rpc('triagem_ja_tem', { p_hashes: sem.map(r => r._h) });
+  const tem = new Set(ja || []), novos = sem.filter(r => !tem.has(r._h));
+  const aviso = t => { let d = document.getElementById('lote-triagem'); if (!d) { d = document.createElement('div'); d.id = 'lote-triagem'; d.className = 'sub'; d.style.marginTop = '6px'; $('#lote-prog').after(d); } d.textContent = t; };
+  if (!novos.length) return aviso(`📦 Os ${sem.length} sem seguro já estavam guardados para análise. Pode apagar da sua pasta.`);
+  let ok = 0; const mes = new Date().toISOString().slice(0, 7);
+  for (const r of novos) {
+    aviso(`📦 Guardando os sem seguro para análise: ${ok + 1} de ${novos.length}…`);
+    try {
+      const a = window.XYZContrato && r._txt ? XYZContrato.analisar(r._txt, r.arquivo) : null;
+      if (a && a.tipo !== 'contrato') continue;                     // não é contrato de empréstimo (procuração, RG…): não guarda
+      const caminho = `triagem/${mes}/${r._h.slice(0, 24)}.pdf`;
+      const up = await sb.storage.from('docs').upload(caminho, r._f, { contentType: 'application/pdf', upsert: true });
+      if (up.error) throw up.error;
+      const { alertas, arquivo, tipo, banco, data, nivel, ...dados } = a || {};
+      const { error } = await sb.rpc('triagem_registrar', { p: { hash: r._h, arquivo: r.arquivo, cpf: r.cpf || '', nome: r.nome || '', banco: r.banco || banco || '', tamanho: r._f.size, caminho, nivel: nivel || null, alertas: alertas || [], dados: Object.assign({ data: data || null }, dados) } });
+      if (error) throw error; ok++;
+    } catch (e) { console.warn('triagem', r.arquivo, e); }
+  }
+  aviso(`📦 ${ok} contrato(s) sem seguro guardado(s) para análise${sem.length - novos.length ? ` (${sem.length - novos.length} já estavam)` : ''}. Não precisa salvar esses: pode apagar da sua pasta.`);
 }
 function desenharLote() {
   const lista = LOTE.filter(r => !$('#lote-so').checked || r.tem || r.imagem || r.erro).sort(natural);

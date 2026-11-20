@@ -39,6 +39,7 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
   <select id="f-adv" hidden></select>
 </div>
 <div id="lista"><div class="vazio">carregando…</div></div>
+<details class="cli" id="triagem" hidden style="margin-top:22px"><summary><span class="tag info">TRIAGEM</span><span class="nome">Contratos sem seguro guardados pela busca em lote<br><small class="sub" id="tri-sub">carregando…</small></span></summary><div class="corpo" id="tri-lista"></div></details>
 <p class="nota">O robô lê o texto de cada contrato da pasta do cliente e aponta o que encontrou; é triagem, não parecer. Sempre abra o PDF para confirmar antes de usar. Contratos escaneados (só imagem) não são lidos e aparecem como "não lido". As regras usadas: representante legal — IN INSS 100/2018, 136/2022 e 190/2025, decisão do TRF3 de jun/2025 e Código Civil arts. 1.691, 1.748 e 1.781; analfabeto — CC art. 595 e STJ; tarifa de cadastro — IN 28/2008 art. 13, II, e IN 138/2022; juros — teto do CNPS na data do contrato.</p>
 </main>
 <script src="config.js"></script>
@@ -63,6 +64,16 @@ function desenhar() {
         + k.alertas.filter(a => casa(a) || a.nivel === 'info').map(a => `<div class="al ${a.nivel}"><b>${ROT[a.nivel]} · ${esc(a.titulo)}</b><p>${esc(a.tese)}</p></div>`).join('') + '</div>').join('') + '</div></details>';
   }).join('') + (vis.length > 300 ? `<div class="vazio">Mostrando 300 de ${vis.length}. Use a busca ou os filtros.</div>` : '') : '<div class="vazio">Nenhum cliente com esse apontamento.</div>';
 }
+// contratos SEM seguro que as atendentes passaram na busca em lote (ficam numa pasta à parte do Drive) — só admin
+async function carregarTriagem() {
+  const { data, error } = await sb.rpc('triagem_lista'); if (error) return;
+  const L = data || [], forte = a => a.nivel === 'alto' || a.nivel === 'medio', com = L.filter(t => (t.alertas || []).some(forte));
+  $('#triagem').hidden = false;
+  $('#tri-sub').textContent = L.length ? `${L.length} contrato(s) · ${com.length} com apontamento · ${L.filter(t => !t.drive_url).length} ainda indo para o Drive` : 'Nenhum ainda. Aparecem aqui quando as atendentes usarem "Procurar seguro prestamista" em lote.';
+  $('#tri-lista').innerHTML = L.slice(0, 400).map(t => `<div class="ctr"><h4>${esc(t.nome || 'cliente não identificado')}${t.cpf ? ' · CPF ' + esc(t.cpf) : ''} <small>· ${esc(t.banco || 'banco não identificado')} · ${esc(t.arquivo || '')} · ${esc(t.atendente || '—')} em ${dBR((t.criado_em || '').slice(0, 10))}${t.virou_cliente ? ' · <b style="color:#86efac">já é cliente no CRM</b>' : ''}</small></h4>`
+    + (t.drive_url ? `<a class="btn" href="${esc(t.drive_url)}" target="_blank" rel="noopener">📄 Abrir no Drive</a>` : '<span class="sub">indo para o Drive…</span>')
+    + (t.alertas || []).filter(forte).map(a => `<div class="al ${a.nivel}"><b>${ROT[a.nivel]} · ${esc(a.titulo)}</b><p>${esc(a.tese)}</p></div>`).join('') + '</div>').join('');
+}
 async function carregar() {
   const { data, error } = await sb.rpc('irreg_lista', { p_tudo: false });
   if (error) { $('#lista').innerHTML = '<div class="vazio">Não consegui carregar: ' + esc(error.message) + '</div>'; return; }
@@ -78,6 +89,7 @@ async function carregar() {
     const [lidos, fila] = await Promise.all([n(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).not('irreg_lido_em', 'is', null)), n(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).is('irreg_lido_em', null))]);
     k.push(['Clientes já lidos', lidos], ['Na fila do robô', fila]);
     const advs = [...new Set(DADOS.flatMap(c => (c.advogado || '').split(', ').filter(Boolean)))].sort();
+    carregarTriagem();
     $('#f-adv').hidden = false; $('#f-adv').innerHTML = '<option value="">Todos os advogados</option>' + advs.map(a => `<option>${esc(a)}</option>`).join('');
   }
   $('#kpis').innerHTML = k.map(([t, v]) => `<div class="kpi"><b>${v}</b><span>${t}</span></div>`).join('');
