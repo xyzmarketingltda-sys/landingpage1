@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#061230">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="XYZ Controle">
+<link rel="manifest" href="app.webmanifest">
+<link rel="apple-touch-icon" href="app-192.png">
+<title>Instalar o app · XYZ Controle</title>
+<meta property="og:title" content="XYZ Controle — app do advogado parceiro">
+<meta property="og:description" content="Seus clientes, o valor do seguro e aviso na hora quando uma procuração é assinada.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#0b2f74 0%,#020816 62%) fixed;color:#eaf3ff;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:calc(env(safe-area-inset-top) + 28px) 20px 40px}
+main{max-width:440px;margin:0 auto;text-align:center}
+img.ic{width:104px;height:104px;border-radius:26px;box-shadow:0 0 44px rgba(30,144,255,.45)}
+h1{font-size:26px;margin:18px 0 6px}p.s{color:#a9bfdd;font-size:15px}
+ul{list-style:none;text-align:left;margin:20px 0;background:rgba(7,19,48,.9);border:1px solid rgba(30,144,255,.3);border-radius:16px;padding:8px 16px}
+li{padding:10px 0 10px 32px;position:relative;font-size:15px;border-top:1px solid rgba(30,144,255,.14)}li:first-child{border-top:0}
+li::before{content:'✓';position:absolute;left:0;top:10px;width:22px;height:22px;border-radius:50%;background:#22c55e;color:#04210f;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+button,a.b{display:block;width:100%;border:0;border-radius:16px;padding:18px;font:inherit;font-size:19px;font-weight:800;cursor:pointer;text-decoration:none;background:linear-gradient(90deg,#1e90ff,#22d3ee);color:#021022;margin-top:10px}
+a.b.sec{background:#0f2552;color:#eaf3ff;border:1px solid rgba(30,144,255,.4);font-size:16px;font-weight:600}
+.passos{text-align:left;margin-top:14px}
+.p{display:flex;gap:14px;align-items:center;background:rgba(7,19,48,.9);border:1px solid rgba(30,144,255,.3);border-radius:16px;padding:14px;margin-top:10px;font-size:16px}
+.p b.n{flex:none;width:38px;height:38px;border-radius:50%;background:#fbbf24;color:#021022;font-size:18px;display:flex;align-items:center;justify-content:center}
+.p svg{flex:none;width:34px;height:34px}
+.nota{font-size:13px;color:#93a9c9;margin-top:16px}
+[hidden]{display:none!important}
+.seta{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 6px);transform:translateX(-50%);font-size:34px;animation:pula 1s ease-in-out infinite;pointer-events:none}
+@keyframes pula{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,10px)}}
+</style>
+</head>
+<body>
+<main>
+  <img class="ic" src="app-512.png" alt="XYZ Controle">
+  <h1>XYZ Controle</h1>
+  <p class="s">O app do advogado parceiro da XYZ Marketing</p>
+  <ul>
+    <li>Aviso no celular quando uma procuração sua é assinada</li>
+    <li>Seus clientes, com o valor do seguro de cada um</li>
+    <li>Documentos na pasta e oportunidades de cada cliente</li>
+  </ul>
+
+  <!-- já instalado / aberto pelo ícone -->
+  <div id="v-ok" hidden><a class="b" href="./">Abrir o app</a></div>
+
+  <!-- Android e computador (Chrome/Edge): um toque -->
+  <div id="v-and" hidden>
+    <button id="bt">⬇️ Instalar o app</button>
+    <p class="nota" id="and-nota">É grátis e leva 5 segundos. Depois é só abrir pelo ícone "XYZ Controle" e entrar com seu login.</p>
+  </div>
+
+  <!-- iPhone / iPad -->
+  <div id="v-ios" hidden>
+    <p class="s" style="margin-top:6px"><b style="color:#fbbf24">No iPhone são 2 toques:</b></p>
+    <div class="passos">
+      <div class="p"><b class="n">1</b><svg viewBox="0 0 24 24" fill="none" stroke="#8cc8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg><span>Toque no botão <b>Compartilhar</b>, aqui embaixo na tela</span></div>
+      <div class="p"><b class="n">2</b><svg viewBox="0 0 24 24" fill="none" stroke="#8cc8ff" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg><span>Escolha <b>Adicionar à Tela de Início</b> e toque em <b>Adicionar</b></span></div>
+    </div>
+    <p class="nota">Pronto: o ícone "XYZ Controle" aparece na sua tela. Abra por ele, entre com seu login e toque em "🔔 Ativar avisos".</p>
+    <div class="seta">⬇️</div>
+  </div>
+
+  <!-- aberto dentro do WhatsApp/Instagram ou navegador que não instala -->
+  <div id="v-nav" hidden>
+    <p class="s" style="margin-top:6px"><b style="color:#fbbf24" id="nav-t">Abra este link no navegador do celular</b></p>
+    <p class="nota" id="nav-d">Toque nos três pontinhos (⋮ ou ⋯) no canto da tela e escolha "Abrir no navegador". Depois toque em "Instalar o app".</p>
+    <button id="copiar">Copiar o link</button>
+  </div>
+
+  <a class="b sec" href="./" id="web">Usar sem instalar</a>
+  <p class="nota">Dúvidas? Fale com a XYZ Marketing.</p>
+</main>
+<script>
+const $ = s => document.querySelector(s), ua = navigator.userAgent;
+const ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const instalado = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const embutido = /FBAN|FBAV|Instagram|Line\/|MicroMessenger|; wv\)/i.test(ua);           // navegador de dentro de outro app
+const safari = ios && /safari/i.test(ua) && !/crios|fxios|edgios|opios/i.test(ua) && !embutido;
+let evento = null;
+const mostrar = id => ['v-ok', 'v-and', 'v-ios', 'v-nav'].forEach(v => $('#' + v).hidden = v !== id);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (instalado) { mostrar('v-ok'); $('#web').hidden = true; }
+else if (ios) {
+  if (safari) mostrar('v-ios');
+  else { mostrar('v-nav'); $('#nav-t').textContent = 'Abra este link no Safari'; $('#nav-d').textContent = 'No iPhone o app só instala pelo Safari. Copie o link, abra o Safari e cole lá.'; }
+} else if (embutido) mostrar('v-nav');
+else {
+  mostrar('v-and');
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); evento = e; });
+  $('#bt').onclick = async () => {
+    if (evento) { evento.prompt(); const r = await evento.userChoice; evento = null; if (r.outcome === 'accepted') { $('#bt').textContent = '✅ Instalado — abra pelo ícone'; $('#and-nota').textContent = 'Procure o ícone "XYZ Controle" na tela inicial do celular. Entre com seu login e toque em "🔔 Ativar avisos".'; } }
+    else $('#and-nota').innerHTML = 'Se o app já está instalado, abra pelo ícone "XYZ Controle". Se não, toque nos <b>três pontinhos ⋮</b> do navegador e escolha <b>"Instalar app"</b> ou <b>"Adicionar à tela inicial"</b>.';
+  };
+  addEventListener('appinstalled', () => { $('#bt').textContent = '✅ Instalado — abra pelo ícone'; });
+}
+$('#copiar').onclick = async () => { try { await navigator.clipboard.writeText(location.href); $('#copiar').textContent = '✅ Link copiado'; } catch (e) { $('#copiar').textContent = location.href; } };
+</script>
+</body>
+</html>
