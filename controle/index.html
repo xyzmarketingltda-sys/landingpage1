@@ -139,7 +139,7 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
       <div><label>até</label><input type="date" id="f-ate"></div>
     </div>
     <div class="tabela vidro">
-      <table><thead><tr><th>Cliente</th><th>CPF</th><th class="col-m">Telefone</th><th>Bancos</th><th class="col-m">Indicado em</th><th>Status</th><th>Pasta</th></tr></thead>
+      <table><thead><tr><th>Cliente</th><th>CPF</th><th class="col-m">Telefone</th><th>Bancos</th><th>Seguro</th><th>Procuração</th><th class="col-m">Documentos</th><th class="col-m">Indicado em</th><th>Status</th><th>Pasta</th></tr></thead>
       <tbody id="lista"></tbody></table>
     </div>
   </main>
@@ -215,7 +215,7 @@ async function avisoDesafio() {
 async function carregar() {
   let dados = [];
   for (let de = 0; de < 20000; de += 1000) {
-    const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,data_contato,banco,advogado,observacoes,pasta_url,status_adv,obs_adv,status_adv_em,valor,produto')
+    const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,data_contato,banco,advogado,observacoes,pasta_url,status_adv,obs_adv,status_adv_em,valor,produto,kit,adv_procuracao,irreg_nivel')
       .order('data_contato', { ascending: false }).range(de, de + 999);
     if (error || !data) break; dados = dados.concat(data); if (data.length < 1000) break;
   }
@@ -242,6 +242,10 @@ function montar() {
     const x = g.get(k); x.contratos.push(c);
     if (c.data_contato && (!x.data || c.data_contato < x.data)) x.data = c.data_contato;
     x.pasta = x.pasta || c.pasta_url; x.telefone = x.telefone || c.telefone;
+    if ((c.produto || 'seguro') === 'seguro') x.seguro = (x.seguro || 0) + (Number(c.valor) || 0);
+    if (c.kit) { x.kit = x.kit || {}; ['rg', 'comprovante', 'contrato', 'hiscon', 'procuracao'].forEach(d => { if (c.kit[d]) x.kit[d] = true; }); }
+    if (c.adv_procuracao) x.proc = true;
+    if (c.irreg_nivel === 'alto' || (c.irreg_nivel === 'medio' && x.irreg !== 'alto')) x.irreg = c.irreg_nivel;
     if (c.status_adv && (!x.statusEm || c.status_adv_em > x.statusEm)) { x.status = c.status_adv; x.obs = c.obs_adv; x.statusEm = c.status_adv_em; }
   });
   todos = [...g.values()].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
@@ -314,16 +318,23 @@ $$('.carteira .c-nums [data-w]').forEach(d => d.onclick = () => { wEscopo = d.da
 let tb; $('#f-busca').oninput = () => { clearTimeout(tb); tb = setTimeout(desenhar, 200); };
 ['#f-status', '#f-de', '#f-ate'].forEach(s => $(s).onchange = desenhar);
 $('#f-adv').onchange = montar;
+// procuração e documentos: vêm da leitura que o robô faz da pasta do cliente no Drive
+const temProc = x => !!(x.proc || (x.kit && x.kit.procuracao));
+const procTag = x => temProc(x) ? '<span class="st ok" style="color:#86efac;border-color:rgba(34,197,94,.5);white-space:nowrap">✓ assinada</span>' : x.kit ? '<span class="st" style="color:#fde68a;border-color:rgba(251,191,36,.45);white-space:nowrap">não achada na pasta</span>' : '<span style="color:var(--suave)" title="A pasta deste cliente ainda não foi conferida pelo robô">a conferir</span>';
+const DOCS = [['rg', 'RG'], ['comprovante', 'Comprov.'], ['contrato', 'Contrato'], ['hiscon', 'HISCON']];
+const docsTag = x => x.kit ? DOCS.map(([k, n]) => `<span class="chip" style="font-size:10px;${x.kit[k] ? 'color:#86efac;border-color:rgba(34,197,94,.45)' : 'opacity:.45'}">${x.kit[k] ? '✓' : '·'} ${n}</span>`).join('') : '<span style="color:var(--suave)">—</span>';
 function desenhar() {
   const t = $('#f-busca').value.trim().toLowerCase(), d = so(t), st = $('#f-status').value, de = $('#f-de').value, ate = $('#f-ate').value;
   const lista = todos.filter(x => (!t || x.nome.toLowerCase().includes(t) || (d.length >= 3 && (so(x.cpf).includes(d) || so(x.telefone).includes(d))))
     && (!st || (st === '-' ? !x.status : x.status === st)) && (!de || (x.data || '') >= de) && (!ate || (x.data || '') <= ate));
   $('#lista').innerHTML = lista.map(x => `<tr data-k="${esc(x.k)}">
-    <td><b>${esc(x.nome)}</b>${eu && eu.papel !== 'advogado' && x.adv ? ` <span class="chip" style="font-size:10px;color:var(--ouro);border-color:rgba(251,191,36,.4)">${esc(String(x.adv).toUpperCase())}</span>` : ''}</td><td>${fmtCPF(x.cpf)}</td><td class="col-m">${fmtTel(x.telefone)}</td>
+    <td><b>${esc(x.nome)}</b>${eu && eu.papel !== 'advogado' && x.adv ? ` <span class="chip" style="font-size:10px;color:var(--ouro);border-color:rgba(251,191,36,.4)">${esc(String(x.adv).toUpperCase())}</span>` : ''}</td><td style="white-space:nowrap">${fmtCPF(x.cpf)}</td><td class="col-m" style="white-space:nowrap">${fmtTel(x.telefone)}</td>
     <td>${[...new Set(x.contratos.map(c => c.banco).filter(Boolean))].map(b => `<span class="chip">${esc(b)}</span>`).join('')}</td>
+    <td style="white-space:nowrap">${x.seguro > 0 ? `<b style="color:var(--ouro)">${brl(x.seguro)}</b>` : '<span style="color:var(--suave)">—</span>'}</td>
+    <td>${procTag(x)}</td><td class="col-m">${docsTag(x)}</td>
     <td class="col-m">${dBR(x.data)}</td><td>${x.status ? `<span class="st ${clsSt(x.status)}">${esc(x.status)}</span>` : '<span class="st">—</span>'}</td>
     <td>${x.pasta ? `<a class="pasta" href="${esc(x.pasta)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📁 Abrir</a>` : '<span style="color:var(--suave)">—</span>'}</td></tr>`).join('')
-    || '<tr><td colspan="7" class="vazio">Nenhum cliente encontrado.</td></tr>';
+    || '<tr><td colspan="10" class="vazio">Nenhum cliente encontrado.</td></tr>';
   $$('#lista tr[data-k]').forEach(tr => tr.onclick = () => abrir(todos.find(x => x.k === tr.dataset.k)));
 }
 
@@ -334,9 +345,11 @@ function abrir(x) {
       <div class="meta">CPF ${fmtCPF(x.cpf)} · Tel ${fmtTel(x.telefone)} · indicado em ${dBR(x.data)}</div></div>
       <button class="x" id="m-x">✕</button></div>
     ${x.pasta ? `<a class="btn" href="${esc(x.pasta)}" target="_blank" rel="noopener">📁 Abrir pasta de documentos no Google Drive</a>` : '<div class="st" style="display:inline-block">Pasta de documentos ainda não vinculada pela XYZ</div>'}
+    <div class="sec-t">Procuração e documentos</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${procTag(x)} ${docsTag(x)}${x.seguro > 0 ? ` <span class="chip" style="color:var(--ouro);border-color:rgba(251,191,36,.45)">Seguro total ${brl(x.seguro)}</span>` : ''}${x.irreg ? ` <a class="chip" href="../crm/irregularidades.html?de=controle" style="color:#fca5a5;border-color:rgba(239,68,68,.5);text-decoration:none">🔎 Tem apontamento de irregularidade</a>` : ''}</div>
     <div class="sec-t">Contratos indicados (${x.contratos.length})</div>
-    <div class="tabela vidro"><table><thead><tr><th>Banco</th><th>Fechado em</th><th>Status</th></tr></thead><tbody>
-      ${x.contratos.map(c => `<tr style="cursor:default"><td>${esc(c.banco || '—')}</td><td>${dBR(c.data_contato)}</td><td>${c.status_adv ? `<span class="st ${clsSt(c.status_adv)}">${esc(c.status_adv)}</span>` : '—'}</td></tr>`).join('')}
+    <div class="tabela vidro"><table><thead><tr><th>Banco</th><th>Seguro</th><th>Fechado em</th><th>Status</th></tr></thead><tbody>
+      ${x.contratos.map(c => `<tr style="cursor:default"><td>${esc(c.banco || '—')}</td><td>${Number(c.valor) > 0 ? '<b style="color:var(--ouro)">' + brl(c.valor) + '</b>' : '—'}</td><td>${dBR(c.data_contato)}</td><td>${c.status_adv ? `<span class="st ${clsSt(c.status_adv)}">${esc(c.status_adv)}</span>` : '—'}</td></tr>`).join('')}
     </tbody></table></div>
     ${obsGerais.length ? `<div class="sec-t">Observações da XYZ</div><div class="linha-tempo">${obsGerais.map(o => `<div>${esc(o)}</div>`).join('')}</div>` : ''}
     <div class="sec-t">Atualizar status</div>
