@@ -34,7 +34,8 @@
   const idade = (nasc, em) => { let a = +em.slice(0, 4) - +nasc.slice(0, 4); if (em.slice(5) < nasc.slice(5)) a--; return a; };
   const dBR = iso => iso ? iso.slice(8) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
 
-  function analisar(texto, arquivo) {
+  // extra.fotos = quantas fotos (imagens grandes, tipo selfie ou documento) o PDF traz; quem conta é o robô (a tela não sabe)
+  function analisar(texto, arquivo, extra) {
     const L = String(texto || '').split('\n'), T = L.join(' ').replace(/\s+/g, ' '), C = T.replace(/\s+/g, '');
     const R = { arquivo: arquivo || '', tipo: 'contrato', alertas: [] };
     const add = (cod, nivel, titulo, tese) => R.alertas.push({ cod, nivel, titulo, tese });
@@ -95,6 +96,7 @@
       eletr = /assinatura eletr[ôo]nica|assinad[oa] eletronicamente|assinad[oa] digitalmente|clicksign|docusign|bemsign|unico\b|certisign/i.test(T);
     R.assinatura = eletr || bio ? 'digital' : icp ? 'ICP' : 'física ou não identificada';
     R.biometria = bio; R.geo = geo; R.ip = ip;
+    const fotos = extra && typeof extra.fotos === 'number' ? extra.fotos : null; R.fotos = fotos;
 
     /* ---------- analfabeto / a rogo ---------- */
     const rogo = /assina\s+o\s+rogado\s*:\s*(?!POLEGAR)[A-ZÀ-Ú]{3,}\s+[A-ZÀ-Ú]{2,}\s+[A-ZÀ-Ú]{2,}/.test(T) || /n[ãa]o[\s-]alfabetizad[oa]\s*:?\s*\(?\s*(?:sim|x)\s*\)?|analfabet[oa]\s*:\s*\(?\s*(?:sim|x)\b|\(\s*x\s*\)\s*(?:analfabet|n[ãa]o[\s-]alfabetizad)|impress[ãa]o\s+digital\s+do\s+(?:emitente|cliente)\s*:\s*\S/i.test(T);
@@ -133,8 +135,14 @@
     if (R.taxa && data && !R.cartao) { const teto = tetoEm(data); R.teto = teto; if (R.taxa > teto + 0.005) add('juros', 'medio', 'Juros acima do teto do INSS: ' + String(R.taxa).replace('.', ',') + '% a.m. (teto ' + String(teto).replace('.', ',') + '%)', 'Contrato ' + quando + ' com taxa acima do teto fixado pelo CNPS para a época. Conferir a data exata no PDF (o teto mudou várias vezes) e, confirmando, pedir a readequação da taxa e a devolução da diferença.'); }
     if (R.parcelas > 108) add('prazo', 'alto', 'Prazo acima do permitido: ' + R.parcelas + ' parcelas', 'O prazo máximo do consignado do INSS é de 108 parcelas (IN INSS 204/2026; antes eram 96).');
     else if (R.parcelas > 96 && data && data < '2026-05-19') add('prazo', 'medio', 'Prazo acima do permitido na época: ' + R.parcelas + ' parcelas', 'Até 18/05/2026 o prazo máximo era de 96 parcelas (108 só a partir de 19/05/2026). Conferir a data do contrato.');
-    if (data && data >= '2026-05-19' && !bio) add('biometria', 'info', 'Contrato após 19/05/2026: conferir a biometria no Meu INSS', 'Desde 19/05/2026 todo consignado exige confirmação por biometria facial no Meu INSS (IN INSS 204/2026). O texto do contrato não cita biometria — confirmar com o cliente se ele fez a validação.');
-    if ((eletr || bio) && !bio && !(data && data >= '2026-05-19')) add('sem-bio', 'info', 'Texto do contrato não cita biometria/selfie', 'O texto não menciona biometria nem prova de vida (a selfie pode estar só como imagem). Se não houver, enfraquece a prova do banco de que foi o cliente quem contratou — tese de inexistência/fraude.');
+    // selfie/biometria: a anuência por biometria é feita no Meu INSS, e o contrato digital também tem de trazer a selfie do cliente
+    if (eletr || bio) {
+      const novo = data && data >= '2026-05-19', regra = novo ? ' Desde 19/05/2026 (IN INSS 204/2026) a contratação exige biometria facial.' : '';
+      if (fotos === 0 && !bio) add('sem-selfie', novo ? 'alto' : 'medio', 'Contrato digital sem selfie e sem registro de biometria', 'O PDF não traz foto do cliente nem menciona biometria ou prova de vida. Sem a selfie no contrato o banco não prova que foi o próprio cliente quem contratou — tese de inexistência da contratação/fraude, com inversão do ônus da prova (CDC art. 6º, VIII).' + regra);
+      else if (fotos === 0) add('sem-selfie', 'medio', 'Contrato cita biometria, mas a selfie não está no PDF', 'O texto fala em biometria facial, porém o arquivo não traz a foto do cliente. Pedir ao banco o dossiê completo da contratação (selfie, prova de vida, IP e geolocalização); se não apresentar, reforça a tese de que o cliente não contratou.' + regra);
+      else if (fotos == null && !bio) add('sem-selfie', 'medio', 'Contrato digital sem registro de biometria no texto', 'O texto não menciona biometria nem prova de vida. Abrir o PDF e conferir se há a selfie do cliente.' + regra);
+      else if (fotos > 0 && !bio) add('foto', 'info', 'Tem foto no PDF, sem menção a biometria no texto', 'O arquivo traz ' + fotos + ' foto(s). Conferir se uma delas é a selfie do próprio cliente (e não só a foto do documento).');
+    }
     if ((eletr || bio) && !geo && !ip) add('sem-trilha', 'info', 'Sem IP nem geolocalização no registro da assinatura', 'Falta trilha de auditoria. Útil para pedir perícia e inversão do ônus da prova (CDC art. 6º, VIII).');
     if (R.assinatura === 'física ou não identificada') add('sem-assinatura', 'info', 'Assinatura não identificada no PDF', 'O texto não mostra assinatura eletrônica. Pode ser contrato físico (assinatura em imagem) ou via sem assinatura: abrir e conferir.');
     if (R.liberado != null && R.financiado > 0 && R.liberado / R.financiado < 0.1 && /refinanc|quita[çc][ãa]o\s+d[ae]\s+d[íi]vida/i.test(T)) add('troco', 'info', 'Refinanciamento com troco baixo: R$ ' + R.liberado.toFixed(2).replace('.', ','), 'O cliente recebeu menos de 10% do valor financiado (R$ ' + R.financiado.toFixed(2).replace('.', ',') + '); o resto quitou dívida anterior. Perguntar se ele pediu o refinanciamento — é padrão comum em contratação não solicitada.');

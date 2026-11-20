@@ -34,7 +34,7 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
 <div class="kpis" id="kpis"></div>
 <div class="filtros">
   <input id="q" placeholder="Buscar cliente, CPF ou banco">
-  <select id="f-tipo"><option value="">Todos os apontamentos</option><option value="menor">Menor de idade / representante legal</option><option value="loas">BPC/LOAS com menor ou representante</option><option value="analfabeto">Analfabeto / a rogo</option><option value="tac">Tarifa de cadastro</option><option value="juros">Juros acima do teto</option><option value="prazo">Prazo acima do permitido</option></select>
+  <select id="f-tipo"><option value="">Todos os apontamentos</option><option value="menor">Menor de idade / representante legal</option><option value="loas">BPC/LOAS com menor ou representante</option><option value="analfabeto">Analfabeto / a rogo</option><option value="sem-selfie">Sem selfie / biometria</option><option value="tac">Tarifa de cadastro</option><option value="juros">Juros acima do teto</option><option value="prazo">Prazo acima do permitido</option></select>
   <select id="f-nivel"><option value="">Forte e atenção</option><option value="alto">Só os fortes</option></select>
   <select id="f-adv" hidden></select>
 </div>
@@ -56,7 +56,7 @@ function desenhar() {
     && (!adv || (x.c.advogado || '').split(', ').includes(adv)) && (!q || [x.c.nome, x.c.cpf, x.c.bancos, x.c.advogado].join(' ').toLowerCase().includes(q)));
   $('#lista').innerHTML = vis.length ? vis.slice(0, 300).map(({ c, ctr }) => {
     const todos = ctr.flatMap(k => k.alertas.filter(casa)), forte = todos.some(a => a.nivel === 'alto'), tags = [...new Set(todos.map(a => a.cod))];
-    const NOME = { menor: 'Menor de idade', representante: 'Representante legal', analfabeto: 'Analfabeto', tac: 'Tarifa de cadastro', juros: 'Juros acima do teto', prazo: 'Prazo', biometria: 'Sem biometria' };
+    const NOME = { menor: 'Menor de idade', representante: 'Representante legal', analfabeto: 'Analfabeto', 'sem-selfie': 'Sem selfie', tac: 'Tarifa de cadastro', juros: 'Juros acima do teto', prazo: 'Prazo', biometria: 'Sem biometria' };
     return `<details class="cli"><summary><span class="tag ${forte ? 'alto' : 'medio'}">${forte ? 'FORTE' : 'ATENÇÃO'}</span><span class="nome">${esc(c.nome)}${c.loas ? ' <span class="tag am" style="background:rgba(251,191,36,.15);color:#fde68a;border:1px solid rgba(251,191,36,.45)">BPC/LOAS</span>' : ''}<br><small class="sub">${esc(c.advogado || 'sem advogado')} · ${esc(c.atendente || '—')} · ${esc(c.bancos || '')}</small></span>${tags.map(t => `<span class="tag ${repMenor({ cod: t }) ? 'alto' : 'info'}">${NOME[t] || t}</span>`).join('')}<span class="tag cinza">${ctr.length} contrato(s)</span></summary><div class="corpo">`
       + (c.pasta_url ? `<a class="btn" href="${esc(c.pasta_url)}" target="_blank" rel="noopener">📁 Abrir pasta no Drive</a>` : '')
       + ctr.map(k => `<div class="ctr"><h4>${esc(k.arquivo)} <small>· ${esc(k.banco || 'banco não identificado')} · ${dBR(k.data)}${k.dados && k.dados.taxa ? ' · ' + String(k.dados.taxa).replace('.', ',') + '% a.m.' : ''}${k.dados && k.dados.parcelas ? ' · ' + k.dados.parcelas + 'x' : ''}</small></h4>`
@@ -72,7 +72,7 @@ async function carregar() {
     if (c.loas) (c.contratos || []).forEach(k => (k.alertas || []).forEach(a => { if (repMenor(a) && !/^BPC\/LOAS/.test(a.titulo)) { a.nivel = 'alto'; a.titulo = 'BPC/LOAS · ' + a.titulo; a.tese += ' O benefício é BPC/LOAS (assistencial, de subsistência): empréstimo feito pelo representante em nome do menor ou incapaz reforça a tese de nulidade.'; } }));
   });
   const conta = f => DADOS.filter(c => (c.contratos || []).some(k => (k.alertas || []).some(f))).length;
-  const k = [['Clientes com apontamento', DADOS.length], ['Fortes', DADOS.filter(c => c.nivel === 'alto').length], ['Menor / representante', conta(repMenor)], ['BPC/LOAS com menor ou repres.', DADOS.filter(c => c.loas && (c.contratos || []).some(k => (k.alertas || []).some(repMenor))).length], ['Analfabeto', conta(a => a.cod === 'analfabeto')], ['Tarifa de cadastro', conta(a => a.cod === 'tac')], ['Juros acima do teto', conta(a => a.cod === 'juros')]];
+  const k = [['Clientes com apontamento', DADOS.length], ['Fortes', DADOS.filter(c => c.nivel === 'alto').length], ['Menor / representante', conta(repMenor)], ['BPC/LOAS com menor ou repres.', DADOS.filter(c => c.loas && (c.contratos || []).some(k => (k.alertas || []).some(repMenor))).length], ['Analfabeto', conta(a => a.cod === 'analfabeto')], ['Sem selfie / biometria', conta(a => a.cod === 'sem-selfie')], ['Tarifa de cadastro', conta(a => a.cod === 'tac')], ['Juros acima do teto', conta(a => a.cod === 'juros')]];
   if (ADMIN) {
     const n = async q => (await q).count ?? '–';
     const [lidos, fila] = await Promise.all([n(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).not('irreg_lido_em', 'is', null)), n(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).is('irreg_lido_em', null))]);
