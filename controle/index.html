@@ -212,14 +212,21 @@ async function avisoDesafio() {
   } catch (e) {}
 }
 
+let PREV = {}, IRREG = {};
 async function carregar() {
   let dados = [];
   for (let de = 0; de < 20000; de += 1000) {
-    const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,data_contato,banco,advogado,observacoes,pasta_url,status_adv,obs_adv,status_adv_em,valor,produto,kit,adv_procuracao,irreg_nivel')
+    const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,data_contato,banco,advogado,observacoes,pasta_url,status_adv,obs_adv,status_adv_em,valor,produto,kit,docs_pasta,adv_procuracao,irreg_nivel')
       .order('data_contato', { ascending: false }).range(de, de + 999);
     if (error || !data) break; dados = dados.concat(data); if (data.length < 1000) break;
   }
   dadosTodos = dados;
+  // o que os robôs acharam para cada cliente (o banco só devolve os clientes do próprio advogado)
+  PREV = {}; IRREG = {};
+  try { const [pv, ir] = await Promise.all([sb.rpc('prev_lista'), sb.rpc('irreg_lista', { p_tudo: false })]);
+    (pv.data || []).forEach(o => { PREV[so(o.cpf)] = o; });
+    (ir.data || []).forEach(o => { const k = so(o.cpf); if (k) (IRREG[k] = IRREG[k] || []).push(o); });
+  } catch (e) { console.warn('oportunidades', e); }
   if (eu && eu.papel !== 'advogado') {   // admin: pode filtrar por advogado
     const cont = {}; dados.forEach(c => { const a = (c.advogado || '').toUpperCase().trim() || '(SEM ADVOGADO)'; cont[a] = (cont[a] || 0) + 1; });
     const sel = $('#f-adv'), atual = sel.value;
@@ -243,7 +250,7 @@ function montar() {
     if (c.data_contato && (!x.data || c.data_contato < x.data)) x.data = c.data_contato;
     x.pasta = x.pasta || c.pasta_url; x.telefone = x.telefone || c.telefone;
     if ((c.produto || 'seguro') === 'seguro') x.seguro = (x.seguro || 0) + (Number(c.valor) || 0);
-    if (c.kit) { x.kit = x.kit || {}; ['rg', 'comprovante', 'contrato', 'hiscon', 'procuracao'].forEach(d => { if (c.kit[d]) x.kit[d] = true; }); }
+    [c.kit, c.docs_pasta].forEach(k => { if (k) { x.kit = x.kit || {}; ['rg', 'comprovante', 'contrato', 'hiscon', 'procuracao'].forEach(d => { if (k[d]) x.kit[d] = true; }); } });
     if (c.adv_procuracao) x.proc = true;
     if (c.irreg_nivel === 'alto' || (c.irreg_nivel === 'medio' && x.irreg !== 'alto')) x.irreg = c.irreg_nivel;
     if (c.status_adv && (!x.statusEm || c.status_adv_em > x.statusEm)) { x.status = c.status_adv; x.obs = c.obs_adv; x.statusEm = c.status_adv_em; }
@@ -338,6 +345,23 @@ function desenhar() {
   $$('#lista tr[data-k]').forEach(tr => tr.onclick = () => abrir(todos.find(x => x.k === tr.dataset.k)));
 }
 
+// oportunidades do cliente: bancário (irregularidades lidas nos contratos) e previdenciário (carta de concessão/extrato)
+function oportunidades(x) {
+  const k = so(x.cpf), pv = PREV[k], ir = (IRREG[k] || []).flatMap(o => (o.contratos || []).map(c => ({ c, al: (c.alertas || []).filter(a => a.nivel === 'alto' || a.nivel === 'medio') }))).filter(y => y.al.length);
+  const cx = (cor, t, d) => `<div style="border-left:3px solid ${cor};background:rgba(9,24,56,.6);border-radius:0 8px 8px 0;padding:8px 10px;margin:6px 0"><b style="font-size:13.5px">${t}</b>${d ? `<div style="font-size:12.5px;color:var(--suave);margin-top:3px;line-height:1.4">${d}</div>` : ''}</div>`;
+  const COR = { alto: '#ef4444', medio: '#fbbf24' }, ROT = { alto: 'FORTE', medio: 'ATENÇÃO' };
+  let h = '<div class="sec-t">Oportunidades deste cliente</div>';
+  h += '<div style="font-size:12px;color:var(--suave);margin:2px 0 4px">Bancário — além do seguro</div>';
+  h += ir.length ? ir.map(y => y.al.map(a => cx(COR[a.nivel], ROT[a.nivel] + ' · ' + esc(a.titulo), esc((y.c.banco || 'contrato') + (y.c.data ? ' · ' + dBR(y.c.data) : '') + ' · ' + (y.c.arquivo || '')) + '<br>' + esc(a.tese))).join('')).join('')
+    : `<div style="font-size:13px;color:var(--suave)">${x.contratos.some(c => c.irreg_nivel) ? 'Nenhuma irregularidade forte nos contratos lidos.' : 'Contratos ainda na fila do robô.'}</div>`;
+  h += '<div style="font-size:12px;color:var(--suave);margin:10px 0 4px">Previdenciário</div>';
+  if (pv) {
+    const ts = (pv.teses || []).filter(t => t.nivel === 'alto' || t.nivel === 'medio');
+    h += ts.length ? ts.map(t => cx(COR[t.nivel], ROT[t.nivel] + ' · ' + esc(t.titulo), (t.mensal ? 'Estimativa: + ' + brl(t.mensal) + ' por mês' : '') + (t.atrasados ? ' · atrasados ' + brl(t.atrasados) : ''))).join('') : '<div style="font-size:13px;color:var(--suave)">Benefício lido, sem indício de revisão.</div>';
+    h += `<div style="font-size:12px;color:var(--suave);margin-top:4px">Espécie ${esc(pv.especie || '—')}${pv.prazo && pv.prazo !== 'ok' ? ' · prazo: ' + esc(pv.prazo) : ''}${pv.status && pv.status !== 'nova' ? ' · você marcou: ' + esc(pv.status) : ''} · <a href="../crm/previdenciario.html?de=controle" style="color:var(--azul2,#8cc8ff)">abrir no Previdenciário</a></div>`;
+  } else h += '<div style="font-size:13px;color:var(--suave)">Sem carta de concessão ou extrato lidos para este cliente.</div>';
+  return h;
+}
 function abrir(x) {
   const obsGerais = [...new Set(x.contratos.map(c => c.observacoes).filter(Boolean))];
   $('#m-caixa').innerHTML = `
@@ -347,6 +371,7 @@ function abrir(x) {
     ${x.pasta ? `<a class="btn" href="${esc(x.pasta)}" target="_blank" rel="noopener">📁 Abrir pasta de documentos no Google Drive</a>` : '<div class="st" style="display:inline-block">Pasta de documentos ainda não vinculada pela XYZ</div>'}
     <div class="sec-t">Procuração e documentos</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${procTag(x)} ${docsTag(x)}${x.seguro > 0 ? ` <span class="chip" style="color:var(--ouro);border-color:rgba(251,191,36,.45)">Seguro total ${brl(x.seguro)}</span>` : ''}${x.irreg ? ` <a class="chip" href="../crm/irregularidades.html?de=controle" style="color:#fca5a5;border-color:rgba(239,68,68,.5);text-decoration:none">🔎 Tem apontamento de irregularidade</a>` : ''}</div>
+    ${oportunidades(x)}
     <div class="sec-t">Contratos indicados (${x.contratos.length})</div>
     <div class="tabela vidro"><table><thead><tr><th>Banco</th><th>Seguro</th><th>Fechado em</th><th>Status</th></tr></thead><tbody>
       ${x.contratos.map(c => `<tr style="cursor:default"><td>${esc(c.banco || '—')}</td><td>${Number(c.valor) > 0 ? '<b style="color:var(--ouro)">' + brl(c.valor) + '</b>' : '—'}</td><td>${dBR(c.data_contato)}</td><td>${c.status_adv ? `<span class="st ${clsSt(c.status_adv)}">${esc(c.status_adv)}</span>` : '—'}</td></tr>`).join('')}
