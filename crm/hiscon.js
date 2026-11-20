@@ -426,7 +426,7 @@
     (h.contratos || []).forEach(c => {
       const k = c.contrato + '|' + c.inclusao; if (!c.contrato || vistos.has(k)) return; vistos.add(k);
       if (c.parcelas > 200 || !c.inclusao) return;                       // linha mal lida
-      const me = c.motivoExcl || '', mot = /refinanc/i.test(me) ? 'refin' : /portab/i.test(me) ? 'port' : me.trim() ? 'outro' : '';
+      const me = c.motivoExcl || '', mot = /refinanc/i.test(me) ? 'refin' : /portab/i.test(me) ? 'port' : me.trim() && !/^exclus[ãa]o\s+(pelo\s+)?banco$/i.test(me.trim()) ? 'outro' : '';   // "Exclusão Banco" não diz o motivo: a ligação sai pela data
       const org = /refinanc/i.test(c.origem || '') ? 'refin' : /portab/i.test(c.origem || '') ? 'port' : /nova/i.test(c.origem || '') ? 'nova' : '';
       L.push({ n: c.contrato, banco: c.banco, inc: c.inclusao, exc: c.exclusao || null, org, mot, dias: null, parcela: c.parcela, parcelas: c.parcelas, emprestado: c.emprestado });
     });
