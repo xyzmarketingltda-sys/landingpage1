@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Controle · XYZ para Advogados</title>
+<link rel="manifest" href="app.webmanifest">
+<meta name="theme-color" content="#061230">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="XYZ Controle">
+<link rel="apple-touch-icon" href="app-192.png">
 <meta name="robots" content="noindex,nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -104,6 +109,7 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
     <div class="marca" style="cursor:pointer" title="Voltar para o início" onclick="location.href='./'">XYZ <span>Controle</span></div>
     <div class="acoes">
       <span class="ola">Olá, <b id="eu-nome"></b></span>
+      <button class="btn peq" id="bt-avisos" hidden title="Receba um aviso no celular ou no computador quando uma procuração sua for assinada">🔔 Ativar avisos</button>
       <a class="btn peq" href="pagamento.html">💸 Pagamento do mês</a>
       <a class="btn sec peq" href="../crm/hiscon.html?de=controle">🔎 Analisar HISCON</a>
       <a class="btn sec peq" href="../crm/irregularidades.html?de=controle" title="O que o robô achou lendo os contratos dos seus clientes: menor de idade, representante legal, tarifa, juros">🔎 Irregularidades</a>
@@ -191,10 +197,46 @@ async function iniciar() {
   eu = p; $('#login').hidden = true; $('#app').hidden = false;
   $('#eu-nome').textContent = p.papel === 'advogado' ? (['Carina','Cibele','Danyelle','Junny','Rita'].includes(p.nome) ? 'Dra. ' : 'Dr. ') + (p.nome === 'Luiz' ? 'Luís' : p.nome) : p.nome + ' (admin)';
   try { XYZPresenca.entrar(sb, eu, {}); } catch (e) {}
-  carregar(); avisoDesafio(); setInterval(avisoDesafio, 120000);
+  carregar(); avisoDesafio(); setInterval(avisoDesafio, 120000); avisosPush();
 }
 
 /* Aviso no canto: desafio em andamento para a equipe da XYZ (só título, descrição e horário). */
+// ---------- avisos no aparelho (web push): nova procuração assinada ----------
+const FN_PUSH = CFG.SUPABASE_URL + '/functions/v1/push';
+const b64u = s => { const p = '='.repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+const ab64 = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function avisosPush() {
+  const bt = $('#bt-avisos'); if (!bt || !eu || !['admin', 'advogado'].includes(eu.papel)) return;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), instalado = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  bt.hidden = false;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    bt.onclick = () => alertar(ios && !instalado ? 'No iPhone, primeiro instale o app: toque em Compartilhar (quadrado com a seta) e em "Adicionar à Tela de Início". Depois abra pelo ícone e toque de novo em "Ativar avisos".' : 'Este navegador não permite avisos. Use o Chrome (Android ou computador) ou instale o app na tela inicial.');
+    return;
+  }
+  let reg; try { reg = await navigator.serviceWorker.register('sw.js'); } catch (e) { console.warn('sw', e); return; }
+  const ligado = async () => !!(Notification.permission === 'granted' && await reg.pushManager.getSubscription());
+  const pintar = async () => { const on = await ligado(); bt.textContent = on ? '🔔 Avisos ligados' : '🔔 Ativar avisos'; bt.classList.toggle('sec', on); };
+  const inscrever = async () => {
+    const { chave } = await (await fetch(FN_PUSH)).json();
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(chave) });
+    const { error } = await sb.rpc('push_inscrever', { p_endpoint: sub.endpoint, p_p256dh: ab64(sub.getKey('p256dh')), p_auth: ab64(sub.getKey('auth')) });
+    if (error) throw error;
+  };
+  bt.onclick = async () => {
+    try {
+      if (ios && !instalado) return alertar('No iPhone, primeiro instale o app: toque em Compartilhar (quadrado com a seta) e em "Adicionar à Tela de Início". Depois abra pelo ícone e toque de novo em "Ativar avisos".');
+      if (Notification.permission === 'denied') return alertar('Os avisos estão bloqueados neste aparelho. Libere as notificações deste site nas configurações do navegador e tente de novo.');
+      if (await Notification.requestPermission() !== 'granted') return;
+      bt.textContent = 'ligando…'; await inscrever();
+      const { data: { session } } = await sb.auth.getSession();
+      await fetch(FN_PUSH, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token }, body: JSON.stringify({ teste: true }) });   // aviso de teste
+    } catch (e) { console.error(e); alertar('Não consegui ligar os avisos: ' + (e.message || e)); }
+    pintar();
+  };
+  if (await ligado()) inscrever().catch(() => {});      // renova a inscrição a cada visita
+  pintar();
+}
+function alertar(t) { let d = document.getElementById('xyz-alerta'); if (!d) { d = document.createElement('div'); d.id = 'xyz-alerta'; d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:min(92vw,460px);background:#0b1e4d;border:1px solid rgba(30,144,255,.5);color:#eaf3ff;padding:14px 16px;border-radius:14px;z-index:99;font-size:14px;line-height:1.45;box-shadow:0 10px 40px rgba(0,0,0,.5)'; d.onclick = () => d.remove(); document.body.appendChild(d); } d.textContent = t; clearTimeout(d._t); d._t = setTimeout(() => d.remove(), 12000); }
 async function avisoDesafio() {
   try {
     const { data } = await sb.rpc('desafios_ativos_aviso'); let vistos = []; try { vistos = JSON.parse(sessionStorage.getItem('xyz_dz_vistos') || '[]'); } catch (e) {}
