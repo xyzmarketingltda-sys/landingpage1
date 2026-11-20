@@ -1610,7 +1610,7 @@ async function carregarLeitor() {
   leitorPdf = (async () => {
     const pdfjs = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
     pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-    if (!window.detectarSeguro) await new Promise((ok, erro) => { const sc = document.createElement('script'); sc.src = 'hiscon.js?v=20261119c'; sc.onload = ok; sc.onerror = erro; document.head.appendChild(sc); });
+    if (!window.detectarSeguro) await new Promise((ok, erro) => { const sc = document.createElement('script'); sc.src = 'hiscon.js?v=20261120a'; sc.onload = ok; sc.onerror = erro; document.head.appendChild(sc); });
     return pdfjs;
   })();
   return leitorPdf;

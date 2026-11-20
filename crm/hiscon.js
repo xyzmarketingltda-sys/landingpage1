@@ -145,13 +145,14 @@
   /* ===================== REGRAS (teses) ===================== */
   const TETO_JUROS = 1.85, TETO_CARTAO = 2.46;      // CNPS, vigentes em 2026
   // histórico do teto do CNPS (empréstimo) — data de vigência → teto % a.m. (10 dias de folga p/ averbação)
-  const TETOS = [['2020-01-01', 2.14], ['2023-03-28', 1.97], ['2023-08-25', 1.91], ['2023-10-23', 1.84], ['2023-12-04', 1.80], ['2024-01-11', 1.76],
+  // conferido em 20/11/2026: 2,14% de mar/2017 a mar/2020; 1,80% na pandemia (mar/2020 a dez/2021); 2,14% de jan/2022 a mar/2023; depois as reduções de 2023-24 e as altas de 2025
+  const TETOS = [['2017-04-01', 2.14], ['2020-03-23', 1.80], ['2022-01-01', 2.14], ['2023-03-28', 1.97], ['2023-08-25', 1.91], ['2023-10-23', 1.84], ['2023-12-04', 1.80], ['2024-01-11', 1.76],
     ['2024-02-28', 1.72], ['2024-04-24', 1.68], ['2024-05-27', 1.66], ['2025-01-09', 1.80], ['2025-03-25', 1.85]];
   const tetoEm = d => { if (!d || d < TETOS[0][0]) return null; let t = null; for (const [ini, v] of TETOS) { const lim = new Date(new Date(ini).getTime() + 10 * 864e5).toISOString().slice(0, 10); if (d >= lim) t = v; else if (d >= ini && t == null) t = v; } return t; };
   const ESPECIES_VEDADAS = { '9': 'complemento acidente do trabalho rural', '10': 'auxílio-doença acidentário rural', '13': 'auxílio-doença rural', '15': 'auxílio-reclusão rural', '25': 'auxílio-reclusão', '31': 'auxílio por incapacidade temporária (auxílio-doença)', '35': 'auxílio-doença ex-combatente', '36': 'auxílio-acidente previdenciário', '39': 'auxílio-invalidez estudante', '47': 'abono de permanência', '48': 'abono de permanência', '50': 'auxílio-doença (plano básico)', '53': 'auxílio-reclusão (plano básico)', '61': 'auxílio-natalidade', '62': 'auxílio-funeral', '63': 'auxílio-funeral rural', '64': 'auxílio-funeral', '91': 'auxílio-doença acidentário', '94': 'auxílio-acidente' };
   const BANCOS_TERMO = /caixa|inter\b|077|facta|935|cobuccio|picpay|380|inbursa|012 /i;
   const IN204 = '2026-05-19';                        // prazo máx. 108x + biometria obrigatória
-  const IN190 = '2025-08-27';                        // volta da autorização judicial p/ representante de incapaz
+  const IN190 = '2025-07-16';                        // volta da autorização judicial p/ representante de incapaz
   const fmt = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const dBR = s => s ? s.split('-').reverse().join('/') : '—';
   const meses = (a, b) => { if (!a || !b) return null; const [y1, m1] = a.split('-').map(Number), [y2, m2] = b.split('-').map(Number); return (y2 - y1) * 12 + (m2 - m1); };
@@ -171,7 +172,7 @@
     if (h.representante) {
       const apos = C.filter(c => c.inclusao && c.inclusao >= IN190);
       add('alto', 'Benefício com representante legal (incapaz/menor)', 'Contrato feito em benefício de incapaz/menor exige autorização judicial (CC arts. 1.691, 1.748, 1.774 e 1.781; IN PRES/INSS 190/2025 após ACP do MPF/TRF-3). Sem alvará, cabe pedido de nulidade, devolução dos descontos e dano moral.',
-        C.map(id), 'Vale para contratos de qualquer data.' + (apos.length ? ` ${apos.length} deles após 27/08/2025, quando o INSS voltou a exigir alvará judicial expressamente (reforça a tese).` : ' Conferir se havia alvará judicial na contratação.'));
+        C.map(id), 'Vale para contratos de qualquer data.' + (apos.length ? ` ${apos.length} deles após 16/07/2025 (publicação da IN 190), quando o INSS voltou a exigir alvará judicial expressamente (reforça a tese).` : ' Conferir se havia alvará judicial na contratação.'));
       if (h.bpc && C.length) A.unshift({ nivel: 'alto', titulo: '⚠️ LOAS/BPC com representante legal — prioridade', tese: 'Qualquer empréstimo em BPC/LOAS recebido por representante legal (curador, tutor, pai/mãe de menor ou incapaz) é forte candidato à nulidade, em qualquer data: o dinheiro do incapaz só pode ser comprometido com autorização judicial (CC arts. 1.691, 1.748 e 1.774), e o benefício assistencial é verba alimentar de quem não tem outra renda. Pedir nulidade de todos os contratos, devolução dos descontos e dano moral.', contratos: C.map(id), detalhe: `${C.length} contrato(s) no extrato — todos entram, independentemente da data.` });
       if (h.bpc && C.some(c => c.inclusao >= '2026-04-01')) add('alto', 'BPC com representante legal: contratação vedada desde abr/2026', 'Desde abril/2026 não são permitidas novas contratações de consignado em BPC pago a representante legal.', C.filter(c => c.inclusao >= '2026-04-01').map(id));
     }
