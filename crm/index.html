@@ -381,6 +381,7 @@ body.embed{background:transparent}
     <a class="nav-link" href="hiscon.html" style="margin-left:auto">🔎 HISCON, contratos e seguro</a>
     <a class="nav-link" id="nav-prev" href="previdenciario.html" style="margin-left:8px" hidden>⚖️ Previdenciário</a>
     <a class="nav-link" id="nav-painel" href="painel.html" style="margin-left:8px" hidden>📱 Painel</a>
+    <a class="nav-link" id="nav-irreg" href="irregularidades.html" style="margin-left:8px" hidden>🔎 Irregularidades</a>
   </nav>
   <main>
     <!-- CLIENTES -->
@@ -872,6 +873,7 @@ async function iniciar() {
   const admin = eu.papel === 'admin';
   $('#nav-atendentes').hidden = !admin;
   $('#nav-painel').hidden = !admin;    // painel do dono (celular): só admin
+  $('#nav-irreg').hidden = !admin;     // irregularidades dos contratos: só admin e advogados (pelo /controle)
   $('#nav-prev').hidden = !admin;      // triagem previdenciária: por enquanto só admin e advogados
   $('#f-at-box').hidden = !admin;
   $('#c-at-box').hidden = !admin;

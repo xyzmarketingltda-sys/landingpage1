@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Irregularidades nos contratos · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--painel:rgba(5,13,32,.82);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+main{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
+.sub{color:var(--suave);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
+.filtros{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.filtros input,.filtros select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:14px}.filtros input{flex:1;min-width:180px}
+.cli{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);margin-bottom:10px;overflow:hidden}
+.cli>summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.cli>summary::-webkit-details-marker{display:none}
+.cli .nome{font-weight:700;flex:1;min-width:200px}.tag{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap}
+.alto{background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}.medio{background:rgba(251,191,36,.15);color:#fde68a;border:1px solid rgba(251,191,36,.45)}.info{background:rgba(30,144,255,.15);color:#8cc8ff;border:1px solid var(--borda)}.cinza{background:rgba(147,169,201,.12);color:var(--suave);border:1px solid rgba(147,169,201,.3)}
+.corpo{padding:0 14px 14px}.ctr{border-top:1px solid rgba(30,144,255,.15);padding:10px 0}.ctr h4{font-size:13px;font-weight:600;margin-bottom:6px}.ctr h4 small{color:var(--suave);font-weight:400}
+.al{border-left:3px solid var(--borda);padding:6px 10px;margin:6px 0;background:rgba(9,24,56,.6);border-radius:0 8px 8px 0}.al.alto{border:0;border-left:3px solid var(--vermelho);background:rgba(239,68,68,.08);color:var(--texto)}.al.medio{border:0;border-left:3px solid var(--ouro);background:rgba(251,191,36,.07);color:var(--texto)}.al.info{border:0;border-left:3px solid var(--azul);background:rgba(30,144,255,.06);color:var(--texto)}
+.al b{display:block;font-size:14px}.al p{font-size:13px;color:var(--suave);margin-top:3px;line-height:1.45}
+.vazio{padding:30px;text-align:center;color:var(--suave)}
+.nota{font-size:12px;color:var(--suave);margin-top:18px;line-height:1.5}
+</style>
+</head>
+<body hidden>
+<main>
+<header><div><h1>🔎 Irregularidades nos contratos</h1><div class="sub" id="sub">carregando…</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+<div class="kpis" id="kpis"></div>
+<div class="filtros">
+  <input id="q" placeholder="Buscar cliente, CPF ou banco">
+  <select id="f-tipo"><option value="">Todos os apontamentos</option><option value="menor">Menor de idade / representante legal</option><option value="analfabeto">Analfabeto / a rogo</option><option value="tac">Tarifa de cadastro</option><option value="juros">Juros acima do teto</option><option value="prazo">Prazo acima do permitido</option><option value="biometria">Sem biometria (após 19/05/2026)</option></select>
+  <select id="f-nivel"><option value="">Forte e atenção</option><option value="alto">Só os fortes</option></select>
+  <select id="f-adv" hidden></select>
+</div>
+<div id="lista"><div class="vazio">carregando…</div></div>
+<p class="nota">O robô lê o texto de cada contrato da pasta do cliente e aponta o que encontrou; é triagem, não parecer. Sempre abra o PDF para confirmar antes de usar. Contratos escaneados (só imagem) não são lidos e aparecem como "não lido". As regras usadas: representante legal — IN INSS 100/2018, 136/2022 e 190/2025, decisão do TRF3 de jun/2025 e Código Civil arts. 1.691, 1.748 e 1.781; analfabeto — CC art. 595 e STJ; tarifa de cadastro — IN 28/2008 art. 13, II, e IN 138/2022; juros — teto do CNPS na data do contrato.</p>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+const dBR = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : 'sem data', ROT = { alto: 'FORTE', medio: 'ATENÇÃO', info: 'INFO' };
+let DADOS = [], ADMIN = false;
+const repMenor = a => a.cod === 'menor' || a.cod === 'representante';
+function desenhar() {
+  const q = $('#q').value.toLowerCase().trim(), tipo = $('#f-tipo').value, nv = $('#f-nivel').value, adv = $('#f-adv').value;
+  const casa = a => (a.nivel === 'alto' || a.nivel === 'medio') && (!nv || a.nivel === nv) && (!tipo || (tipo === 'menor' ? repMenor(a) : a.cod === tipo));
+  const vis = DADOS.map(c => ({ c, ctr: (c.contratos || []).filter(k => (k.alertas || []).some(casa)) })).filter(x => x.ctr.length
+    && (!adv || (x.c.advogado || '').split(', ').includes(adv)) && (!q || [x.c.nome, x.c.cpf, x.c.bancos, x.c.advogado].join(' ').toLowerCase().includes(q)));
+  $('#lista').innerHTML = vis.length ? vis.slice(0, 300).map(({ c, ctr }) => {
+    const todos = ctr.flatMap(k => k.alertas.filter(casa)), forte = todos.some(a => a.nivel === 'alto'), tags = [...new Set(todos.map(a => a.cod))];
+    const NOME = { menor: 'Menor de idade', representante: 'Representante legal', analfabeto: 'Analfabeto', tac: 'Tarifa de cadastro', juros: 'Juros acima do teto', prazo: 'Prazo', biometria: 'Sem biometria' };
+    return `<details class="cli"><summary><span class="tag ${forte ? 'alto' : 'medio'}">${forte ? 'FORTE' : 'ATENÇÃO'}</span><span class="nome">${esc(c.nome)}<br><small class="sub">${esc(c.advogado || 'sem advogado')} · ${esc(c.atendente || '—')} · ${esc(c.bancos || '')}</small></span>${tags.map(t => `<span class="tag ${repMenor({ cod: t }) ? 'alto' : 'info'}">${NOME[t] || t}</span>`).join('')}<span class="tag cinza">${ctr.length} contrato(s)</span></summary><div class="corpo">`
+      + (c.pasta_url ? `<a class="btn" href="${esc(c.pasta_url)}" target="_blank" rel="noopener">📁 Abrir pasta no Drive</a>` : '')
+      + ctr.map(k => `<div class="ctr"><h4>${esc(k.arquivo)} <small>· ${esc(k.banco || 'banco não identificado')} · ${dBR(k.data)}${k.dados && k.dados.taxa ? ' · ' + String(k.dados.taxa).replace('.', ',') + '% a.m.' : ''}${k.dados && k.dados.parcelas ? ' · ' + k.dados.parcelas + 'x' : ''}</small></h4>`
+        + k.alertas.filter(a => casa(a) || a.nivel === 'info').map(a => `<div class="al ${a.nivel}"><b>${ROT[a.nivel]} · ${esc(a.titulo)}</b><p>${esc(a.tese)}</p></div>`).join('') + '</div>').join('') + '</div></details>';
+  }).join('') + (vis.length > 300 ? `<div class="vazio">Mostrando 300 de ${vis.length}. Use a busca ou os filtros.</div>` : '') : '<div class="vazio">Nenhum cliente com esse apontamento.</div>';
+}
+async function carregar() {
+  const { data, error } = await sb.rpc('irreg_lista', { p_tudo: false });
+  if (error) { $('#lista').innerHTML = '<div class="vazio">Não consegui carregar: ' + esc(error.message) + '</div>'; return; }
+  DADOS = data || [];
+  const conta = f => DADOS.filter(c => (c.contratos || []).some(k => (k.alertas || []).some(f))).length;
+  const k = [['Clientes com apontamento', DADOS.length], ['Fortes', DADOS.filter(c => c.nivel === 'alto').length], ['Menor / representante', conta(repMenor)], ['Analfabeto', conta(a => a.cod === 'analfabeto')], ['Tarifa de cadastro', conta(a => a.cod === 'tac')], ['Juros acima do teto', conta(a => a.cod === 'juros')]];
+  if (ADMIN) {
+    const n = async q => (await q).count ?? '–';
+    const [lidos, fila] = await Promise.all([n(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).not('irreg_lido_em', 'is', null)), n(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).is('irreg_lido_em', null))]);
+    k.push(['Clientes já lidos', lidos], ['Na fila do robô', fila]);
+    const advs = [...new Set(DADOS.flatMap(c => (c.advogado || '').split(', ').filter(Boolean)))].sort();
+    $('#f-adv').hidden = false; $('#f-adv').innerHTML = '<option value="">Todos os advogados</option>' + advs.map(a => `<option>${esc(a)}</option>`).join('');
+  }
+  $('#kpis').innerHTML = k.map(([t, v]) => `<div class="kpi"><b>${v}</b><span>${t}</span></div>`).join('');
+  $('#sub').textContent = ADMIN ? 'todos os clientes com pasta no Drive' : 'somente os seus clientes';
+  desenhar();
+}
+['q', 'f-tipo', 'f-nivel', 'f-adv'].forEach(i => $('#' + i).addEventListener('input', desenhar));
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
+    const { data: eu } = await sb.from('perfis').select('id,nome,papel,ativo').eq('id', session.user.id).single();
+    if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
+    ADMIN = eu.papel === 'admin'; if (!ADMIN || new URLSearchParams(location.search).get('de') === 'controle') $('#voltar').href = '../controle/', $('#voltar').textContent = '← Controle';
+    document.body.hidden = false; carregar();
+  } catch (e) { location.replace('./'); }
+})();
+</script>
+</body>
+</html>
