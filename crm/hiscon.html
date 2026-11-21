@@ -141,12 +141,21 @@ async function processar(arqs) {
       const t = await textoPdf(doc), tp = window.XYZDocs && XYZDocs.tipoDoc(t);
       if (tp) { const d = XYZDocs.ler(t); d.arquivo = f.name; anexar(d); continue; }
       let h = null; try { h = await lerHiscon(doc); } catch (e) {}
-      if (h) { HISCONS.push(h); const el = cartao(h, analisarHiscon(h), f.name); CARTOES.push({ h, el }); $('#saida').prepend(el); }
+      if (h) { HISCONS.push(h); const alH = analisarHiscon(h);
+        // giro de carteira: quantas trocas por refinanciamento/portabilidade e a cadeia de contratos (de onde veio cada um)
+        try { const g = window.giroCarteira && giroCarteira(h); if (g && g.alerta) alH.unshift({ nivel: g.alerta.nivel, titulo: g.alerta.titulo, tese: g.alerta.tese, contratos: [], detalhe: '' }); } catch (e) { console.error(e); }
+        const el = cartao(h, alH, f.name); CARTOES.push({ h, el }); $('#saida').prepend(el); }
       else contratos.push({ f, t });
     } catch (e) { $('#erro').textContent = `${f.name}: ${e.message}`; console.error(e); }
   }
   for (const { f, t } of contratos) {
-    try { $('#saida').prepend(cartaoContrato(analisarContrato(t, f.name))); }
+    try {
+      const R = analisarContrato(t, f.name);
+      // mesmas conferências do robô de irregularidades (menor, representante, analfabeto, selfie, registros de segurança…)
+      try { const X = window.XYZContrato && XYZContrato.analisar(t, f.name), ja = /juros|tarifa|prazo|cart[ãa]o/i;
+        if (X && X.tipo === 'contrato') (X.alertas || []).forEach(x => { if (!(['juros', 'tac', 'prazo', 'cartao'].includes(x.cod) && R.alertas.some(b => ja.test(b.titulo))) && !R.alertas.some(b => b.titulo === x.titulo)) R.alertas.push({ nivel: x.nivel, titulo: x.titulo, tese: x.tese }); });
+        R.alertas.sort((p, q) => ({ alto: 0, medio: 1, info: 2 }[p.nivel] ?? 3) - ({ alto: 0, medio: 1, info: 2 }[q.nivel] ?? 3)); } catch (e) { console.error(e); }
+      $('#saida').prepend(cartaoContrato(R)); }
     catch (e) { $('#erro').textContent = `${f.name}: ${e.message}`; console.error(e); }
   }
   desenharAnexos();
