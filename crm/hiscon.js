@@ -39,12 +39,19 @@
     const centros = cab.map(c => c.c);
     const nomes = COLS_EMP.slice(0, centros.length);
     const yCab = ls[iCab].y;
-    const fimY = (ls.find(l => l.y < yCab && /^\*/.test(l.txt.trim())) || { y: -1 }).y;
-    const corpo = itens.filter(i => i.y < yCab - 1 && i.y > fimY + 1);
+    // fim da tabela: a nota de rodapé ("*Contratos que…"). Quando a tabela continua na página seguinte não há nota:
+    // vai até o fim da página (y é negativo para baixo) e o rodapé é cortado depois, pela distância à última linha
+    const fimL = ls.find(l => l.y < yCab && /^\*/.test(l.txt.trim())), fimY = fimL ? fimL.y : -1e9;
+    let corpo = itens.filter(i => i.y < yCab - 1 && i.y > fimY + 1);
     // âncoras: célula de situação
     const xSit = centros[2];
     const anc = corpo.filter(i => Math.abs(i.x + i.w / 2 - xSit) < 25 && /^(Ativo|Exclu|Suspen|Encerr|Reserv|Inativ)/i.test(i.s.trim())).sort((a, b) => b.y - a.y);
     if (!anc.length) return [];
+    if (!fimL) {
+      const gaps = anc.slice(1).map((a, k) => anc[k].y - a.y).sort((p, q) => p - q), gap = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 50;
+      const lim = anc[anc.length - 1].y - Math.max(22, gap * 0.6);
+      corpo = corpo.filter(i => i.y > lim);
+    }
     const regs = [];
     // cada item vai para a coluna mais próxima; dentro da coluna, itens colados verticalmente formam um bloco (célula),
     // e o bloco inteiro vai para a linha (âncora) mais próxima do seu centro
