@@ -49,6 +49,7 @@ input{background:#061230;color:var(--txt);border:1px solid var(--borda);border-r
 <section id="sec-dz" hidden><h2>⚡ Desafio em andamento</h2><div class="card dz" id="dz"></div></section>
 <section><h2>Ranking</h2><div class="abas"><button data-rk="mes" class="sel">Mês</button><button data-rk="dia">Hoje</button></div><div class="card" id="rk"></div></section>
 <section><h2>Por advogado no mês</h2><div class="card" id="adv"></div></section>
+<section id="sec-al" hidden><h2>⚠️ Avisos do sistema</h2><div class="card" id="alertas"></div></section>
 <section><h2>Robôs e filas</h2><div class="card" id="robos"></div></section>
 <p class="aviso">Atualiza sozinho a cada minuto. Para instalar: menu do navegador → "Adicionar à tela inicial".</p>
 </div>
@@ -99,6 +100,11 @@ async function carregar() {
       conta(sb.from('prev_oportunidades').select('id', { count: 'exact', head: true }).eq('status', 'nova')),
       conta(sb.from('clientes').select('id', { count: 'exact', head: true }).not('pasta_url', 'is', null).is('seguro_det_em', null))]);
     $('#robos').innerHTML = [['Clientes do mês sem pasta no Drive', semPasta], ['Contratos aguardando leitura do seguro', valFila], ['Previdenciário: clientes na fila', prevFila], ['Oportunidades novas no banco', banco]].map(([t, n]) => `<div class="lin"><span>${t}</span><b>${n}</b></div>`).join('');
+    // avisos do sistema (robô parado, leitor lendo errado, backup atrasado) — conferidos de hora em hora no servidor
+    { const { data: al } = await sb.rpc('alertas_lista'), ab = (al || []).filter(x => !x.resolvido_em), ok = (al || []).filter(x => x.resolvido_em).slice(0, 3);
+      $('#sec-al').hidden = !(ab.length || ok.length);
+      $('#alertas').innerHTML = ab.map(x => `<div class="lin" style="align-items:flex-start;gap:10px"><span>${x.nivel === 'alto' ? '🔴' : '🟠'} ${esc(x.texto)}</span></div>`).join('')
+        + ok.map(x => `<div class="lin" style="opacity:.6"><span>✔ resolvido: ${esc(x.texto)}</span></div>`).join('') || '<div class="lin"><span>Tudo certo.</span></div>'; }
     $('#quando').textContent = 'atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   } catch (e) { console.error(e); $('#quando').textContent = 'não consegui atualizar — toque em ↻'; }
 }
