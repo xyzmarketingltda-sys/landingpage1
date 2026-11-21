@@ -42,6 +42,12 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
 <header><div><h1>📄 Peças</h1><div class="sub">modelos da XYZ por tese · preencha, copie ou baixe em Word</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
 <div class="aviso"><b>São modelos.</b> O texto é da XYZ, escrito a partir das teses do sistema e de decisões favoráveis publicadas. Quem assina confere fatos, valores, competência e a jurisprudência da comarca antes de protocolar. O que estiver em amarelo falta preencher ou precisa de decisão do advogado.</div>
 <div class="linha">
+  <select id="cli"><option value="">Escolher cliente (ordem alfabética)…</option></select>
+  <input id="cpf-busca" placeholder="ou digite o CPF do cliente" inputmode="numeric" style="background:rgba(255,255,255,.05);border:1px solid var(--borda);border-radius:10px;color:var(--texto);padding:9px 11px;font:inherit;min-width:210px">
+  <select id="ctr" hidden></select>
+</div>
+<div class="sub" id="cli-info"></div>
+<div class="linha">
   <select id="peca"></select>
   <select id="rito"><option value="jec">Juizado Especial Cível</option><option value="vara">Vara Cível (procedimento comum)</option></select>
   <button class="btn" id="copiar">Copiar texto</button>
@@ -50,7 +56,7 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
 <div class="sub" id="quando"></div>
 <div class="form" id="form"></div>
 <div id="saida"></div>
-<p class="nota">Os dados digitados aqui ficam só neste aparelho; nada é enviado ao servidor.</p>
+<p class="nota">O que você digita ou altera aqui fica só neste aparelho. Os dados do cliente vêm do CRM e você só enxerga os seus clientes.</p>
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -69,6 +75,38 @@ function desenhar() {
   $('#quando').textContent = 'Quando usar: ' + P.PECAS[$('#peca').value].quando;
   $('#saida').innerHTML = esc(TXT).replace(/\[[^\]\n]{3,220}\]/g, m => '<mark>' + m + '</mark>');
 }
+// cliente já lançado no CRM: puxa o que o sistema leu do cadastro, dos contratos da pasta e do HISCON
+let CLI = null;
+const so = v => String(v || '').replace(/\D/g, ''), fmtCpf = c => so(c).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'), dBRc = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
+const moeda = v => v == null || v === '' ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const poe = (k, v) => { if (v != null && v !== '') $('#c-' + k).value = v; };
+function usarContrato(i) {
+  const k = CLI && CLI.contratos[i]; if (!k) return;
+  ['banco', 'contrato', 'dataContrato', 'valorContrato', 'parcela', 'descontadas', 'seguro'].forEach(c => { $('#c-' + c).value = ''; });
+  poe('banco', k.banco); poe('contrato', k.numero); poe('dataContrato', dBRc(k.data)); poe('valorContrato', moeda(k.valor)); poe('parcela', moeda(k.parcela)); poe('descontadas', k.descontadas); poe('seguro', moeda(k.seguro));
+  $('#peca').value = k.seguro ? 'seguro' : 'nao-contratado'; desenhar();
+}
+async function puxar(cpf) {
+  if (so(cpf).length !== 11) return;
+  $('#cli-info').textContent = 'buscando…';
+  const { data, error } = await sb.rpc('peca_dados', { p_cpf: so(cpf) });
+  if (error || !data) { CLI = null; $('#ctr').hidden = true; $('#cli-info').textContent = error ? 'Não consegui buscar: ' + error.message : 'CPF não encontrado entre os seus clientes.'; return; }
+  CLI = data; poe('nome', data.nome); poe('cpf', fmtCpf(data.cpf));
+  if (data.cep && !$('#c-endereco').value) $('#c-endereco').value = 'CEP ' + String(data.cep).replace(/(\d{5})(\d{3})/, '$1-$2') + ' (completar rua, número e cidade)';
+  const L = data.contratos || [];
+  $('#ctr').hidden = !L.length;
+  $('#ctr').innerHTML = L.map((k, i) => `<option value="${i}">${esc((k.banco || 'banco?') + ' · ' + (dBRc(k.data) || 'sem data') + (k.numero ? ' · nº ' + k.numero : '') + (k.seguro ? ' · seguro R$ ' + moeda(k.seguro) : '') + (k.teses ? ' · ' + k.teses.join(', ') : ''))}</option>`).join('');
+  $('#cli-info').textContent = L.length ? `${L.length} contrato(s) lido(s) na pasta do cliente. Escolha o contrato da ação; o sistema preenche o que conseguiu ler. RG, endereço completo e número do benefício ainda não são lidos dos documentos — ficam em amarelo.` : 'Cliente encontrado, mas o robô ainda não leu contratos na pasta dele. Preencha os dados do contrato à mão.';
+  if (L.length) { const i = Math.max(0, L.findIndex(k => k.seguro || k.teses)); $('#ctr').value = i; usarContrato(i); } else desenhar();
+}
+$('#cli').addEventListener('change', e => { if (e.target.value) { $('#cpf-busca').value = fmtCpf(e.target.value); puxar(e.target.value); } });
+$('#cpf-busca').addEventListener('input', e => { e.stopPropagation(); if (so(e.target.value).length === 11) puxar(e.target.value); });
+$('#ctr').addEventListener('change', e => usarContrato(Number(e.target.value)));
+async function carregarClientes() {
+  const { data } = await sb.rpc('peca_clientes');
+  $('#cli').innerHTML = '<option value="">Escolher cliente (ordem alfabética)…</option>' + (data || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)} · ${fmtCpf(c.cpf)}</option>`).join('');
+  if (q.get('cpf')) { $('#cpf-busca').value = fmtCpf(q.get('cpf')); puxar(q.get('cpf')); }
+}
 document.addEventListener('input', desenhar);
 $('#copiar').onclick = async () => { try { await navigator.clipboard.writeText(TXT); $('#copiar').textContent = 'Copiado ✔'; } catch (e) { $('#copiar').textContent = 'Selecione e copie manualmente'; } setTimeout(() => $('#copiar').textContent = 'Copiar texto', 1800); };
 $('#word').onclick = () => {
@@ -82,7 +120,7 @@ $('#word').onclick = () => {
     const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
     if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
     if (eu.papel !== 'admin' || q.get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
-    document.body.hidden = false; desenhar();
+    document.body.hidden = false; desenhar(); carregarClientes();
   } catch (e) { location.replace('./'); }
 })();
 </script>
