@@ -95,6 +95,27 @@ a.pasta{color:var(--ouro);text-decoration:none;font-weight:600}
 .linha-tempo div{font-size:13px;color:var(--suave)}.linha-tempo b{color:var(--texto)}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0b1a3a;border:1px solid var(--ouro);padding:10px 16px;border-radius:10px;z-index:60}
 @media(max-width:820px){.carteira .c-nums{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.barra{grid-template-columns:1fr 1fr}.grade{grid-template-columns:1fr}.col-m{display:none}}
+/* ===== celular ===== */
+html{background:#02060f}
+@media(max-width:820px){
+  html,body{overflow-x:hidden}
+  main{padding:14px 12px 40px} header{padding:12px}
+  .barra,.barra.adm{grid-template-columns:1fr 1fr} .barra > div{min-width:0} .barra > div:first-child{grid-column:1/-1}
+  .barra input,.barra select{width:100%;min-width:0;font-size:16px}
+  input,select,textarea{font-size:16px} .btn,button{min-height:42px}
+  /* a lista de clientes vira cartões */
+  .tabela:has(#lista){overflow:visible;background:none;border:0;padding:0}
+  .tabela:has(#lista) thead{display:none}
+  .tabela:has(#lista) table,#lista{display:block}
+  #lista tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:13px 14px;margin-bottom:10px;background:var(--painel2);border:1px solid var(--borda);border-radius:14px}
+  #lista td{display:block;padding:0;border:0;min-width:0;font-size:13.5px}
+  #lista td:nth-child(1){grid-column:1/-1;font-size:15.5px;font-weight:700}
+  #lista td.col-m{display:none}
+  #lista td:nth-child(n+2)::before{display:block;font-size:11px;color:var(--suave);font-weight:500;margin-bottom:1px}
+  #lista td:nth-child(2)::before{content:"CPF"} #lista td:nth-child(4)::before{content:"Bancos"} #lista td:nth-child(5)::before{content:"Seguro"}
+  #lista td:nth-child(6)::before{content:"Procuração"} #lista td:nth-child(9)::before{content:"Status"} #lista td:nth-child(10)::before{content:"Pasta"}
+  #lista td[colspan]{grid-column:1/-1} #lista td[colspan]::before{content:none}
+}
 </style>
 </head>
 <body>

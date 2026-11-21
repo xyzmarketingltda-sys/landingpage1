@@ -349,6 +349,20 @@ body.embed #dzq{display:none!important}
 @keyframes maEntra{from{transform:translate(-50%,-40%) scale(.9);opacity:0}to{transform:translate(-50%,-50%);opacity:1}}
 body.embed #app>header,body.embed #app>nav,body.embed #gestao,body.embed #card-esc,body.embed #quest,body.embed #missao-aviso,body.embed .flutuante,body.embed #flutuante{display:none!important}
 body.embed{background:transparent}
+/* ===== celular: nada pode passar da largura da tela nem ficar por cima do conteúdo ===== */
+@media (max-width:700px){
+  html,body{overflow-x:hidden}
+  nav{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none} nav::-webkit-scrollbar{display:none}
+  .g-kpis,.g-kpis.prev{grid-template-columns:1fr 1fr} .g-kpi{min-width:0} .g-kpi b{font-size:clamp(17px,5.2vw,22px);word-break:break-word}
+  input,select,textarea{font-size:16px}                     /* evita o zoom automático do iPhone ao tocar no campo */
+  .btn,button{min-height:42px}
+  .neon{display:none}                                       /* letreiros ao lado dos botões flutuantes */
+  #card-esc{padding:5px;gap:0;border-radius:12px;left:10px;bottom:10px} #card-esc > div{display:none} #card-esc .thumb{width:54px;height:40px}
+  #flut{right:10px;bottom:10px} #flut-bola{transform:scale(.82);transform-origin:bottom right}
+  #quest{right:70px;bottom:14px;transform:scale(.86)} #dzq{right:116px;bottom:14px;transform:scale(.86)}
+  main{padding-bottom:96px}
+  #modal{padding:10px 8px} #modal > *{max-width:100%}
+}
 </style>
 </head>
 <body>
