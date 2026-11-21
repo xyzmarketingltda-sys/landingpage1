@@ -10,7 +10,7 @@
    • Analfabeto — CC art. 595: assinatura a rogo e duas testemunhas (STJ, 3ª Turma, 2026: contratação digital sem isso é nula).
    • Tarifa de cadastro/TAC — vedada no consignado do INSS (IN 28/2008, art. 13, II; IN 138/2022, art. 12).
    • Prazo — 96 parcelas até 18/05/2026; 108 desde 19/05/2026 (IN 204/2026). Mesma regra do leitor de HISCON.
-   • Biometria facial obrigatória no Meu INSS desde 19/05/2026. */
+   • Biometria (selfie) no contrato: obrigatória desde a IN 138/2022, implantada em 2023. A anuência biométrica no Meu INSS é de 19/05/2026 (Lei 15.327/2026). */
 (function (root) {
   const TETO_EMP = [['2000-01-01', 2.5], ['2017-04-01', 2.14], ['2017-10-06', 2.08], ['2020-03-23', 1.80], ['2022-01-01', 2.14], ['2023-03-16', 1.70], ['2023-03-28', 1.97], ['2023-08-25', 1.91], ['2023-10-23', 1.84], ['2023-12-13', 1.80], ['2024-01-11', 1.76], ['2024-02-28', 1.72], ['2024-04-24', 1.68], ['2024-06-03', 1.66], ['2025-01-09', 1.80], ['2025-03-25', 1.85]];
   const MESES = { janeiro: 1, fevereiro: 2, 'março': 3, marco: 3, abril: 4, maio: 5, junho: 6, julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12 };
@@ -141,7 +141,10 @@
     else if (R.parcelas > 96 && data && data < '2026-05-19') add('prazo', 'medio', 'Prazo acima do permitido na época: ' + R.parcelas + ' parcelas', 'Até 18/05/2026 o prazo máximo era de 96 parcelas (108 só a partir de 19/05/2026). Conferir a data do contrato.');
     // selfie/biometria: a anuência por biometria é feita no Meu INSS, e o contrato digital também tem de trazer a selfie do cliente
     if (eletr || bio) {
-      const novo = data && data >= '2026-05-19', regra = novo ? ' Desde 19/05/2026 (IN INSS 204/2026) a contratação exige biometria facial.' : '';
+      // A biometria NO CONTRATO é obrigatória desde a IN INSS 138/2022 (art. 5º, III; implantação 60 dias após a vigência, ajustada pela IN 143, de fev/2023).
+      // 19/05/2026 (Lei 15.327/2026) é outra coisa: a anuência biométrica no Meu INSS. Uma não substitui a outra.
+      const novo = data && data >= '2023-04-01', regra = (novo ? ' Desde 2023 a autorização do consignado tem de ser assinada com reconhecimento biométrico (IN INSS 138/2022, art. 5º, III, com a IN 143/2023): a selfie precisa estar no contrato.' : ' O contrato é anterior à obrigatoriedade da biometria (IN INSS 138/2022, implantada em 2023); vale como indício, não como exigência da época.')
+        + (data && data >= '2026-05-19' ? ' Além disso, desde 19/05/2026 (Lei 15.327/2026) o titular confirma a operação por biometria no Meu INSS — é outra etapa, que não dispensa a selfie no contrato.' : '');
       if (fotos === 0 && !bio) add('sem-selfie', novo ? 'alto' : 'medio', 'Contrato digital sem selfie e sem registro de biometria', 'O PDF não traz foto do cliente nem menciona biometria ou prova de vida. Sem a selfie no contrato o banco não prova que foi o próprio cliente quem contratou — tese de inexistência da contratação/fraude, com inversão do ônus da prova (CDC art. 6º, VIII).' + regra);
       else if (fotos === 0) add('sem-selfie', 'medio', 'Contrato cita biometria, mas a selfie não está no PDF', 'O texto fala em biometria facial, porém o arquivo não traz a foto do cliente. Pedir ao banco o dossiê completo da contratação (selfie, prova de vida, IP e geolocalização); se não apresentar, reforça a tese de que o cliente não contratou.' + regra);
       else if (fotos == null && !bio) add('sem-selfie', 'medio', 'Contrato digital sem registro de biometria no texto', 'O texto não menciona biometria nem prova de vida. Abrir o PDF e conferir se há a selfie do cliente.' + regra);

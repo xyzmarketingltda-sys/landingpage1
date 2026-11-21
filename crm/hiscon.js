@@ -158,7 +158,7 @@
   const tetoEm = d => { if (!d || d < TETOS[0][0]) return null; let t = null; for (const [ini, v] of TETOS) { const lim = new Date(new Date(ini).getTime() + 10 * 864e5).toISOString().slice(0, 10); if (d >= lim) t = v; else if (d >= ini && t == null) t = v; } return t; };
   const ESPECIES_VEDADAS = { '9': 'complemento acidente do trabalho rural', '10': 'auxílio-doença acidentário rural', '13': 'auxílio-doença rural', '15': 'auxílio-reclusão rural', '25': 'auxílio-reclusão', '31': 'auxílio por incapacidade temporária (auxílio-doença)', '35': 'auxílio-doença ex-combatente', '36': 'auxílio-acidente previdenciário', '39': 'auxílio-invalidez estudante', '47': 'abono de permanência', '48': 'abono de permanência', '50': 'auxílio-doença (plano básico)', '53': 'auxílio-reclusão (plano básico)', '61': 'auxílio-natalidade', '62': 'auxílio-funeral', '63': 'auxílio-funeral rural', '64': 'auxílio-funeral', '91': 'auxílio-doença acidentário', '94': 'auxílio-acidente' };
   const BANCOS_TERMO = /caixa|inter\b|077|facta|935|cobuccio|picpay|380|inbursa|012 /i;
-  const IN204 = '2026-05-19';                        // prazo máx. 108x + biometria obrigatória
+  const IN204 = '2026-05-19';                        // prazo máx. 108x + anuência biométrica no Meu INSS (a selfie no contrato é de 2023)
   const IN190 = '2025-07-16';                        // volta da autorização judicial p/ representante de incapaz
   const fmt = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const dBR = s => s ? s.split('-').reverse().join('/') : '—';
@@ -277,7 +277,7 @@
 
     // 11. contratos após biometria obrigatória
     const posBio = novos.filter(c => c.inclusao >= IN204);
-    if (posBio.length) add('info', 'Contratos após a biometria obrigatória (19/05/2026)', 'Desde 19/05/2026 todo consignado exige anuência por biometria facial no Meu INSS. Se o cliente não fez a biometria, o contrato é irregular.', posBio.map(id));
+    if (posBio.length) add('info', 'Contratos após a anuência biométrica no Meu INSS (19/05/2026)', 'Desde 19/05/2026 (Lei 15.327/2026) o titular tem de confirmar cada consignado por biometria facial no Meu INSS, em até 5 dias. Desde ago/2026 (IN 213/2026) quem não tem biometria nas bases do governo pode confirmar com login Gov.br e dados bancários. Se o cliente não confirmou de nenhuma forma, o contrato é irregular. Isso não se confunde com a selfie no contrato, exigida desde 2023 (IN 138/2022).', posBio.map(id));
 
     const peso = { alto: 0, medio: 1, info: 2 };
     return A.sort((a, b) => peso[a.nivel] - peso[b.nivel]);
