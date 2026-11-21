@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peças · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--painel:rgba(5,13,32,.82);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+main{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
+.sub{color:var(--suave);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
+.filtros{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.filtros input,.filtros select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:14px}.filtros input{flex:1;min-width:180px}
+.cli{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);margin-bottom:10px;overflow:hidden}
+.cli>summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.cli>summary::-webkit-details-marker{display:none}
+.cli .nome{font-weight:700;flex:1;min-width:200px}.tag{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap}
+.alto{background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}.medio{background:rgba(251,191,36,.15);color:#fde68a;border:1px solid rgba(251,191,36,.45)}.info{background:rgba(30,144,255,.15);color:#8cc8ff;border:1px solid var(--borda)}.cinza{background:rgba(147,169,201,.12);color:var(--suave);border:1px solid rgba(147,169,201,.3)}
+.corpo{padding:0 14px 14px}.ctr{border-top:1px solid rgba(30,144,255,.15);padding:10px 0}.ctr h4{font-size:13px;font-weight:600;margin-bottom:6px}.ctr h4 small{color:var(--suave);font-weight:400}
+.al{border-left:3px solid var(--borda);padding:6px 10px;margin:6px 0;background:rgba(9,24,56,.6);border-radius:0 8px 8px 0}.al.alto{border:0;border-left:3px solid var(--vermelho);background:rgba(239,68,68,.08);color:var(--texto)}.al.medio{border:0;border-left:3px solid var(--ouro);background:rgba(251,191,36,.07);color:var(--texto)}.al.info{border:0;border-left:3px solid var(--azul);background:rgba(30,144,255,.06);color:var(--texto)}
+.al b{display:block;font-size:14px}.al p{font-size:13px;color:var(--suave);margin-top:3px;line-height:1.45}
+.vazio{padding:30px;text-align:center;color:var(--suave)}
+.nota{font-size:12px;color:var(--suave);margin-top:18px;line-height:1.5}
+
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin:14px 0}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--suave)}
+.form input,.linha select{background:rgba(255,255,255,.05);border:1px solid var(--borda);border-radius:10px;color:var(--texto);padding:9px 11px;font:inherit}
+.linha{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.linha select{min-width:260px}
+#saida{white-space:pre-wrap;background:#fff;color:#111;border-radius:12px;padding:28px 32px;font:15px/1.6 Georgia,'Times New Roman',serif;margin-top:14px;min-height:200px}
+#saida mark{background:#ffe9a8;color:#111;border-radius:3px;padding:0 2px}
+.aviso{border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.08);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:12px}
+</style>
+</head>
+<body hidden>
+<main>
+<header><div><h1>📄 Peças</h1><div class="sub">modelos da XYZ por tese · preencha, copie ou baixe em Word</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+<div class="aviso"><b>São modelos.</b> O texto é da XYZ, escrito a partir das teses do sistema e de decisões favoráveis publicadas. Quem assina confere fatos, valores, competência e a jurisprudência da comarca antes de protocolar. O que estiver em amarelo falta preencher ou precisa de decisão do advogado.</div>
+<div class="linha">
+  <select id="peca"></select>
+  <select id="rito"><option value="jec">Juizado Especial Cível</option><option value="vara">Vara Cível (procedimento comum)</option></select>
+  <button class="btn" id="copiar">Copiar texto</button>
+  <button class="btn" id="word">Baixar em Word</button>
+</div>
+<div class="sub" id="quando"></div>
+<div class="form" id="form"></div>
+<div id="saida"></div>
+<p class="nota">Os dados digitados aqui ficam só neste aparelho; nada é enviado ao servidor.</p>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="pecas.js?v=20261121a"></script>
+<script>
+const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const P = XYZPecas, q = new URLSearchParams(location.search);
+$('#peca').innerHTML = Object.entries(P.PECAS).map(([k, v]) => `<option value="${k}">${esc(v.titulo)}</option>`).join('');
+$('#form').innerHTML = P.CAMPOS.map(([k, r, pad]) => `<label>${esc(r)}<input id="c-${k}" value="${esc(q.get(k) || pad || '')}"></label>`).join('');
+if (q.get('peca') && P.PECAS[q.get('peca')]) $('#peca').value = q.get('peca');
+const dados = () => Object.fromEntries(P.CAMPOS.map(([k]) => [k, $('#c-' + k).value]));
+let TXT = '';
+function desenhar() {
+  TXT = P.gerar($('#peca').value, dados(), $('#rito').value);
+  $('#quando').textContent = 'Quando usar: ' + P.PECAS[$('#peca').value].quando;
+  $('#saida').innerHTML = esc(TXT).replace(/\[[^\]\n]{3,220}\]/g, m => '<mark>' + m + '</mark>');
+}
+document.addEventListener('input', desenhar);
+$('#copiar').onclick = async () => { try { await navigator.clipboard.writeText(TXT); $('#copiar').textContent = 'Copiado ✔'; } catch (e) { $('#copiar').textContent = 'Selecione e copie manualmente'; } setTimeout(() => $('#copiar').textContent = 'Copiar texto', 1800); };
+$('#word').onclick = () => {
+  const corpo = TXT.split('\n').map(l => l.trim() ? `<p style="margin:0 0 10pt;text-align:justify;${/^[A-ZÀ-Ú0-9 –\-\/,.ºª()]{12,}$/.test(l.trim()) ? 'font-weight:bold;text-align:center' : 'text-indent:1.25cm'}">${esc(l)}</p>` : '').join('');
+  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Arial;font-size:12pt;line-height:1.5}@page{margin:3cm 2cm 2cm 3cm}</style></head><body>${corpo}</body></html>`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff', doc], { type: 'application/msword' })); a.download = 'peca_' + $('#peca').value + '_' + ($('#c-nome').value || 'cliente').replace(/\s+/g, '_').slice(0, 40) + '.doc'; a.click();
+};
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
+    const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
+    if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
+    if (eu.papel !== 'admin' || q.get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
+    document.body.hidden = false; desenhar();
+  } catch (e) { location.replace('./'); }
+})();
+</script>
+</body>
+</html>
