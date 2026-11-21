@@ -465,7 +465,8 @@
     const trocas = L.filter(c => c.mot === 'refin' || c.mot === 'port'), curtos = trocas.filter(c => c.dias != null && c.dias >= 0 && c.dias < 365), relampago = curtos.filter(c => c.dias <= 10);
     const porBanco = {}; trocas.forEach(c => { porBanco[c.banco] = (porBanco[c.banco] || 0) + 1; });
     const maior = Object.entries(porBanco).sort((a, b) => b[1] - a[1])[0] || null;
-    const nivel = curtos.length >= 3 || relampago.length >= 2 ? 'alto' : curtos.length >= 1 || trocas.length >= 4 ? 'medio' : 'ok';
+    // calibrado em 20/11/2026 com 51 extratos reais (mediana: 18 trocas antes de 12 meses): forte só para o giro pesado
+    const nivel = curtos.length >= 25 ? 'alto' : curtos.length >= 5 ? 'medio' : 'ok';
     const g = { total: L.length, trocas: trocas.length, curtos: curtos.length, relampago: relampago.length, nascidos: L.filter(c => c.org === 'refin' || c.org === 'port').length,
       maiorBanco: maior ? { banco: maior[0], n: maior[1] } : null, maiorCadeia: cadeias[0] ? cadeias[0].length : 0, nivel, lista: L.slice(0, 150), cadeias: cadeias.slice(0, 8).map(cadeiaTxt), alerta: null };
     if (nivel !== 'ok' || cadeias.length) {
