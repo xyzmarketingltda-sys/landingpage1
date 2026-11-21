@@ -122,6 +122,11 @@
     const S = root.detectarSeguro ? root.detectarSeguro(texto, arquivo) : null;
     if (S) { R.seguro = S.totalSeguro || 0; R.pacote = S.totalPacote || 0; }
 
+    // endereço do cliente (para saber a comarca): CEP e UF que aparecem no contrato; o CEP do banco (o primeiro do cabeçalho) fica de fora quando há mais de um
+    { const ceps = [...new Set((T.match(/\b\d{2}\.?\d{3}-\d{3}\b/g) || []).map(c => c.replace(/\D/g, '')))].filter(c => !/^(0{8}|1{8})$/.test(c));
+      const perto = T.match(/(?:resid[êe]ncia|endere[çc]o(?:\s+residencial)?|logradouro)[^]{0,260}?\b(\d{2}\.?\d{3}-\d{3})\b/i);
+      const cep = perto ? perto[1].replace(/\D/g, '') : ceps.length === 1 ? ceps[0] : null;
+      if (cep) R.cep = cep; if (ceps.length) R.ceps = ceps.slice(0, 4); }
     R.loas = /esp[ée]cie(?:\s+do\s+benef[íi]cio)?\s*:?\s*8[78]\b|\b8[78]\s*[-–]\s*(?:amparo|benef)/i.test(T);   // BPC/LOAS (espécies 87 e 88)
     /* ---------- apontamentos ---------- */
     const quando = data ? (aprox ? 'por volta de ' : 'em ') + dBR(data) : 'em data não identificada';
