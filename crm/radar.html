@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar por comarca · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--painel:rgba(5,13,32,.82);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+main{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
+.sub{color:var(--suave);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
+.filtros{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.filtros input,.filtros select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:14px}.filtros input{flex:1;min-width:180px}
+.cli{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);margin-bottom:10px;overflow:hidden}
+.cli>summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.cli>summary::-webkit-details-marker{display:none}
+.cli .nome{font-weight:700;flex:1;min-width:200px}.tag{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap}
+.alto{background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}.medio{background:rgba(251,191,36,.15);color:#fde68a;border:1px solid rgba(251,191,36,.45)}.info{background:rgba(30,144,255,.15);color:#8cc8ff;border:1px solid var(--borda)}.cinza{background:rgba(147,169,201,.12);color:var(--suave);border:1px solid rgba(147,169,201,.3)}
+.corpo{padding:0 14px 14px}.ctr{border-top:1px solid rgba(30,144,255,.15);padding:10px 0}.ctr h4{font-size:13px;font-weight:600;margin-bottom:6px}.ctr h4 small{color:var(--suave);font-weight:400}
+.al{border-left:3px solid var(--borda);padding:6px 10px;margin:6px 0;background:rgba(9,24,56,.6);border-radius:0 8px 8px 0}.al.alto{border:0;border-left:3px solid var(--vermelho);background:rgba(239,68,68,.08);color:var(--texto)}.al.medio{border:0;border-left:3px solid var(--ouro);background:rgba(251,191,36,.07);color:var(--texto)}.al.info{border:0;border-left:3px solid var(--azul);background:rgba(30,144,255,.06);color:var(--texto)}
+.al b{display:block;font-size:14px}.al p{font-size:13px;color:var(--suave);margin-top:3px;line-height:1.45}
+.vazio{padding:30px;text-align:center;color:var(--suave)}
+.nota{font-size:12px;color:var(--suave);margin-top:18px;line-height:1.5}
+
+.linha{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.linha select,.linha input{background:rgba(255,255,255,.05);border:1px solid var(--borda);border-radius:10px;color:var(--texto);padding:9px 11px;font:inherit}
+.linha input{flex:1;min-width:200px}
+table.r{width:100%;border-collapse:collapse;font-size:13.5px}
+table.r th{text-align:left;color:var(--suave);font-weight:600;padding:8px;border-bottom:1px solid var(--borda);white-space:nowrap}
+table.r td{padding:8px;border-bottom:1px solid rgba(255,255,255,.06)}
+table.r td.n{text-align:right;font-variant-numeric:tabular-nums}
+.selo{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
+.selo.investir{background:rgba(34,197,94,.16);color:#86efac;border:1px solid rgba(34,197,94,.5)}
+.selo.testar{background:rgba(251,191,36,.14);color:#fde68a;border:1px solid rgba(251,191,36,.5)}
+.selo.evitar{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}
+.selo.poucos{background:rgba(255,255,255,.06);color:var(--suave);border:1px solid var(--borda)}
+.nota-n{font-weight:800;font-size:16px}
+</style>
+</head>
+<body hidden>
+<main>
+<header><div><h1>🎯 Radar por comarca</h1><div class="sub" id="sub">carregando…</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+<div class="linha">
+  <select id="f-trib"><option value="">Todos os tribunais</option></select>
+  <select id="f-tese"><option value="">Todas as teses de consignado</option><option value="nao_contratado">Não contratado / fraude</option><option value="cartao">Cartão consignado (RMC/RCC)</option><option value="seguro">Seguro / venda casada</option><option value="juros">Juros / revisional</option><option value="refin">Refinanciamento / portabilidade</option></select>
+  <select id="f-rito"><option value="">Juizado e Vara</option><option value="jec">Só Juizado Especial</option><option value="vara">Só Vara Cível</option></select>
+  <select id="f-selo"><option value="">Todos os selos</option><option>investir</option><option>testar</option><option>evitar</option><option>poucos dados</option></select>
+  <input id="q" placeholder="Buscar comarca…">
+</div>
+<div class="kpis" id="kpis"></div>
+<div style="overflow-x:auto"><table class="r"><thead><tr><th>Comarca</th><th>Selo</th><th class="n">Nota</th><th class="n">Sentenças</th><th class="n">Procedentes</th><th class="n">Parciais</th><th class="n">Improcedentes</th><th class="n">Acordos</th><th class="n">Dano moral (mediana)</th><th class="n">Em dobro</th></tr></thead><tbody id="lista"></tbody></table></div>
+<p class="nota"><b>Como ler.</b> Fonte: sentenças publicadas no Diário de Justiça Eletrônico Nacional (CNJ) que citam "consignado", em ações de procedimento comum ou de Juizado. A nota vai de 0 a 100: procedente vale 1, parcialmente procedente 0,6 e improcedente 0; acordos e extinções ficam fora da conta. Selo: 70 ou mais = investir, 50 a 69 = testar, abaixo de 50 = evitar; com menos de 15 sentenças decididas no mérito, "poucos dados". A classificação é automática, pelo texto do dispositivo: serve para comparar comarcas, não substitui a leitura dos julgados. "Em dobro" é a parcela das procedências em que o juiz falou em devolução em dobro, entre as que trataram do assunto.</p>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const brl = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }), dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—';
+let DADOS = [];
+function desenhar() {
+  const q = $('#q').value.trim().toLowerCase(), selo = $('#f-selo').value;
+  const vis = DADOS.filter(d => (!selo || d.selo === selo) && (!q || (d.comarca + ' ' + d.tribunal).toLowerCase().includes(q)));
+  $('#lista').innerHTML = vis.length ? vis.slice(0, 600).map(d => `<tr><td><b>${esc(d.comarca)}</b> <small style="color:var(--suave)">${esc(d.tribunal)}</small></td><td><span class="selo ${d.selo === 'poucos dados' ? 'poucos' : d.selo}">${esc(d.selo)}</span></td><td class="n nota-n">${d.nota ?? '—'}</td><td class="n">${d.sentencas}</td><td class="n">${d.procedentes}</td><td class="n">${d.parciais}</td><td class="n">${d.improcedentes}</td><td class="n">${d.acordos}</td><td class="n">${brl(d.dano_moral_mediano)}</td><td class="n">${d.dobro_pct == null ? '—' : d.dobro_pct + '%'}</td></tr>`).join('')
+    : '<tr><td colspan="10" style="padding:22px;color:var(--suave)">Ainda não há sentenças coletadas para esse filtro. O robô lê o Diário de Justiça aos poucos; volte mais tarde.</td></tr>';
+}
+async function carregar() {
+  const { data, error } = await sb.rpc('juri_radar', { p_tribunal: $('#f-trib').value || null, p_tese: $('#f-tese').value || null, p_rito: $('#f-rito').value || null });
+  if (error) { $('#sub').textContent = 'não consegui carregar: ' + error.message; return; }
+  DADOS = data || [];
+  if (!$('#f-trib').dataset.ok) { const ts = [...new Set(DADOS.map(d => d.tribunal))].sort(); $('#f-trib').innerHTML = '<option value="">Todos os tribunais</option>' + ts.map(t => `<option>${esc(t)}</option>`).join(''); $('#f-trib').dataset.ok = 1; }
+  const tot = DADOS.reduce((a, d) => a + d.sentencas, 0), de = DADOS.map(d => d.de).sort()[0], ate = DADOS.map(d => d.ate).sort().pop(), c = s => DADOS.filter(d => d.selo === s).length;
+  $('#sub').textContent = tot ? `${tot.toLocaleString('pt-BR')} sentenças de consignado · publicadas de ${dBR(de)} a ${dBR(ate)}` : 'coleta em andamento';
+  $('#kpis').innerHTML = [['Comarcas', DADOS.length], ['Investir', c('investir')], ['Testar', c('testar')], ['Evitar', c('evitar')], ['Poucos dados', c('poucos dados')]].map(([t, v]) => `<div class="kpi"><b>${v}</b><span>${t}</span></div>`).join('');
+  desenhar();
+}
+['f-trib', 'f-tese', 'f-rito'].forEach(i => $('#' + i).addEventListener('change', carregar));
+['q', 'f-selo'].forEach(i => $('#' + i).addEventListener('input', desenhar));
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
+    const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
+    if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
+    if (eu.papel !== 'admin' || new URLSearchParams(location.search).get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
+    document.body.hidden = false; carregar();
+  } catch (e) { location.replace('./'); }
+})();
+</script>
+</body>
+</html>
