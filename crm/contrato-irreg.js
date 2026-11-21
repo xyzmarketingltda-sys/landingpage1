@@ -58,15 +58,19 @@
     R.data = data; R.dataAprox = aprox;
 
     /* ---------- nascimento e idade ---------- */
-    const nasc = [];
+    const nasc = [], fortes = [], emissoes = new Set();
+    L.forEach(l => { const k = l.search(/(?:data\s+(?:de\s+)?)?(?:emiss[ãa]o|expedi[çc][ãa]o)\s*\.?:?/i); if (k >= 0 && !/nasc/i.test(l.slice(k))) datas(l.slice(k)).slice(0, 1).forEach(d => emissoes.add(d.iso)); });
     L.forEach((l, i) => {
       const k = l.search(/(?:D(?:ata|t)?\.?\s*(?:de\s+)?Nas[ci]{1,2}(?:i?mento|\.)?|Nascimento)\s*\.?:?/i); if (k < 0 || /pa[íi]s de resid[êe]ncia|local de nascimento|validada/i.test(l)) return;
-      let ds = datas(l.slice(k)); if (!ds.length && L[i + 1]) ds = datas(L[i + 1]);
-      const v = ds.map(d => d.iso).filter(d => d >= '1900-01-01' && d < (data || hoje)).sort()[0];   // a mais antiga da linha (a outra costuma ser a emissão do RG)
-      if (v) nasc.push(v);
+      // só vale a data que vem logo depois do rótulo "nascimento"; o que vem depois de "emissão/expedição/validade" é data do documento
+      const resto = l.slice(k), corte = resto.slice(10).search(/emiss[ãa]o|expedi[çc][ãa]o|validade|admiss[ãa]o|[óo]rg[ãa]o\s+(?:emissor|expedidor)/i);
+      let ds = datas(corte >= 0 ? resto.slice(0, corte + 10) : resto), forte = ds.length > 0;
+      if (!ds.length && !datas(resto).length && L[i + 1]) ds = datas(L[i + 1]);        // rótulo numa linha, valores na de baixo
+      const v = ds.map(d => d.iso).filter(d => d >= '1900-01-01' && d < (data || hoje) && !emissoes.has(d)).sort()[0];   // a mais antiga (a outra costuma ser a emissão do RG)
+      if (v) { nasc.push(v); if (forte) fortes.push(v); }
     });
     R.nasc = nasc.sort()[0] || null;
-    const maisNovo = nasc.sort().slice(-1)[0] || null;
+    const maisNovo = fortes.sort().slice(-1)[0] || null;      // "possível menor" só com data colada no rótulo de nascimento
     if (R.nasc && data) R.idade = idade(R.nasc, data);
 
     /* ---------- representante legal / procurador (campo preenchido, não a cláusula) ---------- */
