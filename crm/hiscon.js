@@ -472,6 +472,7 @@
   }
   root.detectarSeguro = detectarSeguro;
   root.textoPdf = textoPdf; root.analisarContrato = analisarContrato;
+  root.__hisc = { itensDaPagina, linhas, tabelaEmprestimos };   // para diagnóstico do leitor no servidor
   root.lerHiscon = lerHiscon; root.analisarHiscon = analisarHiscon; root.giroCarteira = giroCarteira;
   if (typeof module !== 'undefined') module.exports = { lerHiscon, analisarHiscon, giroCarteira };
 })(typeof window !== 'undefined' ? window : globalThis);
