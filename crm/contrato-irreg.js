@@ -66,7 +66,8 @@
       const resto = l.slice(k), corte = resto.slice(10).search(/emiss[ãa]o|expedi[çc][ãa]o|validade|admiss[ãa]o|[óo]rg[ãa]o\s+(?:emissor|expedidor)/i);
       let ds = datas(corte >= 0 ? resto.slice(0, corte + 10) : resto), forte = ds.length > 0;
       if (!ds.length && !datas(resto).length && L[i + 1]) ds = datas(L[i + 1]);        // rótulo numa linha, valores na de baixo
-      const v = ds.map(d => d.iso).filter(d => d >= '1900-01-01' && d < (data || hoje) && !emissoes.has(d)).sort()[0];   // a mais antiga (a outra costuma ser a emissão do RG)
+      const lim = new Date(new Date((data || hoje) + 'T12:00:00').getTime() - 366 * 864e5).toISOString().slice(0, 10);   // nascimento a menos de 1 ano do contrato é data de outra coisa (emissão, assinatura)
+      const v = ds.map(d => d.iso).filter(d => d >= '1900-01-01' && d < lim && !emissoes.has(d)).sort()[0];   // a mais antiga (a outra costuma ser a emissão do RG)
       if (v) { nasc.push(v); if (forte) fortes.push(v); }
     });
     R.nasc = nasc.sort()[0] || null;
