@@ -80,7 +80,7 @@ const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '�
 const fmtProc = n => so(n).length === 20 ? so(n).replace(/(\d{7})(\d{2})(\d{4})(\d)(\d{2})(\d{4})/, '$1-$2.$3.$4.$5.$6') : n;
 const RES = { procedente: 'procedente', parcial: 'parcialmente procedente', improcedente: 'improcedente', acordo: 'acordo', extinto: 'extinto' };
 const COR = { contrato: 'v', cpf_banco: 'v', contrato_num: 'a', nome_uf_banco: 'a', nome_banco: 'a', cpf: '', nome: '' };
-let EU = null, ACOMP = [], SEG = new Set(), ADV = false;   // ADV: advogado ou admin, que vê a consulta como "processos do cliente", com o resumo aberto
+let EU = null, ACOMP = [], SEG = new Set(), ADV = false, LIT = false;   // ADV: advogado ou admin, que vê a consulta como "processos do cliente", com o resumo aberto
 // resumo da situação do processo, montado pelas publicações
 function resumo(pubs) {
   const s = LT.situacao(pubs); if (!s) return '';
@@ -141,6 +141,7 @@ $('#f-acomp').addEventListener('submit', async e => { e.preventDefault(); const 
   $('#m-acomp').textContent = error ? 'Não salvou: ' + error.message : 'Pronto. A primeira leitura sai em até 10 minutos.'; if (!error) { $('#a-num').value = ''; $('#a-rot').value = ''; carregarAcomp(); } });
 document.addEventListener('click', async e => {
   const s = e.target.closest('[data-seguir]'); if (s) { s.disabled = true; const { error } = await sb.rpc('acomp_seguir', { p_numero: s.dataset.seguir, p_rotulo: s.dataset.rot || null, p_advogado: null }); if (error) { s.textContent = error.message; return; } SEG.add(s.dataset.seguir); s.outerHTML = '<span class="tag g">acompanhando</span>'; carregarAcomp(); return; }
+  const vr = e.target.closest('[data-ver]'); if (vr) { const n = vr.dataset.ver; if (!SEG.has(n)) { await sb.rpc('acomp_seguir', { p_numero: n, p_rotulo: null, p_advogado: null }); await carregarAcomp(); } document.querySelector('[data-aba=acomp]').click(); $('#q-acomp').value = n; desenharAcomp(); const d = document.querySelector('#l-acomp details'); if (d) d.open = true; return; }
   const p = e.target.closest('[data-parar]'); if (p) { p.disabled = true; await sb.rpc('acomp_parar', { p_id: +p.dataset.parar }); carregarAcomp(); return; }
   const v = e.target.closest('[data-visto]'); if (v) { v.disabled = true; const [c, n] = v.dataset.visto.split('|'); await sb.rpc('litis_visto', { p_cliente: +c, p_numero: n }); carregarRobo(); return; }
   const rl = e.target.closest('[data-reler]'); if (rl) { rl.disabled = true; rl.textContent = 'relendo o Diário…'; const cx = rl.closest('.ev');
@@ -149,7 +150,15 @@ document.addEventListener('click', async e => {
 });
 // ---------- achados do robô ----------
 async function carregarRobo() {
-  const [{ data: L }, { data: R }] = await Promise.all([sb.rpc('litis_lista'), sb.rpc('litis_resumo')]); const A = L || [], abertos = A.filter(a => !a.visto_em);
+  const [{ data: L }, { data: R }] = await Promise.all([sb.rpc('litis_lista'), LIT ? sb.rpc('litis_resumo') : Promise.resolve({ data: null })]); const A = L || [], abertos = A.filter(a => !a.visto_em);
+  if (!LIT) {   // advogado: só os processos novos dos clientes dele, achados pelo CPF. Sem conferência e sem aviso.
+    $('#n-robo').textContent = A.length ? '(' + A.length + ')' : '';
+    $('#robo-res').innerHTML = '<h2>Processos dos meus clientes</h2><div class="sub">Quando você entra com a ação e ela sai no Diário de Justiça com o CPF do cliente, o robô acha sozinho e ela aparece aqui, já acompanhada: andamento, situação atual e aviso de sentença. Não precisa cadastrar o número.</div>';
+    $('#l-robo').innerHTML = A.map(a => `<div class="it ${a.sentenca_em ? 'hoje' : 'semana'}"><div class="topo"><h3>${esc(a.cliente)}</h3>${a.sentenca_em ? `<span class="tag a">sentença em ${dBR(a.sentenca_em)}${a.resultado ? ': ' + RES[a.resultado] : ''}</span>` : '<span class="tag">em andamento</span>'}</div>
+    <p><b style="color:var(--texto)">${esc(a.numero)}</b> · ${esc(a.tribunal || '')} · ${esc(a.orgao || '')}<br>${esc(a.partes || '')}<br>Última publicação: ${dBR(a.ultima_pub)} (${esc(a.ultimo_tipo || '')})</p>
+    <div class="acoes"><button data-ver="${so(a.numero)}">Ver o andamento e o resumo</button>${a.link ? `<a class="btn" href="${esc(a.link)}" target="_blank" rel="noopener">Abrir no Diário</a>` : ''}</div></div>`).join('') || '<div class="bloco sub">Nenhum processo dos seus clientes apareceu no Diário ainda. Assim que sair a primeira publicação com o CPF do cliente, ele entra aqui.</div>';
+    return;
+  }
   $('#n-robo').textContent = abertos.length ? '(' + abertos.length + ')' : '';
   $('#robo-res').innerHTML = '<h2>Varredura automática dos clientes</h2><div class="sub">O robô confere todos os clientes do CRM, um a um, e repete a cada 30 dias. Aqui ficam os achados que merecem conferência: contrato citado, CPF contra banco dos contratos, número igual ao de um contrato sem confirmação, ou mesmo nome no estado do cliente contra banco dos contratos. Em cada cliente o robô confere o CPF e até 20 números de contrato (os analisados e os ativos primeiro).</div>'
     + (R ? `<p style="margin-top:8px">Conferidos: <b>${R.feitos}</b> · na fila: <b>${R.fila}</b> · com processo confirmado: <b style="color:#fca5a5">${R.conflito}</b> · para conferir à mão: <b style="color:#fde68a">${R.atencao}</b> · sem achado: <b style="color:#86efac">${R.limpo}</b></p>` : '');
@@ -176,7 +185,8 @@ $('#f-busca').addEventListener('submit', async e => { e.preventDefault(); const 
     EU = eu; const qs = new URLSearchParams(location.search);
     // litispendência (conferir antes de indicar + achados do robô): só admin e quem o admin liberou (perfis.litis). O banco recusa os demais.
     const LITIS = eu.papel === 'admin' || eu.litis === true;
-    if (!LITIS) { if (eu.papel === 'atendente') throw 0; ['conf', 'robo'].forEach(k => { document.querySelector('[data-aba=' + k + ']').remove(); $('#aba-' + k).remove(); }); $('#nota-litis').remove(); document.querySelector('[data-aba=acomp]').classList.add('sel'); $('#aba-acomp').hidden = false; }
+    if (!LITIS) { if (eu.papel === 'atendente') throw 0; ['conf'].forEach(k => { document.querySelector('[data-aba=' + k + ']').remove(); $('#aba-' + k).remove(); }); $('#nota-litis').remove(); const br = $('#b-robo'); br.firstChild.textContent = 'Processos dos meus clientes '; br.parentNode.insertBefore(br, br.parentNode.firstChild); br.classList.add('sel'); $('#aba-robo').hidden = false; }
+    LIT = LITIS;
     if (eu.papel !== 'admin' || qs.get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
     // atendente: só a conferência antes de indicar (CPF de cliente dela ou dados do lead à mão); o resto é de advogado e admin
     if (eu.papel === 'atendente') { document.querySelector('.abas').hidden = true; $('#cli').hidden = true; $('#c-cpf').style.flex = '1'; $('#c-cpf').placeholder = 'CPF do cliente (se já está lançado no CRM)'; document.querySelector('#f-conf details').open = true; document.body.hidden = false; if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); } return; }
@@ -184,7 +194,7 @@ $('#f-busca').addEventListener('submit', async e => { e.preventDefault(); const 
     if (LITIS) { const { data: cs } = await sb.rpc('peca_clientes');
       $('#cli').innerHTML = '<option value="">Escolher um cliente do CRM…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join(''); }
     if (eu.papel === 'admin') { const { data: advs } = await sb.rpc('lista_advogados'); $('#a-adv').hidden = false; $('#a-adv').innerHTML = '<option value="">Para mim (admin)</option>' + (advs || []).map(x => x.lista_advogados ?? x).sort().map(x => `<option>${esc(x)}</option>`).join(''); }
-    document.body.hidden = false; await carregarAcomp(); if (LITIS) carregarRobo();
+    document.body.hidden = false; await carregarAcomp(); carregarRobo();
     if (LITIS && qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); }
     if (['acomp', 'robo', 'busca'].includes(qs.get('aba'))) { const b = document.querySelector('[data-aba=' + qs.get('aba') + ']'); if (b && !b.hidden) b.click(); }
     // veio do CRM pedindo um processo: abre direto o histórico dele (e passa a acompanhar, se ainda não acompanha)
