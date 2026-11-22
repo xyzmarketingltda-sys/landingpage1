@@ -363,11 +363,12 @@
     while ((m = rot.exec(T))) {
       const ini = m.index, janela = T.slice(ini, ini + 170);
       // corta a janela no próximo rótulo de outra coisa (IOF, juros, CET, liberado, parcela, total)
-      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|total\s+(?:financiado|do\s+empr)|tarifa|TAC|l[íi]quido|creditad|quita[çc]|saldo|refinanci|retido|portado|devedor|\d{2}\/\d{2}\/\d{4}|valor\s+(?:da|das|do)\s+(?:opera|parcel|princip))/i);
+      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|quantidade|financiad|valor\s+(?:base|total)|total\s+(?:financiado|do\s+empr)|tarifa|TAC|l[íi]quido|creditad|quita[çc]|saldo|refinanci|retido|portado|devedor|\d{2}\/\d{2}\/\d{4}|valor\s+(?:da|das|do)\s+(?:opera|parcel|princip))/i);
       const trecho = corte >= 0 ? janela.slice(0, m[0].length + corte) : janela;
       if (/\bIOF\s*(?:do|da|de|sobre|s\/)?\s*(?:o\s+)?$/i.test(T.slice(Math.max(0, ini - 25), ini))) continue;
       const depois = T.slice(ini + m[0].length, ini + m[0].length + 60), antes2 = T.slice(Math.max(0, ini - 30), ini);
       if (/^[^\d]{0,6}(,?\s*se (contratad|houver|aplic)|\s*n[ãa]o [ée] obrigat|\s*poder[áa]|\s*apartad|\s*para quita)/i.test(depois) || /(abatido o|cancelar.{0,20}|contratar)\s*$/i.test(antes2)) continue;
+      if (/(?:parcelas?|presta[çc](?:[ãa]o|[õo]es)|mensalidades?)\s+d[oe]\s*$/i.test(antes2)) continue;   // "valor da parcela do seguro" e "quantidade de parcelas do seguro" não são o prêmio
       if (/\(\s*\)\s*SIM\s*\(\s*X\s*\)\s*N[ÃA]O/i.test(T.slice(ini, ini + 80))) continue;   // marcado "NÃO" no quadro         // "IOF do seguro" etc.
       let n; NUM.lastIndex = 0;
       while ((n = NUM.exec(trecho))) {

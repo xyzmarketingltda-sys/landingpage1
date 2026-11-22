@@ -120,8 +120,16 @@
     const vl = T.match(/Valor\s+(?:l[íi]quido|liberado)(?:\s+(?:ao|do)\s+(?:cliente|cr[ée]dito|emitente))?[^R\d]{0,40}R\$\s*([\d.]+,\d{2})/i); if (vl) R.liberado = num(vl[1]);
     const vf = T.match(/(?:Valor\s+)?Total\s+(?:financiado|de\s+cr[ée]dito|do\s+empr[ée]stimo)[^R\d]{0,30}R\$\s*([\d.]+,\d{2})/i); if (vf) R.financiado = num(vf[1]);
     const tc = T.match(/Tarifa\s+de\s+(?:cadastro|abertura)[^R\d%]{0,30}(?:\(\d,\d{2}%\)\s*)?R\$\s*([\d.]+,\d{2})/i); if (tc) R.tac = num(tc[1]);
+    // o contrato indica crédito em conta do cliente? (pesa contra a tese de "não contratado": conferir no extrato)
+    R.creditoConta = /(?:cr[ée]dito|dep[óo]sito|libera[çc][ãa]o)\s+(?:em|na)\s+conta|conta\s+(?:para|de)\s+(?:cr[ée]dito|libera[çc][ãa]o|dep[óo]sito)|forma\s+de\s+libera[çc][ãa]o[^.]{0,40}(?:TED|conta|DOC)|dados\s+banc[áa]rios\s+para\s+(?:cr[ée]dito|libera)/i.test(T);
     const S = root.detectarSeguro ? root.detectarSeguro(texto, arquivo) : null;
-    if (S) { R.seguro = S.totalSeguro || 0; R.pacote = S.totalPacote || 0; }
+    if (S) {
+      // trava: nenhum seguro passa de metade do valor financiado; se a soma passar, sobra só o maior valor plausível (o resto é número vizinho lido por engano)
+      const base = R.financiado || 0, lim = base ? base * 0.5 : 60000;
+      const vs = (S.seguro || []).map(x => x.v).filter(v => v < lim);
+      let seg = vs.reduce((x, y) => x + y, 0); if (seg >= lim) seg = vs.length ? Math.max.apply(null, vs) : 0;
+      R.seguro = Math.round(seg * 100) / 100; R.pacote = S.totalPacote || 0;
+    }
 
     // endereço do cliente (para saber a comarca): CEP e UF que aparecem no contrato; o CEP do banco (o primeiro do cabeçalho) fica de fora quando há mais de um
     { const ceps = [...new Set((T.match(/\b\d{2}\.?\d{3}-\d{3}\b/g) || []).map(c => c.replace(/\D/g, '')))].filter(c => !/^(0{8}|1{8})$/.test(c));
