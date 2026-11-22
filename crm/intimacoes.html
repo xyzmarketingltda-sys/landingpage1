@@ -50,7 +50,7 @@ select{color-scheme:dark}select option{background:#061230;color:#eaf3ff}
 </div>
 
 <div class="kpis" id="kpis"></div>
-<div class="linha" style="margin-bottom:10px"><input id="q" placeholder="Buscar por processo, parte, vara ou tipo…" style="flex:1;min-width:200px"><select id="f-adv" hidden></select></div>
+<div class="linha" style="margin-bottom:10px"><input id="q" placeholder="Buscar por processo, parte, vara ou tipo…" style="flex:1;min-width:200px"><select id="f-orig" title="Separa o que veio de indicação da XYZ do restante do escritório"><option value="">Todas as intimações</option><option value="xyz">Só clientes indicados pela XYZ</option><option value="fora">Só as outras do escritório</option></select><select id="f-adv" hidden></select></div>
 <div id="lista"></div>
 <p class="nota"><b>Como ler.</b> As intimações vêm do Diário de Justiça Eletrônico Nacional (CNJ), pela OAB cadastrada. O tipo de prazo e o vencimento são <b>sugestão automática</b>: sentença em Juizado conta 10 dias úteis para recurso inominado e em Vara 15 para apelação; nos despachos vale o prazo escrito no texto, quando há. A conta é em dias úteis (segunda a sexta), a partir do dia útil seguinte à publicação, <b>sem feriados, recesso nem suspensões</b>: por isso a data mostrada nunca é posterior à real. Quando o prazo cruza o recesso de 20/12 a 20/01 (CPC, art. 220) ou um feriado nacional, a tela avisa e mantém a data mais segura. Confira sempre o prazo nos autos. Tribunais que ainda não publicam tudo no Diário Nacional podem não aparecer aqui.</p>
 </main>
@@ -74,11 +74,11 @@ function avisoCalendario(i) { if (!i.vence || !i.dia || i.feito_em) return ''; l
     : fer.length ? '<br><span style="color:var(--suave)">Há feriado nacional no período (' + fer.join(', ') + '): o prazo real pode terminar depois da data acima.</span>' : ''; }
 function quando(i) { const d = dias(i.vence); if (i.feito_em) return '<span class="tag g">feita em ' + dBR(i.feito_em) + '</span>'; if (d == null) return '<span class="tag">sem prazo identificado</span>'; return d < 0 ? `<span class="tag v">venceu há ${-d} dia${d === -1 ? '' : 's'} · ${dBR(i.vence)}</span>` : d === 0 ? '<span class="tag a">vence HOJE</span>' : `<span class="tag${d <= 3 ? ' a' : ''}">vence em ${d} dia${d === 1 ? '' : 's'} · ${dBR(i.vence)}</span>`; }
 function desenhar() {
-  const q = $('#q').value.trim().toLowerCase(), adv = $('#f-adv').value;
+  const q = $('#q').value.trim().toLowerCase(), adv = $('#f-adv').value, orig = $('#f-orig').value, deOrig = i => !orig || (orig === 'xyz' ? !!i.cliente : !i.cliente);
   const base = FILTRO === 'feitas' ? FEITAS : ABERTAS;
-  const vis = base.filter(i => (!adv || i.advogado === adv) && (FILTRO === 'feitas' || FILTRO === 'abertas' || (FILTRO === 'atrasadas' ? dias(i.vence) != null && dias(i.vence) < 0 : FILTRO === 'semana' ? dias(i.vence) != null && dias(i.vence) >= 0 && dias(i.vence) <= 7 : dias(i.vence) == null))
+  const vis = base.filter(i => (!adv || i.advogado === adv) && deOrig(i) && (FILTRO === 'feitas' || FILTRO === 'abertas' || (FILTRO === 'atrasadas' ? dias(i.vence) != null && dias(i.vence) < 0 : FILTRO === 'semana' ? dias(i.vence) != null && dias(i.vence) >= 0 && dias(i.vence) <= 7 : dias(i.vence) == null))
     && (!q || [i.processo, i.partes, i.orgao, i.tipo_prazo, i.tipo_doc, i.cliente, i.tribunal].join(' ').toLowerCase().includes(q)));
-  const A = ABERTAS.filter(i => !adv || i.advogado === adv), n = f => A.filter(f).length;
+  const A = ABERTAS.filter(i => (!adv || i.advogado === adv) && deOrig(i)), n = f => A.filter(f).length;
   $('#kpis').innerHTML = [['abertas', 'Abertas', A.length], ['atrasadas', 'Atrasadas', n(i => dias(i.vence) != null && dias(i.vence) < 0)], ['semana', 'Vencem em 7 dias', n(i => dias(i.vence) != null && dias(i.vence) >= 0 && dias(i.vence) <= 7)], ['semprazo', 'Sem prazo identificado', n(i => dias(i.vence) == null)], ['feitas', 'Feitas', FEITAS.filter(i => !adv || i.advogado === adv).length]]
     .map(([k, t, v]) => `<div class="kpi${FILTRO === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('');
   if (adv === '?') { $('#lista').innerHTML = '<div class="bloco sub">Escolha um advogado na caixa acima para ver as intimações dele. São ' + ABERTAS.length + ' em aberto no total.</div>'; return; }
@@ -99,7 +99,7 @@ async function carregar() {
   desenhar();
 }
 $('#kpis').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { FILTRO = k.dataset.f; desenhar(); } });
-$('#q').addEventListener('input', desenhar); $('#f-adv').addEventListener('change', desenhar);
+$('#q').addEventListener('input', desenhar); $('#f-adv').addEventListener('change', desenhar); $('#f-orig').addEventListener('change', desenhar);
 $('#lista').addEventListener('click', async e => { const b = e.target.closest('[data-m]'); if (!b) return; b.disabled = true; const { error } = await sb.rpc('intim_marcar', { p_id: +b.dataset.m, p_feito: b.dataset.v === '1' }); if (error) { b.disabled = false; b.textContent = 'Erro: ' + error.message; return; } carregar(); });
 $('#oabs').addEventListener('click', async e => { const b = e.target.closest('[data-r]'); if (!b) return; b.disabled = true; await sb.rpc('oab_remover', { p_id: +b.dataset.r }); carregar(); });
 $('#f-oab').addEventListener('submit', async e => { e.preventDefault(); const b = $('#o-btn'); b.disabled = true;

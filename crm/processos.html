@@ -82,7 +82,7 @@ const fmtProc = n => so(n).length === 20 ? so(n).replace(/(\d{7})(\d{2})(\d{4})(
 const RES = { procedente: 'procedente', parcial: 'parcialmente procedente', improcedente: 'improcedente', acordo: 'acordo', extinto: 'extinto' };
 const COR = { contrato: 'v', cpf_banco: 'v', contrato_num: 'a', nome_uf_banco: 'a', nome_banco: 'a', cpf: '', nome: '' };
 let EU = null, ACOMP = [], SEG = new Set(), ADV = false, LIT = false, PAGOS = new Set();
-const FAV = a => ['procedente', 'parcial', 'acordo'].includes(a.resultado), advDe = a => { const x = String(a.advogado || (String(a.rotulo || '').includes(' · ') ? String(a.rotulo).split(' · ').pop() : '') || '').trim().toLowerCase(); return x ? x.charAt(0).toUpperCase() + x.slice(1) : 'sem advogado'; };   // ADV: advogado ou admin, que vê a consulta como "processos do cliente", com o resumo aberto
+const FAV = a => ['procedente', 'parcial', 'acordo'].includes(a.resultado), advDe = a => { const x = String(a.advogado || (String(a.rotulo || '').includes(' · ') ? String(a.rotulo).split(' · ').pop() : '') || '').trim().toLowerCase(); return x === 'luiz' ? 'Luís' : x ? x.charAt(0).toUpperCase() + x.slice(1) : 'sem advogado'; };   // ADV: advogado ou admin, que vê a consulta como "processos do cliente", com o resumo aberto
 // resumo da situação do processo, montado pelas publicações
 function resumo(pubs) {
   const s = LT.situacao(pubs); if (!s) return '';
