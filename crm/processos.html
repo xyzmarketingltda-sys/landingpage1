@@ -31,109 +31,142 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .nota{font-size:12.5px;color:var(--suave);line-height:1.6;margin-top:14px}
 </style>
+<style>.abas{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.abas button.sel{border-color:#8cc8ff;background:#143068}.pub{border-top:1px solid rgba(30,144,255,.15);padding-top:8px}</style>
 </head>
 <body hidden>
 <main>
-<header><div><h1>🔎 Processos</h1><div class="sub">busca no Diário de Justiça Eletrônico Nacional · bancário (consignado do INSS) e previdenciário</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+<header><div><h1>🔎 Processos</h1><div class="sub">Diário de Justiça Eletrônico Nacional · bancário (consignado do INSS) e previdenciário</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+<div class="abas"><button data-aba="conf" class="sel">Conferir antes de indicar</button><button data-aba="acomp">Processos acompanhados <span id="n-acomp"></span></button><button data-aba="robo" id="b-robo">Achados do robô <span id="n-robo"></span></button><button data-aba="busca">Busca livre</button></div>
 
-<div class="bloco">
-  <form id="f">
-    <div class="linha">
-      <select id="cli" style="flex:1;min-width:230px"><option value="">Escolher um cliente seu…</option></select>
-      <input id="q" placeholder="ou CPF do cliente, nome completo da parte ou número do processo" style="flex:2;min-width:240px" required>
-    </div>
-    <div class="linha" style="margin-top:8px">
-      <select id="per"><option value="24">Últimos 24 meses</option><option value="12">Últimos 12 meses</option><option value="6">Últimos 6 meses</option></select>
-      <select id="area"><option value="foco">Só bancário e previdenciário</option><option value="tudo">Todas as áreas</option></select>
-      <button class="ok" id="b">Buscar</button>
-    </div>
-  </form>
-  <div class="sub" id="msg" style="margin-top:8px">Digite o nome completo, como está no documento. A busca é por nome e pode trazer homônimos: confira as partes antes de concluir que o processo é do seu cliente.</div>
-</div>
-<div id="alerta"></div>
-<div class="kpis" id="kpis"></div>
-<div id="lista"></div>
-<p class="nota"><b>Como ler.</b> A busca usa a consulta pública do Diário de Justiça Eletrônico Nacional (CNJ) e mostra o que foi <b>publicado</b>: intimações, despachos, decisões e sentenças. Não é o andamento completo do processo (juntadas e conclusões não saem no Diário) nem mostra as peças dos autos. Processos em segredo de justiça não aparecem. Tribunais que ainda não publicam tudo no Diário Nacional podem ficar de fora. A área (bancário ou previdenciário) é identificada pelo texto da publicação.</p>
+<section id="aba-conf">
+  <div class="bloco">
+    <h2>O cliente já tem processo contra o banco?</h2>
+    <div class="sub">O sistema procura no texto das publicações o <b>CPF</b> e o <b>número de cada contrato</b> do cliente, e depois o nome no tribunal do estado dele. CPF e contrato não têm homônimo.</div>
+    <form id="f-conf" style="margin-top:10px">
+      <div class="linha"><select id="cli" style="flex:1;min-width:230px"><option value="">Escolher um cliente do CRM…</option></select><input id="c-cpf" placeholder="ou CPF" inputmode="numeric" style="width:170px"></div>
+      <details style="margin-top:8px"><summary class="sub" style="cursor:pointer">Lead que ainda não está no CRM: informar os dados à mão</summary>
+        <div class="linha" style="margin-top:8px"><input id="c-nome" placeholder="Nome completo" style="flex:1;min-width:220px"><input id="c-uf" placeholder="UF" maxlength="2" style="width:70px;text-transform:uppercase"></div>
+        <div class="linha" style="margin-top:8px"><input id="c-ctr" placeholder="Números dos contratos (do extrato do INSS), separados por vírgula" style="flex:2;min-width:240px"><input id="c-banco" placeholder="Bancos (ex.: Facta, Pan)" style="flex:1;min-width:160px"></div></details>
+      <div class="linha" style="margin-top:8px"><button class="ok" id="b-conf">Conferir</button><span class="sub" id="m-conf"></span></div>
+    </form>
+  </div>
+  <div id="r-conf"></div>
+</section>
+
+<section id="aba-acomp" hidden>
+  <div class="bloco"><h2>Acompanhar um processo</h2>
+    <form class="linha" id="f-acomp"><input id="a-num" placeholder="Número do processo (20 dígitos)" style="flex:1;min-width:230px" required><input id="a-rot" placeholder="Apelido (ex.: Maria × Facta)" style="flex:1;min-width:180px"><select id="a-adv" hidden></select><button class="ok">Acompanhar</button></form>
+    <div class="sub" id="m-acomp" style="margin-top:6px">O robô confere uma vez por dia e avisa quando sai sentença ou acórdão.</div></div>
+  <div class="kpis" id="k-acomp"></div><div class="linha" style="margin-bottom:10px"><input id="q-acomp" placeholder="Filtrar por número, apelido, parte ou vara…" style="flex:1"></div><div id="l-acomp"></div>
+</section>
+
+<section id="aba-robo" hidden><div class="bloco" id="robo-res"></div><div id="l-robo"></div></section>
+
+<section id="aba-busca" hidden>
+  <div class="bloco"><form class="linha" id="f-busca"><input id="q" placeholder="Nome completo da parte ou número do processo" style="flex:2;min-width:240px" required><select id="per"><option value="24">24 meses</option><option value="12">12 meses</option></select><button class="ok">Buscar</button></form>
+    <div class="sub" id="m-busca" style="margin-top:6px">A busca por nome traz homônimos: confira as partes.</div></div>
+  <div id="l-busca"></div>
+</section>
+
+<p class="nota"><b>Como ler.</b> A fonte é a consulta pública do Diário de Justiça Eletrônico Nacional (CNJ), que mostra o que foi <b>publicado</b>: intimações, despachos, decisões e sentenças. O Diário não tem busca por CPF; a conferência acha o CPF e o número do contrato quando eles estão escritos no texto da publicação, o que é comum em sentenças e decisões, mas não em todo despacho. Por isso <b>"nada encontrado" não garante que não existe processo</b>: ação antiga (antes de o tribunal publicar no Diário Nacional), em segredo de justiça, ou cuja publicação não cita CPF nem contrato pode ficar de fora. Não mostra juntadas nem as peças dos autos.</p>
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="litis.js?v=20261122a"></script>
 <script>
-const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY), LT = XYZLitis;
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—';
-const API = 'https://comunicaapi.pje.jus.br/api/v1/comunicacao';
-const limpar = h => { const d = new DOMParser().parseFromString(String(h || '').slice(0, 80000), 'text/html'); d.querySelectorAll('style,script').forEach(x => x.remove()); return (d.body.textContent || '').replace(/\s+/g, ' ').trim(); };
-const BANC = /consignad|empr[ée]stimo|\bRMC\b|\bRCC\b|reserva de margem|cart[ãa]o de cr[ée]dito|contrato banc[áa]rio|seguro prestamista|\bbanco\b|financeira|institui[çc][ãa]o financeira/i;
-const PREV = /\bINSS\b|instituto nacional do seguro social|previdenci[áa]ri|aposentadoria|aux[íi]lio[- ](?:doen[çc]a|acidente|reclus)|incapacidade (?:tempor|perman)|pens[ãa]o por morte|\bBPC\b|\bLOAS\b|benef[íi]cio assistencial|sal[áa]rio[- ]maternidade|tempo de contribui/i;
-let PROC = [], FILTRO = '', CLI = null;
-// bancos: mesma chave para o nome que vem no contrato e para o nome que vem no processo
-const BANCOS = [['Bradesco', /bradesco/i], ['Itaú', /ita[úu]/i], ['Pan', /\bpan\b/i], ['BMG', /\bbmg\b/i], ['C6', /\bc6\b/i], ['Daycoval', /daycoval/i], ['Santander', /santander|ol[ée] consignado|\bol[ée]\b/i], ['Mercantil', /mercantil/i], ['Safra', /safra/i], ['Facta', /facta/i], ['Agibank', /agibank|agiplan/i], ['Banrisul', /banrisul|rio grande do sul s/i], ['Caixa', /caixa econ[ôo]mica|\bcef\b/i], ['Banco do Brasil', /banco do brasil/i], ['Pine', /\bpine\b/i], ['BRB', /\bbrb\b/i], ['Paraná Banco', /paran[áa] banco/i], ['Inbursa', /inbursa/i], ['Master', /\bmaster\b/i], ['Crefisa', /crefisa/i], ['PicPay', /picpay/i], ['Digio', /digio/i], ['Cetelem', /cetelem|bnp paribas/i], ['Inter', /banco inter\b|\binter s/i], ['QI / Quali', /\bqi\b|quali/i], ['Parati', /parati/i], ['Presença', /presen[çc]a/i], ['Segue', /\bsegue\b/i], ['Finanto', /finanto/i], ['Sicoob', /sicoob/i], ['Sicredi', /sicredi/i], ['Nubank', /nubank|nu pagamentos|nu financeira/i], ['Crefaz', /crefaz/i], ['Capital Consig', /capital consig/i], ['Zema', /\bzema\b/i], ['Alfa', /banco alfa|financeira alfa/i], ['Votorantim / BV', /votorantim|\bbv\b/i]];
-const bancosEm = t => BANCOS.filter(([, re]) => re.test(t || '')).map(([k]) => k);
-function area(p) { const t = p.pubs.map(x => x.txt).join(' ') + ' ' + p.classe + ' ' + p.partes; const b = BANC.test(t), v = PREV.test(t) && (/^TRF/.test(p.tribunal) || /\bINSS\b|instituto nacional do seguro social/i.test(p.partes) || !b); return v && !/consignad/i.test(t) ? 'Previdenciário' : b ? 'Bancário' : v ? 'Previdenciário' : 'Outra área'; }
-function desenhar() {
-  const foco = $('#area').value === 'foco', base = PROC.filter(p => !foco || p.area !== 'Outra área'), vis = base.filter(p => !FILTRO || p.area === FILTRO);
-  const n = a => base.filter(p => p.area === a).length;
-  $('#kpis').innerHTML = PROC.length ? [['', 'Processos', base.length], ['Bancário', 'Bancário', n('Bancário')], ['Previdenciário', 'Previdenciário', n('Previdenciário')]].concat(foco ? [] : [['Outra área', 'Outras áreas', n('Outra área')]]).map(([k, t, v]) => `<div class="kpi${FILTRO === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('') : '';
-  $('#lista').innerHTML = vis.map(p => `<div class="it ${p.conflito.length ? 'atrasada' : p.area === 'Bancário' ? 'semana' : p.area === 'Previdenciário' ? 'hoje' : ''}"><div class="topo"><h3>${esc(p.numero)}</h3><span>${p.conflito.length ? `<span class="tag v">⚠ já tem processo contra ${esc(p.conflito.join(', '))}</span> ` : ''}<span class="tag${p.area === 'Previdenciário' ? ' a' : ''}">${esc(p.area)}</span></span></div>
-      <p>${esc(p.tribunal)} · ${esc(p.orgao)} · ${esc(p.classe)}<br><b style="color:var(--texto)">${esc(p.partes)}</b><br>${p.pubs.length} publicação(ões) · última em ${dBR(p.pubs[0].dia)}: <b style="color:var(--texto)">${esc(p.pubs[0].tipo)}</b></p>
-      <details><summary>Ver as publicações (da mais recente para a mais antiga)</summary>${p.pubs.map(x => `<div class="txt" style="border-top:1px solid rgba(30,144,255,.15);padding-top:8px"><b>${dBR(x.dia)} · ${esc(x.tipo)}</b>${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener" style="color:#8cc8ff">abrir no Diário</a>` : ''}<br>${esc(x.txt.slice(0, 1200))}${x.txt.length > 1200 ? '…' : ''}</div>`).join('')}</details></div>`).join('')
-    || (PROC.length ? '<div class="bloco sub">Nenhum processo dessa área. Troque o filtro para "Todas as áreas" para ver o restante.</div>' : '');
+const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—', so = v => String(v || '').replace(/\D/g, '');
+const fmtProc = n => so(n).length === 20 ? so(n).replace(/(\d{7})(\d{2})(\d{4})(\d)(\d{2})(\d{4})/, '$1-$2.$3.$4.$5.$6') : n;
+const RES = { procedente: 'procedente', parcial: 'parcialmente procedente', improcedente: 'improcedente', acordo: 'acordo', extinto: 'extinto' };
+const COR = { contrato: 'v', cpf_banco: 'v', nome_uf_banco: 'a', nome_banco: 'a', cpf: '', nome: '' };
+let EU = null, ACOMP = [], SEG = new Set();
+const pubsHtml = pubs => pubs.map(x => `<div class="txt pub"><b>${dBR(x.dia)} · ${esc(x.tipo)}</b>${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener" style="color:#8cc8ff">abrir no Diário</a>` : ''}<br>${esc(String(x.txt ?? x.texto ?? '').slice(0, 1400))}${String(x.txt ?? x.texto ?? '').length > 1400 ? '…' : ''}</div>`).join('');
+const btSeguir = (n, rot) => so(n).length !== 20 ? '' : SEG.has(so(n)) ? '<span class="tag g">acompanhando</span>' : `<button data-seguir="${so(n)}" data-rot="${esc(rot || '')}">Acompanhar este processo</button>`;
+function cartao(a, cliente) {
+  const forte = a.nivel === 'contrato' || a.nivel === 'cpf_banco';
+  return `<div class="it ${forte ? 'atrasada' : COR[a.nivel] === 'a' ? 'hoje' : ''}"><div class="topo"><h3>${esc(a.numero)}</h3><span class="tag ${COR[a.nivel] || ''}">${esc(LT.ROTULO[a.nivel] || a.nivel)}</span></div>
+    <p>${esc(a.tribunal)} · ${esc(a.orgao)} · ${esc(a.classe || '')}<br><b style="color:var(--texto)">${esc(a.partes)}</b>${a.contratos && a.contratos.length ? '<br>Contrato citado: <b style="color:#fca5a5">' + esc(a.contratos.join(', ')) + '</b>' : ''}
+    <br>${a.sentenca ? `<b style="color:#fde68a">Já tem sentença (${dBR(a.sentenca.dia)}${a.sentenca.resultado ? ': ' + RES[a.sentenca.resultado] : ''})</b> · ` : 'Em andamento · '}${a.pubs.length} publicação(ões), última em ${dBR(a.pubs[0].dia)}</p>
+    <details><summary>Ver as publicações</summary>${pubsHtml(a.pubs)}</details><div class="acoes">${btSeguir(a.numero, cliente)}</div></div>`;
 }
-// conferência antes de indicar: o cliente já tem processo contra algum banco dos contratos que analisamos?
-function alerta(erro) {
-  const a = $('#alerta'); if (!CLI) { a.innerHTML = ''; return; }
-  const conf = PROC.filter(p => p.conflito.length), bs = CLI.bancos;
-  if (!bs.length) { a.innerHTML = `<div class="bloco" style="border-color:rgba(251,191,36,.5)"><b>${esc(CLI.nome)}</b>: o sistema ainda não leu contratos na pasta deste cliente, então não há banco para comparar. Veja a lista abaixo e compare à mão.</div>`; return; }
-  a.innerHTML = conf.length
-    ? `<div class="bloco" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.10)"><b style="color:#fca5a5">⚠ ${esc(CLI.nome)} já aparece em ${conf.length} processo(s) contra banco dos contratos analisados: ${esc([...new Set(conf.flatMap(p => p.conflito))].join(', '))}.</b><div class="sub" style="margin-top:6px">Antes de indicar, abra as publicações e confira três coisas: se é a mesma pessoa (a busca é por nome e traz homônimos), se o processo trata do mesmo contrato e se ainda está em andamento. Mesmo banco e mesmo contrato = risco de litispendência ou de coisa julgada.</div></div>`
-    : `<div class="bloco" style="border-color:rgba(34,197,94,.5)"><b style="color:#86efac">Nada encontrado contra ${esc(bs.join(', '))}</b> para ${esc(CLI.nome)} no período.${erro ? ' <b style="color:#fde68a">A busca não terminou: repita antes de confiar.</b>' : ''}<div class="sub" style="margin-top:6px">Isso não garante que não existe processo: o Diário Nacional só mostra o que foi publicado nele, no período escolhido, com o nome escrito igual. Processo antigo, em segredo de justiça ou com o nome grafado de outro jeito não aparece.</div></div>`;
+// ---------- conferir antes de indicar ----------
+async function conferir() {
+  const b = $('#b-conf'), cpf = so($('#c-cpf').value || $('#cli').value); let p = null;
+  b.disabled = true; $('#r-conf').innerHTML = ''; $('#m-conf').textContent = 'buscando o cliente…';
+  if (cpf.length === 11) { const { data } = await sb.rpc('litis_dados', { p_cpf: cpf }); if (data && data.nome) p = data; }
+  if (!p) { const nome = $('#c-nome').value.trim(), bs = $('#c-banco').value.split(/[,;]/).map(x => x.trim()).filter(Boolean), ns = $('#c-ctr').value.split(/[,;\s]+/).map(so).filter(n => n.length >= 7);
+    if (cpf.length !== 11 && nome.split(/\s+/).length < 2) { b.disabled = false; $('#m-conf').textContent = 'Escolha um cliente, digite o CPF ou preencha o nome completo do lead.'; return; }
+    p = { cpf, nome, uf: $('#c-uf').value.trim().toUpperCase(), contratos: ns.map(n => ({ n, banco: bs.join(' ') })).concat(ns.length ? [] : bs.map(x => ({ n: '', banco: x }))), fora: true }; }
+  const r = await LT.verificar(p, { aviso: t => $('#m-conf').textContent = 'conferindo: ' + t + '…' });
+  b.disabled = false; $('#m-conf').textContent = `${r.consultas} consulta(s) ao Diário` + (r.erros.length ? ' · ' + r.erros.length + ' falharam' : '');
+  const A = r.achados, de = n => A.filter(a => a.nivel === n), fortes = A.filter(a => a.nivel === 'contrato' || a.nivel === 'cpf_banco'), medios = A.filter(a => a.nivel === 'nome_uf_banco' || a.nivel === 'nome_banco');
+  const oque = [p.cpf && so(p.cpf).length === 11 ? 'CPF' : null, r.contratosConferidos ? r.contratosConferidos + ' número(s) de contrato' : null, p.nome ? 'nome' + (r.uf ? ' nos tribunais de ' + r.uf : ' no Brasil todo (sem UF, mais homônimos)') : null].filter(Boolean).join(', ');
+  const falha = r.erros.length ? `<div class="sub" style="margin-top:6px;color:#fde68a"><b>Atenção:</b> ${r.erros.length} consulta(s) não responderam (${esc(r.erros.slice(0, 3).join('; '))}). Repita em um minuto antes de confiar no resultado.</div>` : '';
+  const quem = `<b>${esc(p.nome || 'CPF ' + p.cpf)}</b>` + (p.fora ? ' <span class="sub">(dados informados à mão)</span>' : '');
+  let topo;
+  if (fortes.length) topo = `<div class="bloco" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.10)"><b style="color:#fca5a5">⚠ NÃO INDICAR SEM CONFERIR.</b> ${quem} já tem ${fortes.length} processo(s) ${de('contrato').length ? 'que cita(m) o número de contrato analisado' : 'com o CPF dele contra banco dos contratos analisados'}${[...new Set(fortes.flatMap(a => a.conflito))].length ? ' (' + esc([...new Set(fortes.flatMap(a => a.conflito))].join(', ')) + ')' : ''}.<div class="sub" style="margin-top:6px">Contrato citado = mesma causa: nova ação seria litispendência ou, se já houve sentença, coisa julgada. CPF contra o mesmo banco: abra e veja se é o mesmo contrato.</div>${falha}</div>`;
+  else if (medios.length) topo = `<div class="bloco" style="border-color:rgba(251,191,36,.6)"><b style="color:#fde68a">Conferir à mão.</b> Há ${medios.length} processo(s) com o mesmo nome contra banco dos contratos de ${quem}, mas sem CPF nem contrato no texto: pode ser homônimo. Abra as publicações e compare.${falha}</div>`;
+  else topo = `<div class="bloco" style="border-color:rgba(34,197,94,.5)"><b style="color:#86efac">Nada encontrado</b> para ${quem}${r.bancos.length ? ' contra ' + esc(r.bancos.join(', ')) : ''}.<div class="sub" style="margin-top:6px">Conferido: ${esc(oque)}. Leia o aviso no fim da página: isso reduz muito o risco, mas não é garantia.</div>${falha}</div>`;
+  if (!p.fora && !r.contratosConferidos) topo += '<div class="bloco sub">O sistema ainda não leu números de contrato na pasta deste cliente (falta o extrato do INSS ou o robô não passou). A conferência usou só CPF e nome.</div>';
+  $('#r-conf').innerHTML = topo + A.map(a => cartao(a, p.nome)).join('');
 }
-async function buscar() {
-  let q = $('#q').value.trim(); const dig = q.replace(/\D/g, ''), porProc = dig.length === 20 && !/[a-zà-ú]{3}/i.test(q), b = $('#b');
-  CLI = null; $('#alerta').innerHTML = '';
-  // CPF: acha o cliente no CRM, pega o nome e os bancos dos contratos lidos, e busca pelo nome
-  if (dig.length === 11 && !/[a-zà-ú]{3}/i.test(q)) {
-    $('#msg').textContent = 'procurando o cliente no CRM…';
-    const { data, error } = await sb.rpc('peca_dados', { p_cpf: dig });
-    if (error || !data || !data.nome) { $('#msg').textContent = error ? 'Não consegui buscar o CPF: ' + error.message : 'CPF não encontrado entre os seus clientes do CRM. O Diário não aceita busca por CPF: digite o nome completo.'; return; }
-    CLI = { nome: data.nome, bancos: [...new Set((data.contratos || []).flatMap(k => bancosEm(k.banco)))] }; q = data.nome;
-  }
-  if (!porProc && q.split(/\s+/).length < 2) { $('#msg').textContent = 'Digite o nome completo (nome e sobrenome) ou os 20 dígitos do processo.'; return; }
-  b.disabled = true; PROC = []; FILTRO = ''; desenhar(); $('#msg').textContent = 'buscando no Diário…';
-  const de = new Date(Date.now() - (+$('#per').value) * 30.4 * 864e5).toISOString().slice(0, 10), ate = new Date().toISOString().slice(0, 10);
-  const itens = []; let total = 0, erro = '';
-  try {
-    for (let pag = 1; pag <= 6; pag++) {
-      const u = API + '?' + (porProc ? 'numeroProcesso=' + dig : 'nomeParte=' + encodeURIComponent(q) + '&dataDisponibilizacaoInicio=' + de + '&dataDisponibilizacaoFim=' + ate) + '&itensPorPagina=100&pagina=' + pag;
-      const r = await fetch(u, { headers: { Accept: 'application/json' } }); if (!r.ok) throw new Error(r.status === 429 ? 'o Diário pediu para esperar um pouco (muitas consultas seguidas)' : 'o Diário respondeu erro ' + r.status);
-      const j = await r.json(); total = j.count || 0; itens.push(...(j.items || [])); $('#msg').textContent = `buscando no Diário… ${itens.length} de ${total}`;
-      if ((j.items || []).length < 100) break; await new Promise(k => setTimeout(k, 800));
-    }
-  } catch (e) { erro = e.message; }
-  const M = new Map();
-  for (const it of itens) { if (it.ativo === false) continue; const n = it.numeroprocessocommascara || it.numero_processo || '(sem número)';
-    if (!M.has(n)) M.set(n, { numero: n, tribunal: it.siglaTribunal || '', orgao: it.nomeOrgao || '', classe: it.nomeClasse || '', nomes: new Set(), pubs: [] });
-    const p = M.get(n); (it.destinatarios || []).forEach(d => p.nomes.add(d.nome + (d.polo === 'A' ? ' (autor)' : d.polo === 'P' ? ' (réu)' : '')));
-    p.pubs.push({ dia: it.data_disponibilizacao, tipo: it.tipoDocumento || it.tipoComunicacao || 'Publicação', link: /^https:\/\//.test(it.link || '') ? it.link : '', txt: limpar(it.texto) }); }
-  PROC = [...M.values()].map(p => { p.partes = [...p.nomes].slice(0, 8).join('; '); p.pubs.sort((a, b) => String(b.dia).localeCompare(String(a.dia))); p.area = area(p); p.bancos = bancosEm(p.partes).length ? bancosEm(p.partes) : bancosEm(p.pubs.map(x => x.txt.slice(0, 1500)).join(' ')); p.conflito = CLI ? p.bancos.filter(k => CLI.bancos.includes(k)) : []; return p; }).sort((a, b) => (b.conflito.length - a.conflito.length) || String(b.pubs[0].dia).localeCompare(String(a.pubs[0].dia)));
-  b.disabled = false; alerta(erro);
-  $('#msg').textContent = erro ? 'Não consegui completar a busca: ' + erro + '.' + (PROC.length ? ' Mostrando o que veio.' : ' Tente de novo em um minuto.') : !PROC.length ? 'Nada publicado no Diário Nacional com esse ' + (porProc ? 'número' : 'nome') + ' no período. Confira a grafia: a busca é pelo nome exato.' : `${PROC.length} processo(s) em ${itens.length} publicação(ões)` + (total > itens.length ? `, de ${total} no total (mostrando as ${itens.length} mais recentes)` : '') + (porProc ? '.' : '. Atenção a homônimos: confira as partes.');
-  desenhar();
+$('#f-conf').addEventListener('submit', e => { e.preventDefault(); conferir(); });
+$('#cli').addEventListener('change', e => { if (e.target.value) { $('#c-cpf').value = ''; conferir(); } });
+// ---------- acompanhados ----------
+function desenharAcomp() {
+  const q = $('#q-acomp').value.trim().toLowerCase(), f = desenharAcomp.f || '';
+  const vis = ACOMP.filter(a => (!f || (f === 'sent' ? a.sentenca_em : f === 'nada' ? !a.pubs : !a.sentenca_em && a.pubs)) && (!q || [a.numero, fmtProc(a.numero), a.rotulo, a.cliente, a.partes, a.orgao, a.advogado].join(' ').toLowerCase().includes(q)));
+  $('#k-acomp').innerHTML = [['', 'Acompanhados', ACOMP.length], ['sent', 'Com sentença', ACOMP.filter(a => a.sentenca_em).length], ['and', 'Em andamento', ACOMP.filter(a => !a.sentenca_em && a.pubs).length], ['nada', 'Sem publicação no Diário', ACOMP.filter(a => !a.pubs).length]].map(([k, t, v]) => `<div class="kpi${f === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('');
+  $('#l-acomp').innerHTML = vis.slice(0, 300).map(a => `<div class="it ${a.sentenca_em ? 'hoje' : a.pubs ? 'semana' : ''}"><div class="topo"><h3>${esc(a.rotulo || fmtProc(a.numero))}</h3>${a.sentenca_em ? `<span class="tag a">sentença em ${dBR(a.sentenca_em)}${a.resultado ? ': ' + RES[a.resultado] : ''}</span>` : a.lido_em ? `<span class="tag">${a.pubs ? 'em andamento' : 'nada no Diário'}</span>` : '<span class="tag">aguardando 1ª leitura</span>'}</div>
+    <p><b style="color:var(--texto)">${esc(fmtProc(a.numero))}</b>${a.tribunal ? ' · ' + esc(a.tribunal) + ' · ' + esc(a.orgao || '') : ''}${a.partes ? '<br>' + esc(a.partes) : ''}${a.ultima_pub ? `<br>Última publicação: ${dBR(a.ultima_pub)} · ${esc(a.ultimo_tipo || '')}` : ''}${a.erro ? '<br><span style="color:#fde68a">última leitura falhou: ' + esc(a.erro) + '</span>' : ''}</p>
+    <details data-ev="${esc(a.numero)}"><summary>Ver as ${a.pubs} publicação(ões)</summary><div class="ev sub">carregando…</div></details><div class="acoes"><button data-parar="${a.id}">Parar de acompanhar</button></div></div>`).join('') || '<div class="bloco sub">Nenhum processo acompanhado ainda.</div>';
 }
-$('#f').addEventListener('submit', e => { e.preventDefault(); buscar(); });
-$('#cli').addEventListener('change', e => { if (e.target.value) { $('#q').value = e.target.value; buscar(); } });
-$('#area').addEventListener('change', () => { FILTRO = ''; desenhar(); });
-$('#kpis').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { FILTRO = k.dataset.f; desenhar(); } });
+async function carregarAcomp() { const { data } = await sb.rpc('acomp_lista'); ACOMP = data || []; SEG = new Set(ACOMP.map(a => a.numero)); $('#n-acomp').textContent = ACOMP.length ? '(' + ACOMP.length + ')' : ''; desenharAcomp(); }
+$('#k-acomp').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { desenharAcomp.f = k.dataset.f; desenharAcomp(); } });
+$('#q-acomp').addEventListener('input', desenharAcomp);
+$('#l-acomp').addEventListener('toggle', async e => { const d = e.target; if (!d.open || !d.dataset.ev || d.dataset.ok) return; d.dataset.ok = 1; const { data } = await sb.rpc('acomp_eventos', { p_numero: d.dataset.ev }); d.querySelector('.ev').outerHTML = (data || []).length ? pubsHtml(data) : '<div class="sub">Nada publicado no Diário Nacional com esse número até agora.</div>'; }, true);
+$('#f-acomp').addEventListener('submit', async e => { e.preventDefault(); const { error } = await sb.rpc('acomp_seguir', { p_numero: $('#a-num').value, p_rotulo: $('#a-rot').value, p_advogado: EU.papel === 'admin' ? $('#a-adv').value : null });
+  $('#m-acomp').textContent = error ? 'Não salvou: ' + error.message : 'Pronto. A primeira leitura sai em até 10 minutos.'; if (!error) { $('#a-num').value = ''; $('#a-rot').value = ''; carregarAcomp(); } });
+document.addEventListener('click', async e => {
+  const s = e.target.closest('[data-seguir]'); if (s) { s.disabled = true; const { error } = await sb.rpc('acomp_seguir', { p_numero: s.dataset.seguir, p_rotulo: s.dataset.rot || null, p_advogado: null }); if (error) { s.textContent = error.message; return; } SEG.add(s.dataset.seguir); s.outerHTML = '<span class="tag g">acompanhando</span>'; carregarAcomp(); return; }
+  const p = e.target.closest('[data-parar]'); if (p) { p.disabled = true; await sb.rpc('acomp_parar', { p_id: +p.dataset.parar }); carregarAcomp(); return; }
+  const v = e.target.closest('[data-visto]'); if (v) { v.disabled = true; const [c, n] = v.dataset.visto.split('|'); await sb.rpc('litis_visto', { p_cliente: +c, p_numero: n }); carregarRobo(); return; }
+  const a = e.target.closest('[data-aba]'); if (a) { document.querySelectorAll('[data-aba]').forEach(x => x.classList.toggle('sel', x === a)); ['conf', 'acomp', 'robo', 'busca'].forEach(k => $('#aba-' + k).hidden = k !== a.dataset.aba); }
+});
+// ---------- achados do robô ----------
+async function carregarRobo() {
+  const [{ data: L }, { data: R }] = await Promise.all([sb.rpc('litis_lista'), sb.rpc('litis_resumo')]); const A = L || [], abertos = A.filter(a => !a.visto_em);
+  $('#n-robo').textContent = abertos.length ? '(' + abertos.length + ')' : '';
+  $('#robo-res').innerHTML = '<h2>Varredura automática dos clientes</h2><div class="sub">O robô confere todos os clientes do CRM, um a um, e repete a cada 30 dias. Aqui ficam só os achados fortes: contrato citado, CPF contra banco dos contratos, ou mesmo nome no estado do cliente contra banco dos contratos.</div>'
+    + (R ? `<p style="margin-top:8px">Conferidos: <b>${R.feitos}</b> · na fila: <b>${R.fila}</b> · com processo confirmado: <b style="color:#fca5a5">${R.conflito}</b> · para conferir à mão: <b style="color:#fde68a">${R.atencao}</b> · sem achado: <b style="color:#86efac">${R.limpo}</b></p>` : '');
+  $('#l-robo').innerHTML = A.map(a => `<div class="it ${a.visto_em ? 'feita' : a.nivel === 'nome_uf_banco' ? 'hoje' : 'atrasada'}"><div class="topo"><h3>${esc(a.cliente)} <small style="color:var(--suave);font-weight:400">${EU.papel === 'admin' ? '· ' + esc(a.advogado || 'sem advogado') : ''}</small></h3><span class="tag ${COR[a.nivel]}">${esc(LT.ROTULO[a.nivel])}</span></div>
+    <p><b style="color:var(--texto)">${esc(a.numero)}</b> · ${esc(a.tribunal || '')} · ${esc(a.orgao || '')}<br>${esc(a.partes || '')}${(a.contratos || []).length ? '<br>Contrato citado: <b style="color:#fca5a5">' + esc(a.contratos.join(', ')) + '</b>' : ''}<br>${a.sentenca_em ? `<b style="color:#fde68a">Sentença em ${dBR(a.sentenca_em)}${a.resultado ? ': ' + RES[a.resultado] : ''}</b>` : 'Em andamento'} · última publicação ${dBR(a.ultima_pub)} (${esc(a.ultimo_tipo || '')})</p>
+    <div class="acoes">${a.link ? `<a class="btn" href="${esc(a.link)}" target="_blank" rel="noopener">Abrir no Diário</a>` : ''}${btSeguir(a.numero, a.cliente)}${a.visto_em ? '' : `<button data-visto="${a.cliente_id}|${esc(a.numero)}">Já conferi</button>`}</div></div>`).join('') || '<div class="bloco sub">Nenhum achado forte até agora.</div>';
+}
+// ---------- busca livre ----------
+$('#f-busca').addEventListener('submit', async e => { e.preventDefault(); const q = $('#q').value.trim(), dig = so(q), porProc = dig.length === 20 && !/[a-zà-ú]{3}/i.test(q);
+  if (!porProc && q.split(/\s+/).length < 2) { $('#m-busca').textContent = 'Digite nome e sobrenome, ou os 20 dígitos do processo.'; return; }
+  $('#m-busca').textContent = 'buscando…'; $('#l-busca').innerHTML = '';
+  try { const de = new Date(Date.now() - (+$('#per').value) * 30.4 * 864e5).toISOString().slice(0, 10), ate = new Date().toISOString().slice(0, 10);
+    const r = await LT.buscar(porProc ? 'numeroProcesso=' + dig : 'nomeParte=' + encodeURIComponent(q) + '&dataDisponibilizacaoInicio=' + de + '&dataDisponibilizacaoFim=' + ate, { max: 5 }), M = new Map();
+    r.itens.forEach(it => { if (it.ativo === false) return; const n = it.numeroprocessocommascara || it.numero_processo; if (!M.has(n)) M.set(n, { numero: n, tribunal: it.siglaTribunal, orgao: it.nomeOrgao, classe: it.nomeClasse, nomes: new Map(), pubs: [] }); const p = M.get(n); (it.destinatarios || []).forEach(d => p.nomes.set(d.nome, d.polo)); p.pubs.push({ dia: it.data_disponibilizacao, tipo: it.tipoDocumento || it.tipoComunicacao, link: /^https:\/\//.test(it.link || '') ? it.link : '', txt: LT.limpar(it.texto) }); });
+    const P = [...M.values()].map(p => { p.pubs.sort((a, b) => String(b.dia).localeCompare(String(a.dia))); p.partes = [...p.nomes].map(([n, po]) => n + (po === 'A' ? ' (autor)' : po === 'P' ? ' (réu)' : '')).slice(0, 8).join('; '); return p; }).sort((a, b) => String(b.pubs[0].dia).localeCompare(String(a.pubs[0].dia)));
+    $('#m-busca').textContent = P.length ? `${P.length} processo(s) em ${r.itens.length} publicação(ões)${r.total > r.itens.length ? ' (de ' + r.total + ')' : ''}.` : 'Nada publicado no Diário Nacional com esse ' + (porProc ? 'número.' : 'nome no período. A busca é pelo nome exato.');
+    $('#l-busca').innerHTML = P.map(p => `<div class="it"><div class="topo"><h3>${esc(p.numero)}</h3><span class="tag">${esc(p.tribunal || '')}</span></div><p>${esc(p.orgao || '')} · ${esc(p.classe || '')}<br><b style="color:var(--texto)">${esc(p.partes)}</b><br>${p.pubs.length} publicação(ões) · última em ${dBR(p.pubs[0].dia)}: ${esc(p.pubs[0].tipo || '')}</p><details><summary>Ver as publicações</summary>${pubsHtml(p.pubs)}</details><div class="acoes">${btSeguir(p.numero, '')}</div></div>`).join('');
+  } catch (err) { $('#m-busca').textContent = 'Não consegui buscar: ' + (/429/.test(err.message) ? 'o Diário pediu para esperar um pouco. Tente em um minuto.' : err.message); } });
 (async () => {
   try {
     const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
     const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
     if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
-    const qs = new URLSearchParams(location.search);
+    EU = eu; const qs = new URLSearchParams(location.search);
     if (eu.papel !== 'admin' || qs.get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
     const { data: cs } = await sb.rpc('peca_clientes');
-    $('#cli').innerHTML = '<option value="">Escolher um cliente seu…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join('');
-    document.body.hidden = false; if (qs.get('q')) { $('#q').value = qs.get('q'); buscar(); }
+    $('#cli').innerHTML = '<option value="">Escolher um cliente do CRM…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join('');
+    if (eu.papel === 'admin') { const { data: advs } = await sb.rpc('lista_advogados'); $('#a-adv').hidden = false; $('#a-adv').innerHTML = '<option value="">Para mim (admin)</option>' + (advs || []).map(x => x.lista_advogados ?? x).sort().map(x => `<option>${esc(x)}</option>`).join(''); }
+    document.body.hidden = false; carregarAcomp(); carregarRobo();
+    if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); }
   } catch (e) { location.replace('./'); }
 })();
 </script>
