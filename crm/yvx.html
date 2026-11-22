@@ -43,6 +43,10 @@ button:disabled{opacity:.5}
 .campo{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed rgba(140,200,255,.12);font-size:14px}
 .campo:last-child{border-bottom:0}.campo span{color:var(--suave);flex:none;max-width:48%}.campo b{text-align:right;font-weight:600;word-break:break-word;cursor:copy}
 .campo b.vazio{color:#475569;font-weight:400;cursor:default}.campo b.din{color:#fde68a}
+.vd{border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:13px;line-height:1.5}
+.vd b{display:block;font-size:14px}.vd.ok{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.45)}.vd.nao{background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.4)}.vd.ver{background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.45)}.vd.na{background:rgba(255,255,255,.04);border:1px solid var(--borda);color:var(--suave)}
+.chip.r{color:#fca5a5;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.10)}
+.op ul{margin:6px 0 0 18px;line-height:1.6;font-size:13.5px}.op input{width:74px;background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:8px;padding:5px 8px;font:inherit}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0b1a3a;border:1px solid var(--ciano);padding:9px 16px;border-radius:10px;font-size:14px;z-index:9}
 .nota{font-size:12.5px;color:var(--suave);line-height:1.6;margin-top:18px}
 </style>
@@ -81,7 +85,15 @@ const GRUPOS = [
 const grupoDe = k => { for (const g of GRUPOS) if (g[3].test(k)) return g[0]; return 'outros'; };
 const ehDinheiro = k => /valor|vl_|_vl|margem|parcela|saldo|renda|salario|^mr$|emprestado|liberado|rmc|rcc/.test(k) && !/qtd|quant|data|dt_|prazo|numero|contrato/.test(k);
 const ehData = k => /data|^dt_|_dt$|nasc|dib|ddb|dcb|competencia/.test(k);
-const rotulo = n => { const t = String(n).replace(/_/g, ' ').trim(); return /^[A-Z0-9 ]+$/.test(t) && t.length > 4 ? t.charAt(0) + t.slice(1).toLowerCase() : t; };
+const ROT = { beneficio: 'Número do benefício', situacao_beneficio: 'Situação do benefício', consignavel: 'Consignável', uf_beneficio: 'Estado do benefício', valor_beneficio: 'Valor do benefício', valor_consignavel: 'Valor consignável', valor_margem: 'Valor da margem', valor_rcc: 'Valor RCC', valor_rmc: 'Valor RMC', especie_codigo: 'Código da espécie',
+  banco_pagamento_codigo: 'Código do banco de pagamento', banco_pagamento_agencia: 'Agência de pagamento', banco_pagamento_conta: 'Conta de pagamento', banco_pagamento_tipo_conta: 'Tipo de conta', dib: 'Início do benefício (DIB)', nome_representante: 'Nome do representante', cpf_representante: 'CPF do representante',
+  possui_procurador: 'Possui procurador', possui_representante: 'Possui representante', pensao_alimenticia: 'Pensão alimentícia', bloqueado_emprestimo: 'Bloqueado para empréstimo', cliente_nome: 'Nome', cliente_cpf: 'CPF', cliente_rg: 'RG', cliente_data_nascimento: 'Data de nascimento', cliente_sexo: 'Sexo', cliente_nome_mae: 'Nome da mãe', cliente_email: 'E-mail',
+  numero_contrato: 'Número do contrato', tipo_emprestimo: 'Tipo de empréstimo', contrato_banco_codigo: 'Código do banco', contrato_banco_nome: 'Banco', data_averbacao: 'Data de averbação', data_inicio_contrato: 'Início do contrato', data_fim_contrato: 'Fim do contrato', valor_emprestimo: 'Valor do empréstimo', valor_parcela: 'Valor da parcela',
+  prazo: 'Prazo (parcelas)', parcelas_pagas: 'Parcelas pagas', parcelas_restantes: 'Parcelas restantes', saldo: 'Saldo devedor', taxa: 'Taxa de juros', endereco_cidade: 'Cidade', endereco_uf: 'Estado' };
+const UFS = { AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará', DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão', MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará', PB: 'Paraíba', PR: 'Paraná', PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro', RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima', SC: 'Santa Catarina', SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins' };
+const LOGOS = new Set('001 003 004 021 029 033 037 041 047 070 077 082 104 212 213 237 246 318 336 341 389 394 422 604 611 623 626 637 643 707 748 756'.split(' '));
+const rotulo = n => { const k = chave(n); if (ROT[k]) return ROT[k]; let m; if ((m = k.match(/^telefone_(\d+)$/))) return 'Telefone ' + m[1];
+  const t = String(n).replace(/_/g, ' ').trim().toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
 function dataBR(v) { v = String(v).trim(); let m;
   if ((m = v.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${m[3]}/${m[2]}/${m[1]}`;
   if ((m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/))) return m[0];
@@ -92,12 +104,116 @@ function num(v) { v = String(v).trim().replace(/[R$\s]/g, ''); if (!/^-?[\d.,]+$
 const brl = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 function mostra(k, v) { v = String(v ?? '').trim(); if (!v || /^(null|nan|none)$/i.test(v)) return { t: '—', vazio: true };
   if (/^(true|false)$/i.test(v)) return { t: /^true$/i.test(v) ? 'Sim' : 'Não' };
+  if (k === 'consignavel' && /^[01]$/.test(v)) return { t: v === '1' ? 'Sim' : 'Não' };
+  if (/^uf$|_uf$|^uf_/.test(k) && UFS[v.toUpperCase()]) return { t: UFS[v.toUpperCase()] + ' (' + v.toUpperCase() + ')' };
+  if (/sexo/.test(k) && /^[MF]$/i.test(v)) return { t: /^m$/i.test(v) ? 'Masculino' : 'Feminino' };
+  if (k === 'taxa') { const n = num(v); if (n != null) return { t: n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '% ao mês' }; }
   if (/cpf/.test(k) && so(v).length >= 9 && so(v).length <= 11) return { t: fmtCPF(v) };
   if (ehDinheiro(k)) { const n = num(v); if (n != null) return { t: brl(n), din: true }; }
   if (ehData(k)) return { t: dataBR(v) };
   if (/tel|fone|celular/.test(k) && so(v).length >= 10 && so(v).length <= 11) { const d = so(v); return { t: d.length === 11 ? d.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : d.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3') }; }
   return { t: v }; }
 function idade(v) { const d = dataBR(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if (!d) return null; const n = new Date(+d[3], +d[2] - 1, +d[1]), h = new Date(); let a = h.getFullYear() - n.getFullYear(); if (h < new Date(h.getFullYear(), n.getMonth(), n.getDate())) a--; return a >= 0 && a < 125 ? a : null; }
+
+/* ---------- oportunidades: regras do Resumo Operacional da Quali ---------- */
+const Q = { versao: '03/11/2026',
+  naoPortados: ['012', '025', '047', '063', '082', '212', '243', '246', '254', '276', '320', '329', '330', '349', '359', '394', '429', '604', '611', '643', '654'],
+  ampliada: { '623': 'Pan', '707': 'Daycoval', '935': 'Facta', '626': 'C6', '336': 'C6' },   // 360 dias da data do contrato
+  invalidez: [4, 5, 6, 32, 33, 34, 51, 83, 92],
+  esp45: [1, 2, 3, 19, 20, 21, 22, 23, 24, 26, 27, 28, 29, 54, 55, 56, 59, 93],
+  espLivre: [7, 8, 37, 38, 41, 42, 43, 44, 45, 46, 49, 52, 57, 58, 72, 78, 82, 89],
+  pagNao: { '213': 'Arbi', '218': 'BSB', '077': 'Inter', '323': 'Mercado Pago', '290': 'PagSeguro', '422': 'Safra', '637': 'Sofisa', '197': 'Stone', '070': 'BRB', '364': 'Efí' },
+  agNao: { '104': ['3880'], '237': ['3728', '3737', '3738', '3750', '3925', '3929', '6176', '7160', '7320', '7526', '7615', '7802'], '341': ['500'], '655': ['655'] } };
+let OPON = false; try { OPON = localStorage.getItem('yvx_op') === '1'; } catch (e) {}
+function taxaQ() { let t = 1.85; try { const v = parseFloat(localStorage.getItem('yvx_taxa')); if (v > 0 && v < 5) t = v; } catch (e) {} return t; }
+const cod3 = v => { const d = so(v); return d ? String(parseInt(d, 10)).padStart(3, '0') : ''; };
+function paraData(v) { const m = dataBR(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
+function mesesDesde(d) { const h = new Date(); let m = (h.getFullYear() - d.getFullYear()) * 12 + h.getMonth() - d.getMonth(); if (h.getDate() < d.getDate()) m--; return m; }
+const fatorPV = (i, n) => (1 - Math.pow(1 + i, -n)) / i;
+const anosMeses = m => Math.floor(m / 12) + 'a ' + (m % 12) + 'm';
+function analisar(L, cols) {
+  const K = {}; cols.forEach(c => { K[c.k] = c.n; });
+  const g = (r, k) => K[k] ? String(r[K[k]] ?? '').trim() : '';
+  const l = L[0], cli = { bloq: [], avisos: [], infos: [] }, i = taxaQ() / 100;
+  const esp = parseInt(so(g(l, 'especie_codigo')), 10), inval = Q.invalidez.includes(esp);
+  const nasc = paraData(g(l, 'cliente_data_nascimento')), idM = nasc ? mesesDesde(nasc) : null;
+  let prazoPort = null, prazoNovo = null;
+  if (isNaN(esp)) cli.avisos.push('Sem código de espécie na base: confira se a espécie é atendida.');
+  else if (!inval && !Q.esp45.includes(esp) && !Q.espLivre.includes(esp)) cli.bloq.push('Espécie ' + esp + ' não está na lista de espécies atendidas.');
+  if (idM == null) cli.avisos.push('Sem data de nascimento na base: confira a idade.');
+  else {
+    if (idM < 216) cli.bloq.push('Menor de 18 anos.');
+    if (inval) {
+      if (idM < 660) cli.bloq.push('Invalidez com menos de 55 anos.');
+      else if (idM < 696) { const dib = paraData(g(l, 'dib')), anosB = dib ? mesesDesde(dib) / 12 : null;
+        if (anosB == null) cli.avisos.push('Invalidez com 55 a 57 anos: só opera com 15 anos de benefício (a base não trouxe a DIB).');
+        else if (anosB < 15) cli.bloq.push('Invalidez com 55 a 57 anos e ' + Math.floor(anosB) + ' ano(s) de benefício (mínimo 15).'); }
+      if (idM > 789) cli.bloq.push('Invalidez: idade acima de 65a 9m para iniciar contrato.');
+      prazoNovo = prazoPort = Math.min(108, 897 - idM);
+    } else {
+      if (Q.esp45.includes(esp) && idM < 540) cli.bloq.push('Esta espécie só é atendida a partir de 45 anos.');
+      prazoPort = idM <= 861 ? 108 : idM <= 873 ? 96 : Math.min(96, 969 - idM);
+      prazoNovo = idM < 864 ? 108 : idM < 876 ? 96 : Math.min(96, 969 - idM);
+      if (idM > 873) cli.avisos.push('Idade acima de 72a 9m: o prazo sai da tabela do resumo. Usei o prazo que termina aos 80a 9m; confirme com a mesa.');
+    }
+    if (prazoPort != null && prazoPort <= 0) cli.bloq.push('Idade acima do limite: o contrato precisa terminar até ' + (inval ? '74a 9m' : '80a 9m') + '.');
+  }
+  if (/^true$/i.test(g(l, 'possui_representante')) || g(l, 'nome_representante') || so(g(l, 'cpf_representante'))) cli.bloq.push('Tem representante legal (a Quali não opera).');
+  if (/^true$/i.test(g(l, 'possui_procurador'))) cli.avisos.push('Tem procurador cadastrado: confirme com a mesa.');
+  const sit = g(l, 'situacao_beneficio'); if (sit && !/^ativo/i.test(sit)) cli.avisos.push('Benefício com situação "' + sit + '".');
+  if (/^true$/i.test(g(l, 'bloqueado_emprestimo'))) cli.avisos.push('Benefício bloqueado para empréstimo: o cliente precisa desbloquear no Meu INSS.');
+  const bp = cod3(g(l, 'banco_pagamento_codigo')), ag = String(parseInt(so(g(l, 'banco_pagamento_agencia')), 10) || ''), conta = so(g(l, 'banco_pagamento_conta'));
+  const pagRuim = Q.pagNao[bp] ? 'banco ' + bp + ' (' + Q.pagNao[bp] + ')' : (Q.agNao[bp] || []).includes(ag) ? 'agência digital ' + ag + ' do banco ' + bp : (bp === '033' && conta.startsWith('77')) ? 'Santander com conta iniciada em 77' : '';
+  if (pagRuim) (/magn/i.test(g(l, 'banco_pagamento_tipo_conta')) ? cli.bloq : cli.avisos).push('Recebe o benefício em ' + pagRuim + ', que está na lista de bancos não permitidos para pagamento.');
+  const uf = (g(l, 'uf_beneficio') || g(l, 'endereco_uf')).toUpperCase();
+  if (['PB', 'AP', 'TO', 'RR'].includes(uf) && idM != null && idM >= 720) cli.infos.push('Cliente com 60 anos ou mais em ' + uf + ': além da formalização digital, precisa de CCB assinada e selfie segurando a CCB.');
+  if (inval) cli.infos.push('Invalidez: o contrato deve terminar antes dos 75 anos.');
+  cli.infos.push('A base não mostra: se é analfabeto, CPF regular na Receita e parcelas em atraso. Confira antes de digitar.');
+  const livre = !cli.bloq.length;
+  // empréstimo novo pela margem
+  const margem = num(g(l, 'valor_margem')), novo = { margem };
+  if (margem != null && margem >= 20 && livre && prazoNovo > 0) { novo.ok = true; novo.prazo = prazoNovo; novo.valor = Math.min(150000, margem * fatorPV(i, prazoNovo)); }
+  else if (margem != null && margem < 0) novo.negativa = true;
+  // contratos
+  const contratos = L.map(r => {
+    const tipo = g(r, 'tipo_emprestimo'), banco = cod3(g(r, 'contrato_banco_codigo')), parc = num(g(r, 'valor_parcela')), saldo = num(g(r, 'saldo'));
+    const pagas = parseInt(so(g(r, 'parcelas_pagas')), 10), prazoC = parseInt(so(g(r, 'prazo')), 10); let rest = parseInt(so(g(r, 'parcelas_restantes')), 10);
+    if (isNaN(rest) && !isNaN(prazoC) && !isNaN(pagas)) rest = prazoC - pagas;
+    const dt = paraData(g(r, 'data_averbacao')) || paraData(g(r, 'data_inicio_contrato')), dias = dt ? Math.floor((Date.now() - dt) / 864e5) : null;
+    const nao = [], ver = [];
+    if (/cart|rmc|rcc/i.test(tipo)) return { st: 'na', tit: 'Cartão (RMC/RCC)', txt: ['As regras de portabilidade do resumo valem para empréstimo; cartão não entra nesta análise.'] };
+    if (!g(r, 'numero_contrato') && parc == null) return { st: 'na', tit: 'Sem contrato nesta linha', txt: [] };
+    if (!livre) nao.push('Cliente fora das regras (veja o quadro de oportunidades acima).');
+    if (banco && Q.naoPortados.includes(banco)) nao.push('Banco ' + banco + ' está na lista de bancos não portados.');
+    if (parc != null && parc < 50) nao.push('Parcela de ' + brl(parc) + ': o mínimo para portar é R$ 50,00.');
+    if (saldo == null) ver.push('Sem saldo devedor na base: peça o saldo para calcular o troco.');
+    else if (saldo < (inval ? 6000 : 2000)) nao.push('Saldo de ' + brl(saldo) + ': o mínimo é ' + (inval ? 'R$ 6.000,00 para invalidez.' : 'R$ 2.000,00.'));
+    else if (saldo < 6000 && !(pagas >= 12)) nao.push('Saldo entre R$ 2.000 e R$ 5.999,99 pede 12 parcelas pagas; tem ' + (isNaN(pagas) ? 'quantidade não informada' : pagas) + '.');
+    if (dias == null) ver.push('Sem data do contrato na base: confira o tempo mínimo de contrato.');
+    else if (Q.ampliada[banco] && dias < 360) nao.push(Q.ampliada[banco] + ' pede 360 dias de contrato; tem ' + dias + ' (faltam ' + (360 - dias) + ').');
+    else if (dias < 30) nao.push('Contrato com ' + dias + ' dia(s); o mínimo é 30.');
+    if (inval) ver.push('Invalidez: o resumo traz portabilidade com refin como atendida (pág. 3) e como suspensa (alteração de 29/10). Confirme com a mesa.');
+    const o = { prazo: prazoPort };
+    if (parc != null && saldo != null && prazoPort > 0) { o.pv = Math.min(150000, parc * fatorPV(i, prazoPort)); o.troco = o.pv - saldo;
+      const pct = rest >= 72 ? 2 : rest >= 57 ? 3 : 5; o.trocoMin = Math.max(100, saldo * pct / 100); o.pct = isNaN(rest) ? null : pct;
+      if (o.troco < o.trocoMin) ver.push('Troco estimado de ' + brl(o.troco) + ' fica abaixo do mínimo de ' + brl(o.trocoMin) + ' na taxa usada. Simule na calculadora da Quali.'); }
+    if (nao.length) return Object.assign(o, { st: 'nao', tit: 'Não porta agora', txt: nao });
+    if (ver.length) return Object.assign(o, { st: 'ver', tit: o.troco != null && o.troco < o.trocoMin ? 'Atende as regras, mas o troco não fecha na taxa usada' : 'Atende as regras, mas confira', txt: ver });
+    return Object.assign(o, { st: 'ok', tit: 'Porta com refinanciamento', txt: [] });
+  });
+  return { cli, novo, contratos, inval, idM, esp, taxa: taxaQ() };
+}
+const ICO = { ok: '✅', nao: '⛔', ver: '⚠️', na: '➖' };
+function vereditoHTML(c) { const est = c.troco != null && c.st !== 'nao' ? `Troco estimado: <b style="display:inline;color:#fde68a">${brl(c.troco)}</b> em ${c.prazo}x (mínimo ${brl(c.trocoMin)}${c.pct ? ', ' + c.pct + '% do saldo' : ''}).` : '';
+  return `<div class="vd ${c.st}"><b>${ICO[c.st]} ${esc(c.tit)}</b>${c.txt.map(esc).join('<br>')}${est ? (c.txt.length ? '<br>' : '') + est : ''}</div>`; }
+function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'), ver = A.contratos.filter(c => c.st === 'ver'), nao = A.contratos.filter(c => c.st === 'nao');
+  const soma = ok.concat(ver).reduce((t, c) => t + (c.troco > 0 ? c.troco : 0), 0), li = (a, cor) => a.map(t => `<li style="color:${cor}">${esc(t)}</li>`).join('');
+  return `<div class="cart op" style="margin-top:14px;border-color:rgba(251,191,36,.45)"><h3><i>🎯</i>Oportunidades pelas regras da Quali <span class="sub" style="font-weight:400;margin-left:auto">resumo de ${Q.versao}</span></h3>
+    <div class="chips" style="margin-top:0"><span class="chip g">${ok.length} porta(m)</span><span class="chip o">${ver.length} para conferir</span><span class="chip r">${nao.length} não porta(m)</span>${A.inval ? '<span class="chip o">invalidez</span>' : ''}${A.idM != null ? `<span class="chip">idade ${anosMeses(A.idM)}</span>` : ''}</div>
+    <div class="dest"><div><span>Troco estimado nos que portam</span><b>${brl(soma)}</b></div><div><span>Empréstimo novo pela margem</span><b>${A.novo.ok ? brl(A.novo.valor) : '—'}</b></div><div><span>Margem livre</span><b>${A.novo.margem != null ? brl(A.novo.margem) : '—'}</b></div></div>
+    ${A.novo.ok ? `<div class="sub" style="margin-top:8px">Novo: parcela de ${brl(A.novo.margem)} em ${A.novo.prazo}x.</div>` : A.novo.negativa ? '<div class="sub" style="margin-top:8px">Margem negativa: a Quali opera se o negativo sair da parcela e a operação cobrir o troco.</div>' : A.novo.margem != null && A.novo.margem < 20 ? '<div class="sub" style="margin-top:8px">Margem abaixo da parcela mínima de R$ 20,00 para empréstimo novo.</div>' : ''}
+    <ul>${li(A.cli.bloq, '#fca5a5')}${li(A.cli.avisos, '#fde68a')}${li(A.cli.infos, 'var(--suave)')}</ul>
+    <div class="sub" style="margin-top:10px">Taxa usada na estimativa: <input id="q-taxa" inputmode="decimal" value="${String(A.taxa).replace('.', ',')}"> % ao mês. Ajuste para a tabela da Quali. Os valores são estimativa com a mesma parcela no prazo máximo; o valor final sai na calculadora da Quali.</div></div>`; }
 
 /* ---------- desenhar ---------- */
 let RES = null, SEL = 0;
@@ -113,7 +229,10 @@ function desenhar() {
   const dins = cols.filter(c => grupoDe(c.k) !== 'emprestimo' && ehDinheiro(c.k) && num(l[c.n]) != null).sort((a, b) => (/margem|livre|disponivel/.test(b.k) - /margem|livre|disponivel/.test(a.k)) || (/benef|renda|^mr$|salario/.test(b.k) - /benef|renda|^mr$|salario/.test(a.k))).slice(0, 4);
   let h = `<div class="heroi"><h2>${esc(cNome ? l[cNome.n] || 'Sem nome na base' : 'Registro encontrado')}</h2><div class="sub">CPF ${fmtCPF(RES.cpf)} · ${L.length} contrato(s) na base${RES.mais ? ' (mostrando os primeiros ' + L.length + ')' : ''}</div>
     <div class="chips">${id != null ? `<span class="chip o">${id} anos</span>` : ''}${cNasc ? `<span class="chip">nasc. ${esc(dataBR(l[cNasc.n]))}</span>` : ''}${cCid || cUF ? `<span class="chip">📍 ${esc([cCid && l[cCid.n], cUF && l[cUF.n]].filter(Boolean).join(' / '))}</span>` : ''}${cEsp ? `<span class="chip g">espécie ${esc(l[cEsp.n])}</span>` : ''}</div>
-    ${dins.length ? '<div class="dest">' + dins.map(c => `<div><span>${esc(rotulo(c.n))}</span><b>${brl(num(l[c.n]))}</b></div>`).join('') + '</div>' : ''}</div>`;
+    ${dins.length ? '<div class="dest">' + dins.map(c => `<div><span>${esc(rotulo(c.n))}</span><b>${brl(num(l[c.n]))}</b></div>`).join('') + '</div>' : ''}
+    <div style="position:relative;z-index:1;margin-top:14px"><button type="button" id="b-op" style="${OPON ? 'background:linear-gradient(135deg,#b45309,#fbbf24);color:#1a1205;border:0;font-weight:700' : ''}">🎯 ${OPON ? 'Ocultar oportunidades' : 'Ver oportunidades (regras da Quali)'}</button></div></div>`;
+  const A = OPON ? analisar(L, cols) : null;
+  if (A) h += oportunidadesHTML(A);
   const por = {}; cols.forEach(c => { (por[grupoDe(c.k)] = por[grupoDe(c.k)] || []).push(c); });
   // dados do cliente/benefício (iguais em todos os contratos): tira o grupo "emprestimo", que é por contrato
   const ordemCli = ['pessoa', 'beneficio', 'margem', 'pagamento', 'contato', 'endereco', 'outros'];
@@ -125,14 +244,19 @@ function desenhar() {
     const cNum = ce.find(c => /numero_contrato|contrato_numero|^contrato$/.test(c.k)) || ce.find(c => /contrato/.test(c.k) && !/banco|data|dt/.test(c.k));
     h += `<h3 style="margin:22px 2px 0;font-size:16px;color:#bfe3ff">🏦 Contratos detalhados (${L.length})</h3>`;
     h += '<div class="grade">' + L.map((row, i) => {
-      const banco = cBanco && String(row[cBanco.n] || '').trim() ? rotulo(row[cBanco.n]) : 'Contrato';
+      const banco = cBanco && String(row[cBanco.n] || '').trim() ? String(row[cBanco.n]).trim() : 'Contrato';
       const nnum = cNum && String(row[cNum.n] || '').trim() ? ' · nº ' + esc(row[cNum.n]) : '';
-      return `<div class="cart"><h3><i>🏦</i>${esc(banco)}<span class="sub" style="margin-left:auto;font-weight:400">${i + 1}/${L.length}</span></h3><div class="campo"><span>Contrato</span><b class="vazio" style="color:var(--texto)">${nnum ? esc(cNum ? row[cNum.n] : '') : '—'}</b></div>` + ce.filter(c => c !== cNum).map(c => campoHTML(c, row)).join('') + '</div>';
+      const cCod = ce.find(c => /contrato_banco_codigo|banco_cod/.test(c.k)), cb = cCod ? cod3(row[cCod.n]) : '';
+      const ico = LOGOS.has(cb) ? `<img src="bancos/${cb}.svg" alt="" loading="lazy" style="width:28px;height:28px;object-fit:contain;background:#fff;border-radius:7px;padding:3px;flex:none">` : '<i>🏦</i>';
+      return `<div class="cart"><h3>${ico}${esc(banco)}<span class="sub" style="margin-left:auto;font-weight:400">${i + 1}/${L.length}</span></h3>${A ? vereditoHTML(A.contratos[i]) : ''}<div class="campo"><span>Contrato</span><b class="vazio" style="color:var(--texto)">${nnum ? esc(cNum ? row[cNum.n] : '') : '—'}</b></div>` + ce.filter(c => c !== cNum).map(c => campoHTML(c, row)).join('') + '</div>';
     }).join('') + '</div>';
   }
   $('#saida').innerHTML = h;
 }
-$('#saida').addEventListener('click', e => { const a = e.target.closest('[data-i]'); if (a) { SEL = +a.dataset.i; desenhar(); return; }
+$('#saida').addEventListener('change', e => { if (e.target.id !== 'q-taxa') return; const v = parseFloat(String(e.target.value).replace(',', '.')); if (v > 0 && v < 5) { try { localStorage.setItem('yvx_taxa', v); } catch (x) {} desenhar(); } else toast('Taxa inválida'); });
+$('#saida').addEventListener('click', e => { if (e.target.closest('#b-op')) { OPON = !OPON; try { localStorage.setItem('yvx_op', OPON ? '1' : '0'); } catch (x) {} desenhar(); return; }
+  if (e.target.closest('.vd, .op')) return;
+  const a = e.target.closest('[data-i]'); if (a) { SEL = +a.dataset.i; desenhar(); return; }
   const b = e.target.closest('.campo b:not(.vazio)'); if (b && navigator.clipboard) navigator.clipboard.writeText(b.textContent).then(() => toast('Copiado: ' + b.textContent)); });
 
 /* ---------- servidor do escritório ---------- */
