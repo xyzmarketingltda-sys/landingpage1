@@ -181,6 +181,7 @@ $('#f-busca').addEventListener('submit', async e => { e.preventDefault(); const 
     if (eu.papel === 'admin') { const { data: advs } = await sb.rpc('lista_advogados'); $('#a-adv').hidden = false; $('#a-adv').innerHTML = '<option value="">Para mim (admin)</option>' + (advs || []).map(x => x.lista_advogados ?? x).sort().map(x => `<option>${esc(x)}</option>`).join(''); }
     document.body.hidden = false; await carregarAcomp(); carregarRobo();
     if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); }
+    if (['acomp', 'robo', 'busca'].includes(qs.get('aba'))) { const b = document.querySelector('[data-aba=' + qs.get('aba') + ']'); if (b && !b.hidden) b.click(); }
     // veio do CRM pedindo um processo: abre direto o histórico dele (e passa a acompanhar, se ainda não acompanha)
     if (so(qs.get('proc')).length === 20) { const n = so(qs.get('proc')); document.querySelector('[data-aba=acomp]').click();
       if (!SEG.has(n)) { await sb.rpc('acomp_seguir', { p_numero: n, p_rotulo: qs.get('rot') || null, p_advogado: null }); await carregarAcomp(); }
