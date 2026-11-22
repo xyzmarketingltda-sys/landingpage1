@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Processos · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--painel:rgba(5,13,32,.82);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+main{max-width:1000px;margin:0 auto;padding:20px 14px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:22px}h2{font-size:16px;margin:0 0 8px}
+a.btn,button{background:#0f2552;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
+button.ok{background:#0d3b24;border-color:rgba(34,197,94,.5)}button:disabled{opacity:.5}
+.sub{color:var(--suave);font-size:13px}
+.bloco{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:14px;margin-bottom:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px;cursor:pointer}.kpi.sel{border-color:#8cc8ff}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
+input,select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:16px}
+.linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.oab{display:inline-flex;gap:8px;align-items:center;background:#0f2552;border:1px solid var(--borda);border-radius:99px;padding:5px 6px 5px 12px;font-size:13px;margin:4px 6px 0 0}.oab button{padding:2px 8px;border-radius:99px;font-size:12px}
+.it{background:var(--painel);border:1px solid var(--borda);border-left:4px solid var(--borda);border-radius:var(--raio);padding:12px 14px;margin-bottom:10px}
+.it.atrasada{border-left-color:var(--vermelho)}.it.hoje{border-left-color:var(--ouro)}.it.semana{border-left-color:var(--azul)}.it.feita{opacity:.65;border-left-color:var(--verde)}
+.it .topo{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}.it h3{font-size:15px}
+.tag{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap;background:rgba(30,144,255,.15);color:#8cc8ff;border:1px solid var(--borda)}
+.tag.v{background:rgba(239,68,68,.18);color:#fca5a5;border-color:rgba(239,68,68,.5)}.tag.a{background:rgba(251,191,36,.15);color:#fde68a;border-color:rgba(251,191,36,.45)}.tag.g{background:rgba(34,197,94,.15);color:#86efac;border-color:rgba(34,197,94,.45)}
+.it p{font-size:13px;color:var(--suave);margin-top:6px;line-height:1.5}.it details{margin-top:6px}.it summary{cursor:pointer;font-size:13px;color:#8cc8ff}.it .txt{white-space:pre-wrap;font-size:13px;line-height:1.55;margin-top:6px;color:var(--texto)}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.nota{font-size:12.5px;color:var(--suave);line-height:1.6;margin-top:14px}
+</style>
+</head>
+<body hidden>
+<main>
+<header><div><h1>🔎 Processos</h1><div class="sub">busca no Diário de Justiça Eletrônico Nacional · bancário (consignado do INSS) e previdenciário</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+
+<div class="bloco">
+  <form id="f">
+    <div class="linha">
+      <select id="cli" style="flex:1;min-width:230px"><option value="">Escolher um cliente seu…</option></select>
+      <input id="q" placeholder="ou CPF do cliente, nome completo da parte ou número do processo" style="flex:2;min-width:240px" required>
+    </div>
+    <div class="linha" style="margin-top:8px">
+      <select id="per"><option value="24">Últimos 24 meses</option><option value="12">Últimos 12 meses</option><option value="6">Últimos 6 meses</option></select>
+      <select id="area"><option value="foco">Só bancário e previdenciário</option><option value="tudo">Todas as áreas</option></select>
+      <button class="ok" id="b">Buscar</button>
+    </div>
+  </form>
+  <div class="sub" id="msg" style="margin-top:8px">Digite o nome completo, como está no documento. A busca é por nome e pode trazer homônimos: confira as partes antes de concluir que o processo é do seu cliente.</div>
+</div>
+<div id="alerta"></div>
+<div class="kpis" id="kpis"></div>
+<div id="lista"></div>
+<p class="nota"><b>Como ler.</b> A busca usa a consulta pública do Diário de Justiça Eletrônico Nacional (CNJ) e mostra o que foi <b>publicado</b>: intimações, despachos, decisões e sentenças. Não é o andamento completo do processo (juntadas e conclusões não saem no Diário) nem mostra as peças dos autos. Processos em segredo de justiça não aparecem. Tribunais que ainda não publicam tudo no Diário Nacional podem ficar de fora. A área (bancário ou previdenciário) é identificada pelo texto da publicação.</p>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—';
+const API = 'https://comunicaapi.pje.jus.br/api/v1/comunicacao';
+const limpar = h => { const d = new DOMParser().parseFromString(String(h || '').slice(0, 80000), 'text/html'); d.querySelectorAll('style,script').forEach(x => x.remove()); return (d.body.textContent || '').replace(/\s+/g, ' ').trim(); };
+const BANC = /consignad|empr[ée]stimo|\bRMC\b|\bRCC\b|reserva de margem|cart[ãa]o de cr[ée]dito|contrato banc[áa]rio|seguro prestamista|\bbanco\b|financeira|institui[çc][ãa]o financeira/i;
+const PREV = /\bINSS\b|instituto nacional do seguro social|previdenci[áa]ri|aposentadoria|aux[íi]lio[- ](?:doen[çc]a|acidente|reclus)|incapacidade (?:tempor|perman)|pens[ãa]o por morte|\bBPC\b|\bLOAS\b|benef[íi]cio assistencial|sal[áa]rio[- ]maternidade|tempo de contribui/i;
+let PROC = [], FILTRO = '', CLI = null;
+// bancos: mesma chave para o nome que vem no contrato e para o nome que vem no processo
+const BANCOS = [['Bradesco', /bradesco/i], ['Itaú', /ita[úu]/i], ['Pan', /\bpan\b/i], ['BMG', /\bbmg\b/i], ['C6', /\bc6\b/i], ['Daycoval', /daycoval/i], ['Santander', /santander|ol[ée] consignado|\bol[ée]\b/i], ['Mercantil', /mercantil/i], ['Safra', /safra/i], ['Facta', /facta/i], ['Agibank', /agibank|agiplan/i], ['Banrisul', /banrisul|rio grande do sul s/i], ['Caixa', /caixa econ[ôo]mica|\bcef\b/i], ['Banco do Brasil', /banco do brasil/i], ['Pine', /\bpine\b/i], ['BRB', /\bbrb\b/i], ['Paraná Banco', /paran[áa] banco/i], ['Inbursa', /inbursa/i], ['Master', /\bmaster\b/i], ['Crefisa', /crefisa/i], ['PicPay', /picpay/i], ['Digio', /digio/i], ['Cetelem', /cetelem|bnp paribas/i], ['Inter', /banco inter\b|\binter s/i], ['QI / Quali', /\bqi\b|quali/i], ['Parati', /parati/i], ['Presença', /presen[çc]a/i], ['Segue', /\bsegue\b/i], ['Finanto', /finanto/i], ['Sicoob', /sicoob/i], ['Sicredi', /sicredi/i], ['Nubank', /nubank|nu pagamentos|nu financeira/i], ['Crefaz', /crefaz/i], ['Capital Consig', /capital consig/i], ['Zema', /\bzema\b/i], ['Alfa', /banco alfa|financeira alfa/i], ['Votorantim / BV', /votorantim|\bbv\b/i]];
+const bancosEm = t => BANCOS.filter(([, re]) => re.test(t || '')).map(([k]) => k);
+function area(p) { const t = p.pubs.map(x => x.txt).join(' ') + ' ' + p.classe + ' ' + p.partes; const b = BANC.test(t), v = PREV.test(t) && (/^TRF/.test(p.tribunal) || /\bINSS\b|instituto nacional do seguro social/i.test(p.partes) || !b); return v && !/consignad/i.test(t) ? 'Previdenciário' : b ? 'Bancário' : v ? 'Previdenciário' : 'Outra área'; }
+function desenhar() {
+  const foco = $('#area').value === 'foco', base = PROC.filter(p => !foco || p.area !== 'Outra área'), vis = base.filter(p => !FILTRO || p.area === FILTRO);
+  const n = a => base.filter(p => p.area === a).length;
+  $('#kpis').innerHTML = PROC.length ? [['', 'Processos', base.length], ['Bancário', 'Bancário', n('Bancário')], ['Previdenciário', 'Previdenciário', n('Previdenciário')]].concat(foco ? [] : [['Outra área', 'Outras áreas', n('Outra área')]]).map(([k, t, v]) => `<div class="kpi${FILTRO === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('') : '';
+  $('#lista').innerHTML = vis.map(p => `<div class="it ${p.conflito.length ? 'atrasada' : p.area === 'Bancário' ? 'semana' : p.area === 'Previdenciário' ? 'hoje' : ''}"><div class="topo"><h3>${esc(p.numero)}</h3><span>${p.conflito.length ? `<span class="tag v">⚠ já tem processo contra ${esc(p.conflito.join(', '))}</span> ` : ''}<span class="tag${p.area === 'Previdenciário' ? ' a' : ''}">${esc(p.area)}</span></span></div>
+      <p>${esc(p.tribunal)} · ${esc(p.orgao)} · ${esc(p.classe)}<br><b style="color:var(--texto)">${esc(p.partes)}</b><br>${p.pubs.length} publicação(ões) · última em ${dBR(p.pubs[0].dia)}: <b style="color:var(--texto)">${esc(p.pubs[0].tipo)}</b></p>
+      <details><summary>Ver as publicações (da mais recente para a mais antiga)</summary>${p.pubs.map(x => `<div class="txt" style="border-top:1px solid rgba(30,144,255,.15);padding-top:8px"><b>${dBR(x.dia)} · ${esc(x.tipo)}</b>${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener" style="color:#8cc8ff">abrir no Diário</a>` : ''}<br>${esc(x.txt.slice(0, 1200))}${x.txt.length > 1200 ? '…' : ''}</div>`).join('')}</details></div>`).join('')
+    || (PROC.length ? '<div class="bloco sub">Nenhum processo dessa área. Troque o filtro para "Todas as áreas" para ver o restante.</div>' : '');
+}
+// conferência antes de indicar: o cliente já tem processo contra algum banco dos contratos que analisamos?
+function alerta(erro) {
+  const a = $('#alerta'); if (!CLI) { a.innerHTML = ''; return; }
+  const conf = PROC.filter(p => p.conflito.length), bs = CLI.bancos;
+  if (!bs.length) { a.innerHTML = `<div class="bloco" style="border-color:rgba(251,191,36,.5)"><b>${esc(CLI.nome)}</b>: o sistema ainda não leu contratos na pasta deste cliente, então não há banco para comparar. Veja a lista abaixo e compare à mão.</div>`; return; }
+  a.innerHTML = conf.length
+    ? `<div class="bloco" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.10)"><b style="color:#fca5a5">⚠ ${esc(CLI.nome)} já aparece em ${conf.length} processo(s) contra banco dos contratos analisados: ${esc([...new Set(conf.flatMap(p => p.conflito))].join(', '))}.</b><div class="sub" style="margin-top:6px">Antes de indicar, abra as publicações e confira três coisas: se é a mesma pessoa (a busca é por nome e traz homônimos), se o processo trata do mesmo contrato e se ainda está em andamento. Mesmo banco e mesmo contrato = risco de litispendência ou de coisa julgada.</div></div>`
+    : `<div class="bloco" style="border-color:rgba(34,197,94,.5)"><b style="color:#86efac">Nada encontrado contra ${esc(bs.join(', '))}</b> para ${esc(CLI.nome)} no período.${erro ? ' <b style="color:#fde68a">A busca não terminou: repita antes de confiar.</b>' : ''}<div class="sub" style="margin-top:6px">Isso não garante que não existe processo: o Diário Nacional só mostra o que foi publicado nele, no período escolhido, com o nome escrito igual. Processo antigo, em segredo de justiça ou com o nome grafado de outro jeito não aparece.</div></div>`;
+}
+async function buscar() {
+  let q = $('#q').value.trim(); const dig = q.replace(/\D/g, ''), porProc = dig.length === 20 && !/[a-zà-ú]{3}/i.test(q), b = $('#b');
+  CLI = null; $('#alerta').innerHTML = '';
+  // CPF: acha o cliente no CRM, pega o nome e os bancos dos contratos lidos, e busca pelo nome
+  if (dig.length === 11 && !/[a-zà-ú]{3}/i.test(q)) {
+    $('#msg').textContent = 'procurando o cliente no CRM…';
+    const { data, error } = await sb.rpc('peca_dados', { p_cpf: dig });
+    if (error || !data || !data.nome) { $('#msg').textContent = error ? 'Não consegui buscar o CPF: ' + error.message : 'CPF não encontrado entre os seus clientes do CRM. O Diário não aceita busca por CPF: digite o nome completo.'; return; }
+    CLI = { nome: data.nome, bancos: [...new Set((data.contratos || []).flatMap(k => bancosEm(k.banco)))] }; q = data.nome;
+  }
+  if (!porProc && q.split(/\s+/).length < 2) { $('#msg').textContent = 'Digite o nome completo (nome e sobrenome) ou os 20 dígitos do processo.'; return; }
+  b.disabled = true; PROC = []; FILTRO = ''; desenhar(); $('#msg').textContent = 'buscando no Diário…';
+  const de = new Date(Date.now() - (+$('#per').value) * 30.4 * 864e5).toISOString().slice(0, 10), ate = new Date().toISOString().slice(0, 10);
+  const itens = []; let total = 0, erro = '';
+  try {
+    for (let pag = 1; pag <= 6; pag++) {
+      const u = API + '?' + (porProc ? 'numeroProcesso=' + dig : 'nomeParte=' + encodeURIComponent(q) + '&dataDisponibilizacaoInicio=' + de + '&dataDisponibilizacaoFim=' + ate) + '&itensPorPagina=100&pagina=' + pag;
+      const r = await fetch(u, { headers: { Accept: 'application/json' } }); if (!r.ok) throw new Error(r.status === 429 ? 'o Diário pediu para esperar um pouco (muitas consultas seguidas)' : 'o Diário respondeu erro ' + r.status);
+      const j = await r.json(); total = j.count || 0; itens.push(...(j.items || [])); $('#msg').textContent = `buscando no Diário… ${itens.length} de ${total}`;
+      if ((j.items || []).length < 100) break; await new Promise(k => setTimeout(k, 800));
+    }
+  } catch (e) { erro = e.message; }
+  const M = new Map();
+  for (const it of itens) { if (it.ativo === false) continue; const n = it.numeroprocessocommascara || it.numero_processo || '(sem número)';
+    if (!M.has(n)) M.set(n, { numero: n, tribunal: it.siglaTribunal || '', orgao: it.nomeOrgao || '', classe: it.nomeClasse || '', nomes: new Set(), pubs: [] });
+    const p = M.get(n); (it.destinatarios || []).forEach(d => p.nomes.add(d.nome + (d.polo === 'A' ? ' (autor)' : d.polo === 'P' ? ' (réu)' : '')));
+    p.pubs.push({ dia: it.data_disponibilizacao, tipo: it.tipoDocumento || it.tipoComunicacao || 'Publicação', link: /^https:\/\//.test(it.link || '') ? it.link : '', txt: limpar(it.texto) }); }
+  PROC = [...M.values()].map(p => { p.partes = [...p.nomes].slice(0, 8).join('; '); p.pubs.sort((a, b) => String(b.dia).localeCompare(String(a.dia))); p.area = area(p); p.bancos = bancosEm(p.partes).length ? bancosEm(p.partes) : bancosEm(p.pubs.map(x => x.txt.slice(0, 1500)).join(' ')); p.conflito = CLI ? p.bancos.filter(k => CLI.bancos.includes(k)) : []; return p; }).sort((a, b) => (b.conflito.length - a.conflito.length) || String(b.pubs[0].dia).localeCompare(String(a.pubs[0].dia)));
+  b.disabled = false; alerta(erro);
+  $('#msg').textContent = erro ? 'Não consegui completar a busca: ' + erro + '.' + (PROC.length ? ' Mostrando o que veio.' : ' Tente de novo em um minuto.') : !PROC.length ? 'Nada publicado no Diário Nacional com esse ' + (porProc ? 'número' : 'nome') + ' no período. Confira a grafia: a busca é pelo nome exato.' : `${PROC.length} processo(s) em ${itens.length} publicação(ões)` + (total > itens.length ? `, de ${total} no total (mostrando as ${itens.length} mais recentes)` : '') + (porProc ? '.' : '. Atenção a homônimos: confira as partes.');
+  desenhar();
+}
+$('#f').addEventListener('submit', e => { e.preventDefault(); buscar(); });
+$('#cli').addEventListener('change', e => { if (e.target.value) { $('#q').value = e.target.value; buscar(); } });
+$('#area').addEventListener('change', () => { FILTRO = ''; desenhar(); });
+$('#kpis').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { FILTRO = k.dataset.f; desenhar(); } });
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
+    const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
+    if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
+    const qs = new URLSearchParams(location.search);
+    if (eu.papel !== 'admin' || qs.get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
+    const { data: cs } = await sb.rpc('peca_clientes');
+    $('#cli').innerHTML = '<option value="">Escolher um cliente seu…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join('');
+    document.body.hidden = false; if (qs.get('q')) { $('#q').value = qs.get('q'); buscar(); }
+  } catch (e) { location.replace('./'); }
+})();
+</script>
+</body>
+</html>
