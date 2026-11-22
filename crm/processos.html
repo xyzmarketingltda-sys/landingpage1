@@ -72,7 +72,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="litis.js?v=20261122d"></script>
+<script src="litis.js?v=20261122e"></script>
 <script>
 const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY), LT = XYZLitis;
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -153,10 +153,12 @@ async function carregarRobo() {
   const [{ data: L }, { data: R }] = await Promise.all([sb.rpc('litis_lista'), LIT ? sb.rpc('litis_resumo') : Promise.resolve({ data: null })]); const A = L || [], abertos = A.filter(a => !a.visto_em);
   if (!LIT) {   // advogado: só os processos novos dos clientes dele, achados pelo CPF. Sem conferência e sem aviso.
     $('#n-robo').textContent = A.length ? '(' + A.length + ')' : '';
-    $('#robo-res').innerHTML = '<h2>Processos dos meus clientes</h2><div class="sub">Quando você entra com a ação e ela sai no Diário de Justiça com o CPF do cliente, o robô acha sozinho e ela aparece aqui, já acompanhada: andamento, situação atual e aviso de sentença. Não precisa cadastrar o número.</div>';
+    $('#robo-res').innerHTML = '<h2>Processos dos meus clientes</h2><div class="sub">Quando você entra com a ação e ela sai no Diário de Justiça com o CPF do cliente, o robô acha sozinho e ela aparece aqui, já acompanhada: andamento, situação atual e aviso de sentença. Não precisa cadastrar o número. Entram aqui os processos em que o seu nome ou o do seu escritório aparece entre os advogados.</div>';
     $('#l-robo').innerHTML = A.map(a => `<div class="it ${a.sentenca_em ? 'hoje' : 'semana'}"><div class="topo"><h3>${esc(a.cliente)}</h3>${a.sentenca_em ? `<span class="tag a">sentença em ${dBR(a.sentenca_em)}${a.resultado ? ': ' + RES[a.resultado] : ''}</span>` : '<span class="tag">em andamento</span>'}</div>
     <p><b style="color:var(--texto)">${esc(a.numero)}</b> · ${esc(a.tribunal || '')} · ${esc(a.orgao || '')}<br>${esc(a.partes || '')}<br>Última publicação: ${dBR(a.ultima_pub)} (${esc(a.ultimo_tipo || '')})</p>
     <div class="acoes"><button data-ver="${so(a.numero)}">Ver o andamento e o resumo</button>${a.link ? `<a class="btn" href="${esc(a.link)}" target="_blank" rel="noopener">Abrir no Diário</a>` : ''}</div></div>`).join('') || '<div class="bloco sub">Nenhum processo dos seus clientes apareceu no Diário ainda. Assim que sair a primeira publicação com o CPF do cliente, ele entra aqui.</div>';
+    // os outros processos dos clientes (outro escritório, ou anteriores): só uma lista curta
+    const { data: O } = await sb.rpc('proc_outros'); if ((O || []).length) $('#l-robo').insertAdjacentHTML('beforeend', `<details style="margin-top:6px"><summary class="sub" style="cursor:pointer;font-size:12px">Outros processos dos seus clientes (${O.length})</summary><div class="sub" style="font-size:11.5px;line-height:1.7;margin-top:4px">${O.map(o => esc(o.cliente) + ' · ' + esc(o.numero) + ' · ' + esc(o.tribunal || '') + (o.ultima ? ' · última publicação ' + dBR(o.ultima) : '')).join('<br>')}</div></details>`);
     return;
   }
   $('#n-robo').textContent = abertos.length ? '(' + abertos.length + ')' : '';

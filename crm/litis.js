@@ -50,9 +50,11 @@
     const todos = [...alvo.keys()], nums = todos.slice(0, o.maxContratos || 25);
     const por = (it, prova, contrato) => {
       if (it.ativo === false) return; const n = it.numeroprocessocommascara || it.numero_processo || '?';
-      if (!M.has(n)) M.set(n, { numero: n, tribunal: it.siglaTribunal || '', orgao: it.nomeOrgao || '', classe: it.nomeClasse || '', nomes: new Map(), pubs: new Map(), provas: new Set(), contratos: new Set() });
+      if (!M.has(n)) M.set(n, { numero: n, tribunal: it.siglaTribunal || '', orgao: it.nomeOrgao || '', classe: it.nomeClasse || '', nomes: new Map(), pubs: new Map(), provas: new Set(), contratos: new Set(), advs: new Set() });
       const a = M.get(n); a.provas.add(prova); if (contrato) a.contratos.add(contrato);
       (it.destinatarios || []).forEach(d => a.nomes.set(d.nome, d.polo));
+      // advogados da publicação: é por eles que se sabe de qual escritório é o processo
+      (it.destinatarioadvogados || []).forEach(d => { const nm = d && d.advogado && d.advogado.nome; if (nm) a.advs.add(String(nm).toUpperCase().replace(/\s+/g, ' ').trim().slice(0, 60)); });
       if (!a.pubs.has(it.id)) a.pubs.set(it.id, { id: it.id, dia: it.data_disponibilizacao, tipo: it.tipoDocumento || it.tipoComunicacao || 'Publicação', link: /^https:\/\//.test(it.link || '') ? it.link : '', txt: limpar(it.texto) });
     };
     const tenta = async (rotulo, fn) => { aviso(rotulo); try { consultas++; await fn(); } catch (e) { erros.push(rotulo + ': ' + e.message); if (/429/.test(e.message)) throw e; } await espera(pausa); };
@@ -86,7 +88,7 @@
       // nível, do mais forte para o mais fraco: contrato citado e confirmado; CPF + mesmo banco; número de contrato sem confirmação; nome + banco; CPF com outro réu; só nome
       const nivel = a.provas.has('contrato') ? 'contrato' : a.provas.has('cpf') ? (conflito.length ? 'cpf_banco' : 'cpf') : a.provas.has('contrato_num') ? 'contrato_num' : conflito.length ? (a.provas.has('nome_uf') ? 'nome_uf_banco' : 'nome_banco') : 'nome';
       const area = /consignad|empr[ée]stimo|\bRMC\b|\bRCC\b|cart[ãa]o de cr[ée]dito|seguro prestamista/i.test(tudo) || bancos.length ? 'Bancário' : /\bINSS\b|previdenci|aposentadoria|aux[íi]lio|\bBPC\b|\bLOAS\b|pens[ãa]o por morte/i.test(tudo + ' ' + partes) ? 'Previdenciário' : 'Outra área';
-      return { numero: a.numero, tribunal: a.tribunal, orgao: a.orgao, classe: a.classe, partes, bancos, conflito, provas: [...a.provas], contratos: [...a.contratos], certo: nivel === 'contrato' || nivel === 'cpf_banco', nivel, area, sentenca: sent ? { dia: sent.dia, resultado: resultado(sent.txt) } : null, pubs };
+      return { numero: a.numero, tribunal: a.tribunal, orgao: a.orgao, classe: a.classe, partes, bancos, conflito, provas: [...a.provas, ...[...a.advs].slice(0, 12).map(x => 'adv:' + x)], advogados: [...a.advs], contratos: [...a.contratos], certo: nivel === 'contrato' || nivel === 'cpf_banco', nivel, area, sentenca: sent ? { dia: sent.dia, resultado: resultado(sent.txt) } : null, pubs };
     });
     const peso = { contrato: 0, cpf_banco: 1, contrato_num: 2, nome_uf_banco: 3, nome_banco: 4, cpf: 5, nome: 6 };
     achados.sort((x, y) => (peso[x.nivel] - peso[y.nivel]) || String(y.pubs[0].dia).localeCompare(String(x.pubs[0].dia)));
