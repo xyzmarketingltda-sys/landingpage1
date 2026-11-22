@@ -111,14 +111,14 @@ function textoRecl(c) {
       '2. O DIREITO', 'A prática é venda casada (art. 39, I, do Código de Defesa do Consumidor) e viola o dever de informação clara (art. 6º, III). O Superior Tribunal de Justiça fixou, no Tema 972, que o consumidor não pode ser compelido a contratar seguro com a instituição financeira ou com seguradora por ela indicada. A cobrança indevida deve ser devolvida em dobro (art. 42, parágrafo único, do CDC).', '',
       '3. OS PEDIDOS', 'a) cópia integral do contrato, da apólice ou do certificado do seguro e da prova de que a contratação foi opcional;', 'b) cancelamento do seguro e dos encargos acessórios não contratados;', 'c) devolução dos valores cobrados, em dobro, com o recálculo das parcelas;', 'd) número de protocolo desta reclamação e resposta por escrito neste mesmo e-mail.', '',
       '4. O PRAZO', 'A resposta é aguardada em até 10 dias úteis (Resolução CMN nº 4.860/2020). O silêncio ou a recusa serão levados ao Judiciário como prova da tentativa de solução administrativa e da resistência da instituição.', '',
-      'Atenciosamente,', adv, (EU && EU.email) || ''].join('\n') };
+      'Atenciosamente,', adv].join('\n') };
 }
 async function pdfRecl(c, para) {
   if (!window.jspdf) await new Promise((ok, er) => { const sc = document.createElement('script'); sc.src = 'vendor/jspdf.umd.min.js'; sc.onload = ok; sc.onerror = er; document.head.appendChild(sc); });
   const t = textoRecl(c), doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), agora = new Date(), M = 20, LARG = 170; let y = 20;
   const linha = (txt, o = {}) => { doc.setFont('helvetica', o.b ? 'bold' : 'normal'); doc.setFontSize(o.t || 11); for (const l of doc.splitTextToSize(txt || ' ', LARG)) { if (y > 277) { doc.addPage(); y = 20; } doc.text(l, M, y); y += o.e || 5.6; } };
   linha(para.includes('@') ? 'RECLAMAÇÃO ENVIADA POR E-MAIL' : 'RECLAMAÇÃO FORMAL', { b: 1, t: 14, e: 8 });
-  linha('De: ' + ((EU && EU.nome) || '') + ((EU && EU.email) ? ' <' + EU.email + '>' : '')); linha('Para: ' + para); linha('Assunto: ' + t.assunto);
+  linha('De: ' + ((EU && EU.nome) || '')); linha('Para: ' + para); linha('Assunto: ' + t.assunto);
   linha('Gerado em: ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
   y += 2; doc.setDrawColor(150); doc.line(M, y, M + LARG, y); y += 7;
   t.corpo.split('\n').forEach(l => linha(l, { b: /^\d\. [A-ZÇÃÕÉ ]+$/.test(l) || l.startsWith('Ref.:') }));
