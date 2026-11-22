@@ -36,12 +36,12 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 <body hidden>
 <main>
 <header><div><h1>🔎 Processos</h1><div class="sub">Diário de Justiça Eletrônico Nacional · bancário (consignado do INSS) e previdenciário</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
-<div class="abas"><button data-aba="conf" class="sel">Conferir antes de indicar</button><button data-aba="acomp">Processos acompanhados <span id="n-acomp"></span></button><button data-aba="robo" id="b-robo">Achados do robô <span id="n-robo"></span></button><button data-aba="busca">Busca livre</button></div>
+<div class="abas"><button data-aba="conf" class="sel" id="b-conf-aba">Conferir antes de indicar</button><button data-aba="acomp">Processos acompanhados <span id="n-acomp"></span></button><button data-aba="robo" id="b-robo">Achados do robô <span id="n-robo"></span></button><button data-aba="busca">Busca livre</button></div>
 
 <section id="aba-conf">
   <div class="bloco">
-    <h2>O cliente já tem processo contra o banco?</h2>
-    <div class="sub">O sistema procura no texto das publicações o <b>CPF</b> e o <b>número de cada contrato</b> do cliente, e depois o nome no tribunal do estado dele. CPF e contrato não têm homônimo.</div>
+    <h2 id="h-conf">O cliente já tem processo contra o banco?</h2>
+    <div class="sub" id="s-conf">O sistema procura no texto das publicações o <b>CPF</b> e o <b>número de cada contrato</b> do cliente, e depois o nome no tribunal do estado dele. CPF e contrato não têm homônimo.</div>
     <form id="f-conf" style="margin-top:10px">
       <div class="linha"><select id="cli" style="flex:1;min-width:230px"><option value="">Escolher um cliente do CRM…</option></select><input id="c-cpf" placeholder="ou CPF" inputmode="numeric" style="width:170px"></div>
       <details style="margin-top:8px"><summary class="sub" style="cursor:pointer">Lead que ainda não está no CRM: informar os dados à mão</summary>
@@ -80,7 +80,7 @@ const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '�
 const fmtProc = n => so(n).length === 20 ? so(n).replace(/(\d{7})(\d{2})(\d{4})(\d)(\d{2})(\d{4})/, '$1-$2.$3.$4.$5.$6') : n;
 const RES = { procedente: 'procedente', parcial: 'parcialmente procedente', improcedente: 'improcedente', acordo: 'acordo', extinto: 'extinto' };
 const COR = { contrato: 'v', cpf_banco: 'v', contrato_num: 'a', nome_uf_banco: 'a', nome_banco: 'a', cpf: '', nome: '' };
-let EU = null, ACOMP = [], SEG = new Set();
+let EU = null, ACOMP = [], SEG = new Set(), ADV = false;   // ADV: advogado ou admin, que vê a consulta como "processos do cliente", com o resumo aberto
 // resumo da situação do processo, montado pelas publicações
 function resumo(pubs) {
   const s = LT.situacao(pubs); if (!s) return '';
@@ -98,7 +98,7 @@ function cartao(a, cliente) {
   return `<div class="it ${forte ? 'atrasada' : COR[a.nivel] === 'a' ? 'hoje' : ''}"><div class="topo"><h3>${esc(a.numero)}</h3><span class="tag ${COR[a.nivel] || ''}">${esc(LT.ROTULO[a.nivel] || a.nivel)}</span></div>
     <p>${esc(a.tribunal)} · ${esc(a.orgao)} · ${esc(a.classe || '')}<br><b style="color:var(--texto)">${esc(a.partes)}</b>${a.contratos && a.contratos.length ? '<br>Contrato citado: <b style="color:#fca5a5">' + esc(a.contratos.join(', ')) + '</b>' : ''}
     <br>${a.sentenca ? `<b style="color:#fde68a">Já tem sentença (${dBR(a.sentenca.dia)}${a.sentenca.resultado ? ': ' + RES[a.sentenca.resultado] : ''})</b> · ` : 'Em andamento · '}${a.pubs.length} publicação(ões), última em ${dBR(a.pubs[0].dia)}</p>
-    <details><summary>Ver as publicações</summary>${pubsHtml(a.pubs)}</details><div class="acoes">${btSeguir(a.numero, cliente)}</div></div>`;
+    ${ADV ? resumo(a.pubs) : ''}<details><summary>Ver as publicações</summary>${pubsHtml(a.pubs)}</details><div class="acoes">${btSeguir(a.numero, cliente)}</div></div>`;
 }
 // ---------- conferir antes de indicar ----------
 async function conferir() {
@@ -115,7 +115,8 @@ async function conferir() {
   const falha = r.erros.length ? `<div class="sub" style="margin-top:6px;color:#fde68a"><b>Atenção:</b> ${r.erros.length} consulta(s) não responderam (${esc(r.erros.slice(0, 3).join('; '))}). Repita em um minuto antes de confiar no resultado.</div>` : '';
   const quem = `<b>${esc(p.nome || 'CPF ' + p.cpf)}</b>` + (p.fora ? ' <span class="sub">(dados informados à mão)</span>' : '');
   let topo;
-  if (fortes.length) topo = `<div class="bloco" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.10)"><b style="color:#fca5a5">⚠ NÃO INDICAR SEM CONFERIR.</b> ${quem} já tem ${fortes.length} processo(s) ${de('contrato').length && de('cpf_banco').length ? '(' + de('contrato').length + ' cita(m) o número de contrato analisado e ' + de('cpf_banco').length + ' tem(têm) o CPF dele contra banco dos contratos)' : de('contrato').length ? 'que cita(m) o número de contrato analisado' : 'com o CPF dele contra banco dos contratos analisados'}${[...new Set(fortes.flatMap(a => a.conflito))].length ? ' (' + esc([...new Set(fortes.flatMap(a => a.conflito))].join(', ')) + ')' : ''}.<div class="sub" style="margin-top:6px">Contrato citado = mesma causa: nova ação seria litispendência e, se a sentença já transitou em julgado, coisa julgada (CPC, art. 337, §§ 1º a 4º). CPF contra o mesmo banco: abra e veja se é o mesmo contrato; se for outro contrato, não há impedimento.</div>${falha}</div>`;
+  if (ADV && A.length) topo = `<div class="bloco" style="border-color:${fortes.length ? 'rgba(239,68,68,.6)' : 'rgba(251,191,36,.6)'}"><b>${A.length} processo(s) no Diário ligados a ${quem}.</b> ${fortes.length ? '<span style="color:#fca5a5">' + fortes.length + ' confirmado(s) pelo CPF ou pelo número de um contrato analisado' + ([...new Set(fortes.flatMap(a => a.conflito))].length ? ' (' + esc([...new Set(fortes.flatMap(a => a.conflito))].join(', ')) + ')' : '') + ': antes de ajuizar, veja se é a mesma causa (litispendência ou coisa julgada, CPC, art. 337, §§ 1º a 4º).</span> ' : ''}${A.length - fortes.length ? (A.length - fortes.length) + ' achado(s) só pelo nome: pode ser homônimo, compare as partes.' : ''}<div class="sub" style="margin-top:6px">Cada processo abaixo traz o resumo da situação, montado pelas publicações. Toque em "Acompanhar este processo" para ser avisado da sentença.</div>${falha}</div>`;
+  else if (fortes.length) topo = `<div class="bloco" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.10)"><b style="color:#fca5a5">⚠ NÃO INDICAR SEM CONFERIR.</b> ${quem} já tem ${fortes.length} processo(s) ${de('contrato').length && de('cpf_banco').length ? '(' + de('contrato').length + ' cita(m) o número de contrato analisado e ' + de('cpf_banco').length + ' tem(têm) o CPF dele contra banco dos contratos)' : de('contrato').length ? 'que cita(m) o número de contrato analisado' : 'com o CPF dele contra banco dos contratos analisados'}${[...new Set(fortes.flatMap(a => a.conflito))].length ? ' (' + esc([...new Set(fortes.flatMap(a => a.conflito))].join(', ')) + ')' : ''}.<div class="sub" style="margin-top:6px">Contrato citado = mesma causa: nova ação seria litispendência e, se a sentença já transitou em julgado, coisa julgada (CPC, art. 337, §§ 1º a 4º). CPF contra o mesmo banco: abra e veja se é o mesmo contrato; se for outro contrato, não há impedimento.</div>${falha}</div>`;
   else if (medios.length) topo = `<div class="bloco" style="border-color:rgba(251,191,36,.6)"><b style="color:#fde68a">Conferir à mão.</b> Há ${medios.length} processo(s) que podem ser de ${quem}: ${de('contrato_num').length ? de('contrato_num').length + ' cita(m) um número igual ao de um contrato dele, mas sem nome nem banco que confirme; ' : ''}${medios.length - de('contrato_num').length ? (medios.length - de('contrato_num').length) + ' com o mesmo nome contra banco dos contratos, sem CPF no texto (pode ser homônimo). ' : ''}Abra as publicações e compare.${falha}</div>`;
   else topo = `<div class="bloco" style="border-color:rgba(34,197,94,.5)"><b style="color:#86efac">Nada encontrado</b> para ${quem}${r.bancos.length ? ' contra ' + esc(r.bancos.join(', ')) : ''}.<div class="sub" style="margin-top:6px">Conferido: ${esc(oque)}. Leia o aviso no fim da página: isso reduz muito o risco, mas não é garantia.</div>${falha}</div>`;
   if (!p.fora && !r.contratosConferidos) topo += '<div class="bloco sub">O sistema ainda não leu números de contrato na pasta deste cliente (falta o extrato do INSS ou o robô não passou). A conferência usou só CPF e nome.</div>';
@@ -179,6 +180,7 @@ $('#f-busca').addEventListener('submit', async e => { e.preventDefault(); const 
     if (eu.papel !== 'admin' || qs.get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
     // atendente: só a conferência antes de indicar (CPF de cliente dela ou dados do lead à mão); o resto é de advogado e admin
     if (eu.papel === 'atendente') { document.querySelector('.abas').hidden = true; $('#cli').hidden = true; $('#c-cpf').style.flex = '1'; $('#c-cpf').placeholder = 'CPF do cliente (se já está lançado no CRM)'; document.querySelector('#f-conf details').open = true; document.body.hidden = false; if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); } return; }
+    ADV = true; if (LITIS) { $('#b-conf-aba').textContent = 'Processos do cliente'; $('#h-conf').textContent = 'Processos do seu cliente no Diário'; $('#s-conf').innerHTML = 'Escolha o cliente: o sistema procura o <b>CPF</b>, o <b>número de cada contrato</b> e o nome dele nas publicações e mostra cada processo com o resumo da situação atual.'; }
     if (LITIS) { const { data: cs } = await sb.rpc('peca_clientes');
       $('#cli').innerHTML = '<option value="">Escolher um cliente do CRM…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join(''); }
     if (eu.papel === 'admin') { const { data: advs } = await sb.rpc('lista_advogados'); $('#a-adv').hidden = false; $('#a-adv').innerHTML = '<option value="">Para mim (admin)</option>' + (advs || []).map(x => x.lista_advogados ?? x).sort().map(x => `<option>${esc(x)}</option>`).join(''); }
