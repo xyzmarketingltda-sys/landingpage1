@@ -36,7 +36,7 @@
 
   // Como o Diário indexa números: por "palavra". "325890378-4" vira as palavras 325890378 e 4, então a busca é pelo maior trecho
   // só de dígitos do número do contrato (testado: buscar o número inteiro com hífen, só os dígitos colados ou um pedaço não acha nada).
-  const trechoBusca = n => { const segs = String(n || '').split(/\D+/).filter(Boolean).sort((a, b) => b.length - a.length), m = segs[0] || ''; return m.length >= 6 ? m : ''; };
+  const trechoBusca = n => { const segs = String(n || '').split(/\D+/).filter(Boolean).sort((a, b) => b.length - a.length), m = segs[0] || ''; return m.length >= 8 ? m : ''; };   // menos de 8 dígitos casa com número de qualquer coisa
   /* p = { cpf, nome, cep ou uf, contratos: [{ n, banco, p }] } (contratos já em ordem de prioridade)
      o = { aviso(texto), pausa, maxContratos, meses, federal }
      devolve { achados, consultas, erros, bancos, uf, contratosConferidos, contratosTotal } */
@@ -46,7 +46,7 @@
     const bancosCli = [...new Set((p.contratos || []).flatMap(k => bancosEm(k.banco)))];
     // um trecho de busca por contrato (e a versão sem zeros à esquerda, quando houver), lembrando de qual banco é cada número
     const alvo = new Map();
-    (p.contratos || []).forEach(k => { const t = trechoBusca(k.n); if (!t) return; [t, t.replace(/^0+/, '')].forEach(v => { if (v.length >= 6 && !alvo.has(v)) alvo.set(v, { n: String(k.n), bancos: bancosEm(k.banco) }); }); });
+    (p.contratos || []).forEach(k => { const t = trechoBusca(k.n); if (!t) return; const z = t.replace(/^0+/, ''); [t].concat(z !== t && z.length >= 9 ? [z] : []).forEach(v => { if (!alvo.has(v)) alvo.set(v, { n: String(k.n), bancos: bancosEm(k.banco) }); }); });
     const todos = [...alvo.keys()], nums = todos.slice(0, o.maxContratos || 25);
     const por = (it, prova, contrato) => {
       if (it.ativo === false) return; const n = it.numeroprocessocommascara || it.numero_processo || '?';
@@ -64,10 +64,12 @@
       for (const n of nums) await tenta('contrato nº ' + alvo.get(n).n, async () => {
         const r = await buscar('texto=' + n, { max: 1, pausa }), re = new RegExp('(^|\\D)0*' + n + '(\\D|$)'), dono = alvo.get(n);
         r.itens.forEach(it => { const t = limpar(it.texto); if (!re.test(t) || !/contrato|empr[ée]stimo|consign|c[ée]dula|opera[çc][ãa]o|cart[ãa]o/i.test(t)) return;
+          const consig = /consign|empr[ée]stimo|benef[íi]cio\s+previdenci|\bINSS\b|\bRMC\b|\bRCC\b|refinanciamento|portabilidade/i.test(t);
           // o mesmo número pode existir em outro banco, para outra pessoa: só vale como "contrato" se o nome do cliente, o CPF ou o banco daquele contrato também aparecer
           const partes = (it.destinatarios || []).map(d => d.nome).join(' '), mesmoNome = nome.split(' ').length >= 2 && ((it.destinatarios || []).some(d => chave(d.nome) === nome) || chave(t).includes(nome));
           const mesmoBanco = bancosEm(partes + ' ' + t.slice(0, 6000)).some(b => dono.bancos.includes(b));
-          por(it, mesmoNome || mesmoBanco ? 'contrato' : 'contrato_num', dono.n); }); });
+          // sem o nome do cliente e sem o banco, número igual é quase sempre de outra pessoa (protocolo, outro contrato, valor): só entra se pedirem (o.fracos) e em texto de consignado
+          if (mesmoNome || (mesmoBanco && consig && n.length >= 9)) por(it, 'contrato', dono.n); else if (o.fracos && consig && n.length >= 9) por(it, 'contrato_num', dono.n); }); });
       if (nome.split(' ').length >= 2) {
         const de = new Date(Date.now() - (o.meses || 24) * 30.4 * 864e5).toISOString().slice(0, 10), ate = new Date().toISOString().slice(0, 10);
         const tribs = tribunaisDaUF(uf).filter(t => o.federal !== false || !/^TRF/.test(t) || bancosCli.includes('Caixa'));
@@ -117,7 +119,7 @@
     return { fase: at ? at.rot : 'Em andamento (sem fase identificada)', desde: at ? at.dia : ult.dia, proximo: at ? at.prox : 'Abra a última publicação para ver o que o juiz determinou.', resultado: visto.sentenca ? visto.sentenca.res : null, sentencaEm: visto.sentenca ? visto.sentenca.dia : null,
       ultima: { dia: ult.dia, tipo: ult.tipo }, parado: dias, marcos, total: L.length, primeira: L[0].dia };
   }
-  const ROTULO = { contrato: 'cita o número do contrato', cpf_banco: 'CPF confere e é contra banco dos contratos', contrato_num: 'cita um número igual ao do contrato (sem nome nem banco para confirmar)', cpf: 'CPF confere, outro réu', nome_uf_banco: 'mesmo nome, no estado do cliente, contra banco dos contratos', nome_banco: 'mesmo nome contra banco dos contratos (pode ser homônimo)', nome: 'mesmo nome (pode ser homônimo)' };
+  const ROTULO = { contrato: 'cita o número do contrato', cpf_banco: 'CPF confere e é contra banco dos contratos', contrato_num: 'cita um número igual ao do contrato, sem o nome do cliente (quase sempre é de outra pessoa)', cpf: 'CPF confere, outro réu', nome_uf_banco: 'mesmo nome, no estado do cliente, contra banco dos contratos', nome_banco: 'mesmo nome contra banco dos contratos (pode ser homônimo)', nome: 'mesmo nome (pode ser homônimo)' };
   root.XYZLitis = { verificar, buscar, bancosEm, cepUF, tribunaisDaUF, limpar, resultado, situacao, ROTULO, BANCOS };
   if (typeof module !== 'undefined') module.exports = root.XYZLitis;
 })(typeof window !== 'undefined' ? window : globalThis);
