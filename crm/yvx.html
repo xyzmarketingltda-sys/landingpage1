@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YVX · consulta INSS · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--painel:rgba(5,13,32,.82);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--ciano:#00e5ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+main{max-width:1060px;margin:0 auto;padding:20px 14px 70px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.logo{font-weight:800;font-size:30px;letter-spacing:2px;background:linear-gradient(90deg,#1e90ff,#00e5ff,#fbbf24);-webkit-background-clip:text;background-clip:text;color:transparent}
+a.btn,button{background:#0f2552;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 13px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
+button:disabled{opacity:.5}
+.sub{color:var(--suave);font-size:13px}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:13px;padding:6px 12px;border-radius:99px;border:1px solid var(--borda);background:rgba(255,255,255,.04)}
+.status i{width:9px;height:9px;border-radius:50%;background:#64748b}
+.status.on i{background:var(--verde);box-shadow:0 0 10px var(--verde);animation:pisca 2s infinite}.status.off i{background:var(--vermelho)}
+@keyframes pisca{50%{opacity:.45}}
+.busca{background:var(--painel);border:1px solid rgba(0,229,255,.4);border-radius:var(--raio);padding:18px;box-shadow:0 0 30px rgba(30,144,255,.18);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.busca input{flex:1;min-width:210px;background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:12px;padding:14px 16px;font:inherit;font-size:22px;letter-spacing:1px;font-weight:600}
+.busca input:focus{outline:none;border-color:var(--ciano);box-shadow:0 0 0 3px rgba(0,229,255,.15)}
+.busca button{background:linear-gradient(135deg,#0052ff,#1e90ff 55%,#00b8ff);border:0;font-weight:700;font-size:16px;padding:14px 22px;border-radius:12px}
+.aviso{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:18px;margin-top:14px;line-height:1.55}
+.heroi{margin-top:16px;border-radius:20px;padding:22px;background:linear-gradient(135deg,rgba(30,144,255,.22),rgba(5,13,32,.9) 55%);border:1px solid rgba(0,229,255,.35);position:relative;overflow:hidden;animation:sobe .35s ease}
+.heroi::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(251,191,36,.20),transparent 70%)}
+@keyframes sobe{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.heroi h2{font-size:25px;line-height:1.2;margin-bottom:6px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{font-size:13px;border-radius:99px;padding:5px 12px;background:rgba(255,255,255,.07);border:1px solid var(--borda)}
+.chip.o{color:#fde68a;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.10)}.chip.g{color:#86efac;border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.10)}
+.dest{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px;position:relative;z-index:1}
+.dest div{background:rgba(2,8,22,.55);border:1px solid var(--borda);border-radius:14px;padding:12px 14px}
+.dest span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--suave)}.dest b{display:block;font-size:21px;margin-top:3px;color:var(--ouro)}
+.abas{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 4px}
+.abas button{border-radius:99px;font-size:13px;padding:7px 14px}.abas button.sel{background:linear-gradient(135deg,#0052ff,#00b8ff);border-color:transparent;font-weight:700}
+.grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px}
+.cart{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:14px 16px;animation:sobe .35s ease}
+.cart h3{font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#bfe3ff}.cart h3 i{font-style:normal;font-size:19px}
+.campo{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed rgba(140,200,255,.12);font-size:14px}
+.campo:last-child{border-bottom:0}.campo span{color:var(--suave);flex:none;max-width:48%}.campo b{text-align:right;font-weight:600;word-break:break-word;cursor:copy}
+.campo b.vazio{color:#475569;font-weight:400;cursor:default}.campo b.din{color:#fde68a}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0b1a3a;border:1px solid var(--ciano);padding:9px 16px;border-radius:10px;font-size:14px;z-index:9}
+.nota{font-size:12.5px;color:var(--suave);line-height:1.6;margin-top:18px}
+</style>
+</head>
+<body hidden>
+<main>
+<header><div><div class="logo">YVX</div><div class="sub">Consulta por CPF na base do INSS</div></div>
+  <div class="linha" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="status" id="st"><i></i><span id="st-t">verificando o servidor…</span></span><a class="btn" href="./">← CRM</a></div></header>
+
+<form class="busca" id="f"><input id="cpf" placeholder="Digite o CPF" inputmode="numeric" autocomplete="off" maxlength="14" autofocus><button id="b">Consultar</button></form>
+<div id="saida"></div>
+<details class="aviso" id="hist-box" hidden><summary style="cursor:pointer"><b>Consultas dos últimos 30 dias</b> <span class="sub">(só o administrador vê)</span></summary><div id="hist" style="margin-top:10px"></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--borda)"><button type="button" id="b-chave">Copiar a chave do servidor</button> <span class="sub">O programa INICIAR YVX pede esta chave uma única vez, na primeira vez que abre. Não passe para ninguém.</span></div></details>
+<p class="nota">A base fica no computador do escritório: com ele desligado não há consulta. Cada consulta fica registrada com o nome de quem fez. Use só para atender o cliente que procurou a XYZ; os dados são pessoais e protegidos pela LGPD.</p>
+</main>
+<div id="toast" hidden></div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const CFG = window.CRM_CONFIG, sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const so = v => String(v || '').replace(/\D/g, '');
+const fmtCPF = c => { c = so(c).padStart(11, '0'); return c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'); };
+let SRV = null, EU = null, tt;
+function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 1800); }
+
+/* ---------- entender as colunas da planilha, sejam quais forem ---------- */
+const chave = n => String(n).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+const GRUPOS = [
+  ['margem', '💰', 'Margem', /margem|rmc|rcc|consignavel|comprometid|livre|disponivel/],
+  ['emprestimo', '🏦', 'Empréstimos e contratos', /emprest|contrato|parcela|saldo|taxa|prazo|averb|refin|portab|qtd|quant|consig|cartao/],
+  ['contato', '📞', 'Contato', /tel|fone|celular|ddd|email|e_mail|whats/],
+  ['endereco', '📍', 'Endereço', /endereco|logradouro|rua|bairro|cidade|municipio|^uf$|_uf$|^uf_|estado|cep|numero|complemento/],
+  ['pagamento', '💳', 'Onde recebe', /banco|agencia|conta|pagador|meio_pag|orgao/],
+  ['beneficio', '📄', 'Benefício', /^nb$|_nb$|^nb_|benef|especie|dib|ddb|dcb|situac|aps|valor|renda|salario|^mr$|competencia|concess/],
+  ['pessoa', '🧑', 'Identificação', /nome|cpf|nasc|idade|sexo|mae|pai|rg|identidade|estado_civil|obito|falec/]];
+const grupoDe = k => { for (const g of GRUPOS) if (g[3].test(k)) return g[0]; return 'outros'; };
+const ehDinheiro = k => /valor|vl_|_vl|margem|parcela|saldo|renda|salario|^mr$|emprestado|liberado|rmc|rcc/.test(k) && !/qtd|quant|data|dt_|prazo|numero|contrato/.test(k);
+const ehData = k => /data|^dt_|_dt$|nasc|dib|ddb|dcb|competencia/.test(k);
+const rotulo = n => { const t = String(n).replace(/_/g, ' ').trim(); return /^[A-Z0-9 ]+$/.test(t) && t.length > 4 ? t.charAt(0) + t.slice(1).toLowerCase() : t; };
+function dataBR(v) { v = String(v).trim(); let m;
+  if ((m = v.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${m[3]}/${m[2]}/${m[1]}`;
+  if ((m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/))) return m[0];
+  if ((m = v.match(/^(\d{4})(\d{2})(\d{2})$/)) && +m[1] > 1900 && +m[2] <= 12) return `${m[3]}/${m[2]}/${m[1]}`;
+  if ((m = v.match(/^(\d{2})(\d{2})(\d{4})$/)) && +m[3] > 1900 && +m[2] <= 12) return `${m[1]}/${m[2]}/${m[3]}`;
+  return v; }
+function num(v) { v = String(v).trim().replace(/[R$\s]/g, ''); if (!/^-?[\d.,]+$/.test(v)) return null; if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.'); const n = parseFloat(v); return isNaN(n) ? null : n; }
+const brl = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+function mostra(k, v) { v = String(v ?? '').trim(); if (!v || /^(null|nan|none)$/i.test(v)) return { t: '—', vazio: true };
+  if (/cpf/.test(k) && so(v).length >= 9 && so(v).length <= 11) return { t: fmtCPF(v) };
+  if (ehDinheiro(k)) { const n = num(v); if (n != null) return { t: brl(n), din: true }; }
+  if (ehData(k)) return { t: dataBR(v) };
+  if (/tel|fone|celular/.test(k) && so(v).length >= 10 && so(v).length <= 11) { const d = so(v); return { t: d.length === 11 ? d.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : d.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3') }; }
+  return { t: v }; }
+function idade(v) { const d = dataBR(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if (!d) return null; const n = new Date(+d[3], +d[2] - 1, +d[1]), h = new Date(); let a = h.getFullYear() - n.getFullYear(); if (h < new Date(h.getFullYear(), n.getMonth(), n.getDate())) a--; return a >= 0 && a < 125 ? a : null; }
+
+/* ---------- desenhar ---------- */
+let RES = null, SEL = 0;
+function desenhar() {
+  const L = RES.linhas, cols = RES.colunas.map(c => ({ n: c, k: chave(c) })), l = L[SEL] || {};
+  const acha = re => cols.find(c => re.test(c.k) && String(l[c.n] || '').trim());
+  const cNome = cols.find(c => /nome/.test(c.k) && !/mae|pai|banco|municipio|cidade|orgao|aps|social/.test(c.k)), cNasc = acha(/nasc/), cUF = acha(/^uf$|_uf$|^uf_|estado$/), cCid = acha(/cidade|municipio/), cEsp = acha(/especie/);
+  const id = cNasc ? idade(l[cNasc.n]) : null;
+  // destaques: até 4 valores em dinheiro, com margem e valor do benefício na frente
+  const dins = cols.filter(c => ehDinheiro(c.k) && num(l[c.n]) != null).sort((a, b) => (/margem|livre|disponivel/.test(b.k) - /margem|livre|disponivel/.test(a.k)) || (/benef|renda|^mr$|salario/.test(b.k) - /benef|renda|^mr$|salario/.test(a.k))).slice(0, 4);
+  let h = `<div class="heroi"><h2>${esc(cNome ? l[cNome.n] || 'Sem nome na base' : 'Registro encontrado')}</h2><div class="sub">CPF ${fmtCPF(RES.cpf)} · ${L.length} registro(s) na base${RES.mais ? ' (mostrando os primeiros ' + L.length + ')' : ''}</div>
+    <div class="chips">${id != null ? `<span class="chip o">${id} anos</span>` : ''}${cNasc ? `<span class="chip">nasc. ${esc(dataBR(l[cNasc.n]))}</span>` : ''}${cCid || cUF ? `<span class="chip">📍 ${esc([cCid && l[cCid.n], cUF && l[cUF.n]].filter(Boolean).join(' / '))}</span>` : ''}${cEsp ? `<span class="chip g">espécie ${esc(l[cEsp.n])}</span>` : ''}</div>
+    ${dins.length ? '<div class="dest">' + dins.map(c => `<div><span>${esc(rotulo(c.n))}</span><b>${brl(num(l[c.n]))}</b></div>`).join('') + '</div>' : ''}</div>`;
+  if (L.length > 1) { const cNB = cols.find(c => /^nb$|_nb$|^nb_|benef/.test(c.k) && so(L[0][c.n]).length >= 6) || cols.find(c => /contrato/.test(c.k));
+    h += '<div class="abas">' + L.map((x, i) => `<button type="button" data-i="${i}" class="${i === SEL ? 'sel' : ''}">${i + 1}${cNB && x[cNB.n] ? ' · ' + esc(rotulo(cNB.n)) + ' ' + esc(x[cNB.n]) : 'º registro'}</button>`).join('') + '</div>'; }
+  const por = {}; cols.forEach(c => { (por[grupoDe(c.k)] = por[grupoDe(c.k)] || []).push(c); });
+  const ordem = ['pessoa', 'beneficio', 'margem', 'emprestimo', 'pagamento', 'contato', 'endereco', 'outros'], INFO = Object.fromEntries(GRUPOS.map(g => [g[0], g])); INFO.outros = ['outros', '🗂️', 'Outros dados'];
+  h += '<div class="grade">' + ordem.filter(g => por[g]).map(g => `<div class="cart"><h3><i>${INFO[g][1]}</i>${INFO[g][2]}</h3>` + por[g].map(c => { const m = mostra(c.k, l[c.n]); return `<div class="campo"><span>${esc(rotulo(c.n))}</span><b class="${m.vazio ? 'vazio' : m.din ? 'din' : ''}" ${m.vazio ? '' : 'title="Toque para copiar"'}>${esc(m.t)}</b></div>`; }).join('') + '</div>').join('') + '</div>';
+  $('#saida').innerHTML = h;
+}
+$('#saida').addEventListener('click', e => { const a = e.target.closest('[data-i]'); if (a) { SEL = +a.dataset.i; desenhar(); return; }
+  const b = e.target.closest('.campo b:not(.vazio)'); if (b && navigator.clipboard) navigator.clipboard.writeText(b.textContent).then(() => toast('Copiado: ' + b.textContent)); });
+
+/* ---------- servidor do escritório ---------- */
+async function servidor() {
+  const { data } = await sb.rpc('yvx_onde'); SRV = data || { ligado: false };
+  let on = !!(SRV.ligado && SRV.url);
+  if (on) { try { const r = await fetch(SRV.url + '/saude', { cache: 'no-store' }); on = r.ok; } catch (e) { on = false; } }
+  SRV.on = on; $('#st').className = 'status ' + (on ? 'on' : 'off');
+  $('#st-t').textContent = on ? 'Servidor ligado' + (SRV.linhas ? ' · ' + Number(SRV.linhas).toLocaleString('pt-BR') + ' registros' : '') : 'Servidor desligado';
+  return on;
+}
+const desligado = () => `<div class="aviso"><b style="color:#fca5a5">O servidor da base está desligado.</b><br>A consulta só funciona com o computador do escritório ligado e o programa <b>INICIAR YVX</b> aberto.${SRV && SRV.visto_em ? ' Última vez ligado: ' + new Date(SRV.visto_em).toLocaleString('pt-BR') + '.' : ''}</div>`;
+$('#cpf').addEventListener('input', e => { const d = so(e.target.value).slice(0, 11); e.target.value = d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4'); });
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault(); const cpf = so($('#cpf').value), b = $('#b');
+  if (cpf.length !== 11) { $('#saida').innerHTML = '<div class="aviso">Digite o CPF completo (11 números).</div>'; return; }
+  b.disabled = true; b.textContent = 'Consultando…'; $('#saida').innerHTML = '';
+  try {
+    if (!SRV || !SRV.on) { if (!await servidor()) { $('#saida').innerHTML = desligado(); return; } }
+    const { data: { session } } = await sb.auth.getSession();
+    let r; try { r = await fetch(SRV.url + '/cpf/' + cpf, { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' }); } catch (x) { await servidor(); $('#saida').innerHTML = desligado(); return; }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { $('#saida').innerHTML = `<div class="aviso"><b style="color:#fca5a5">Não consegui consultar.</b> ${esc(j.erro || 'erro ' + r.status)}</div>`; return; }
+    if (!j.linhas || !j.linhas.length) { $('#saida').innerHTML = `<div class="aviso"><b style="color:#fde68a">CPF ${fmtCPF(cpf)} não está na base.</b><br><span class="sub">Confira se digitou certo. A base tem os benefícios do INSS da data em que foi gerada; quem se aposentou depois não aparece.</span></div>`; return; }
+    RES = Object.assign(j, { cpf }); SEL = 0; desenhar();
+  } finally { b.disabled = false; b.textContent = 'Consultar'; }
+});
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
+    const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
+    if (!eu || !eu.ativo || !['admin', 'atendente'].includes(eu.papel)) throw 0;
+    EU = eu; document.body.hidden = false; servidor(); setInterval(servidor, 90000);
+    const q = new URLSearchParams(location.search).get('cpf'); if (q && so(q).length === 11) { $('#cpf').value = fmtCPF(q); $('#f').requestSubmit(); }
+    if (eu.papel === 'admin') { const { data } = await sb.rpc('yvx_historico'); $('#hist-box').hidden = false;
+      $('#b-chave').onclick = async () => { const { data: k } = await sb.rpc('yvx_chave'); if (!k) return toast('Só o administrador'); try { await navigator.clipboard.writeText(k); toast('Chave copiada. Cole na janela do INICIAR YVX.'); } catch (e) { prompt('Copie a chave:', k); } };
+      $('#hist').innerHTML = (data || []).length ? data.map(x => `<div class="campo"><span>${esc(String(x.dia).split('-').reverse().join('/'))} · ${esc(x.quem || '?')}</span><b class="vazio" style="color:var(--texto)">${x.n} consulta(s)</b></div>`).join('') : '<span class="sub">Nenhuma consulta ainda.</span>'; }
+  } catch (e) { location.replace('./'); }
+})();
+</script>
+</body>
+</html>

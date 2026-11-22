@@ -395,6 +395,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
     <button data-aba="remarketing" id="nav-rmk">📣 Remarketing <span id="rmk-qt" hidden style="margin-left:4px;padding:1px 7px;border-radius:99px;background:#f97316;color:#fff;font-size:11px;font-weight:800"></span></button>
     <a class="nav-link" href="hiscon.html" style="margin-left:auto">🔎 HISCON, contratos e seguro</a>
     <a class="nav-link" id="nav-litis" href="processos.html" style="margin-left:8px" title="Antes de indicar: confere se o cliente já tem processo contra o banco, pelo CPF e pelo número do contrato" hidden>⚖️ Litispendência</a>
+    <a class="nav-link" id="nav-yvx" href="yvx.html" style="margin-left:8px" title="Consulta por CPF na base do INSS (funciona com o computador do escritório ligado)" hidden>🛰️ YVX</a>
     <a class="nav-link" id="nav-prev" href="previdenciario.html" style="margin-left:8px" hidden>⚖️ Previdenciário</a>
     <a class="nav-link" id="nav-painel" href="painel.html" style="margin-left:8px" hidden>📱 Painel</a>
     <a class="nav-link" id="nav-irreg" href="irregularidades.html" style="margin-left:8px" hidden>🔎 Irregularidades</a>
@@ -899,6 +900,7 @@ async function iniciar() {
   $('#nav-painel').hidden = !admin;    // painel do dono (celular): só admin
   $('#nav-irreg').hidden = !admin;     // irregularidades dos contratos: só admin e advogados (pelo /controle)
   $('#nav-prev').hidden = !admin;      // triagem previdenciária: por enquanto só admin e advogados
+  $('#nav-yvx').hidden = !(admin || eu.papel === 'atendente');
   $('#nav-litis').hidden = !(admin || eu.litis === true);   // litispendência: só admin e quem o admin liberar (Atendentes > Acessos e senhas)
   $('#f-at-box').hidden = !admin;
   $('#c-at-box').hidden = !admin;
