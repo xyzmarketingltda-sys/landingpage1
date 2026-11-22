@@ -40,7 +40,7 @@ table.r td.n{text-align:right;font-variant-numeric:tabular-nums}
 .selo.evitar{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}
 .selo.poucos{background:rgba(255,255,255,.06);color:var(--suave);border:1px solid var(--borda)}
 .nota-n{font-weight:800;font-size:16px}
-details.ex{border:1px solid var(--linha,#2a2a3a);border-radius:12px;padding:10px 12px;margin:8px 0}details.ex summary{cursor:pointer;line-height:1.5}details.ex small{color:var(--suave)}.ex-a{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}.ex-t{white-space:pre-wrap;font-size:14px;line-height:1.6;max-height:60vh;overflow:auto}
+details.ex{border:1px solid var(--borda);border-radius:12px;padding:10px 12px;margin:8px 0}details.ex summary{cursor:pointer;line-height:1.5}details.ex small{color:var(--suave)}.ex-a{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}.ex-t{white-space:pre-wrap;font-size:14px;line-height:1.6;max-height:60vh;overflow:auto}
 </style>
 </head>
 <body hidden>
@@ -60,7 +60,7 @@ details.ex{border:1px solid var(--linha,#2a2a3a);border-radius:12px;padding:10px
 <div style="overflow-x:auto;margin-top:10px"><table class="r"><thead><tr><th>Aparece na sentença</th><th class="n">Sentenças</th><th class="n">Procedentes</th><th class="n">Parciais</th><th class="n">Improcedentes</th><th class="n">Nota</th><th class="n">Dano moral (mediana)</th></tr></thead><tbody id="sinais"></tbody></table></div>
 <h2 style="margin:26px 0 6px;font-size:17px">Sentenças procedentes de exemplo</h2>
 <div class="sub">Sentenças totalmente procedentes, com dano moral, tiradas do Diário de Justiça. Seguem o tribunal e a tese escolhidos acima. Sirva-se da fundamentação como referência e confira no link do Diário antes de citar.</div>
-<div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap"><input id="ex-q" placeholder="Buscar no texto (ex.: perícia, analfabeto, Bradesco)…" style="flex:1;min-width:220px"><button class="btn" id="ex-b" type="button">Buscar</button></div>
+<div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap"><input id="ex-q" placeholder="Buscar no texto (ex.: perícia, analfabeto, Bradesco)…" style="flex:1;min-width:220px;background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:14px"><button class="btn" id="ex-b" type="button">Buscar</button></div>
 <div id="exemplos"></div>
 <p class="nota"><b>Como ler.</b> Fonte: sentenças publicadas no Diário de Justiça Eletrônico Nacional (CNJ) sobre empréstimo consignado em benefício do INSS (servidor público, militar e prefeitura ficam de fora), em ações de procedimento comum ou de Juizado. A nota vai de 0 a 100: procedente vale 1, parcialmente procedente 0,6 e improcedente 0; acordos e extinções ficam fora da conta. Selo: 70 ou mais = investir, 50 a 69 = testar, abaixo de 50 = evitar; com menos de 15 sentenças decididas no mérito, "poucos dados". A classificação é automática, pelo texto do dispositivo: serve para comparar comarcas, não substitui a leitura dos julgados. "Em dobro" é a parcela das procedências em que o juiz falou em devolução em dobro, entre as que trataram do assunto.</p>
 </main>
