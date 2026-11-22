@@ -568,7 +568,8 @@ body.embed{background:transparent}
           <div class="campo"><label>E-mail (login)</label><input type="email" id="a-email" required autocomplete="off"></div>
           <div class="campo"><label>Senha inicial (mín. 6 caracteres)</label><input id="a-senha" required minlength="6" autocomplete="off"></div>
           <div class="campo"><label>Tipo de acesso</label>
-            <select id="a-papel"><option value="atendente">Atendente (vê só os próprios clientes)</option><option value="admin">Administrador (vê tudo)</option></select>
+            <select id="a-papel"><option value="atendente">Atendente (vê só os próprios clientes)</option><option value="admin">Administrador (vê tudo)</option><option value="advogado">Advogado (entra no Controle, vê só os clientes dele)</option></select>
+            <small id="a-dica" style="color:var(--suave);display:none">Advogado entra no Controle digitando só o primeiro nome. O e-mail é preenchido sozinho.</small>
           </div>
           <button class="btn" style="width:100%" id="a-btn">Cadastrar</button>
         </form>
@@ -2135,6 +2136,9 @@ async function carregarLogs() {
     : '<div class="log">Nenhum acesso registrado ainda.</div>';
 }
 
+// advogado: o login é primeironome@adv.xyzmarketing.com.br (o Controle monta esse e-mail a partir do nome digitado)
+const emailAdv = () => { if ($('#a-papel').value !== 'advogado') { $('#a-dica').style.display = 'none'; return; } $('#a-dica').style.display = 'block'; const k = $('#a-nome').value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^dra?\.?\s*/, '').trim().split(/\s+/)[0].replace(/[^a-z]/g, ''); if (k) $('#a-email').value = k + '@adv.xyzmarketing.com.br'; };
+$('#a-papel').addEventListener('change', emailAdv); $('#a-nome').addEventListener('input', emailAdv);
 $('#form-at').onsubmit = async e => {
   e.preventDefault();
   const nome = $('#a-nome').value.trim(), email = $('#a-email').value.trim().toLowerCase(),
