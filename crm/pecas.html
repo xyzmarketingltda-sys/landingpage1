@@ -54,13 +54,20 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
   <button class="btn" id="word">Baixar em Word</button>
 </div>
 <div class="sub" id="quando"></div>
+<details class="aviso" style="margin:10px 0" id="timbre"><summary style="cursor:pointer"><b>Papel timbrado do escritório</b> · aparece no Word baixado e fica salvo neste aparelho</summary>
+  <div class="form" style="margin-top:10px">
+    <label>Cabeçalho (nome do escritório, OAB, endereço, telefone)<textarea id="t-cab" rows="3" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--borda);border-radius:10px;color:var(--texto);padding:9px 11px;font:inherit"></textarea></label>
+    <label>Rodapé (opcional)<textarea id="t-rod" rows="3" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--borda);border-radius:10px;color:var(--texto);padding:9px 11px;font:inherit"></textarea></label>
+    <label>Logotipo (imagem pequena, opcional)<input type="file" id="t-logo" accept="image/png,image/jpeg"><span class="sub" id="t-logo-info"></span></label>
+  </div>
+</details>
 <div class="form" id="form"></div>
 <div id="saida"></div>
 <p class="nota">O que você digita ou altera aqui fica só neste aparelho. Os dados do cliente vêm do CRM e você só enxerga os seus clientes.</p>
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="pecas.js?v=20261121a"></script>
+<script src="pecas.js?v=20261122a"></script>
 <script>
 const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -83,8 +90,8 @@ const poe = (k, v) => { if (v != null && v !== '') $('#c-' + k).value = v; };
 function usarContrato(i) {
   const k = CLI && CLI.contratos[i]; if (!k) return;
   ['banco', 'contrato', 'dataContrato', 'valorContrato', 'parcela', 'descontadas', 'seguro'].forEach(c => { $('#c-' + c).value = ''; });
-  poe('banco', k.banco); poe('contrato', k.numero); poe('dataContrato', dBRc(k.data)); poe('valorContrato', moeda(k.valor)); poe('parcela', moeda(k.parcela)); poe('descontadas', k.descontadas); poe('seguro', moeda(k.seguro));
-  $('#peca').value = k.seguro ? 'seguro' : 'nao-contratado'; desenhar();
+  poe('banco', k.banco); poe('contrato', k.numero); poe('dataContrato', dBRc(k.data)); poe('valorContrato', moeda(k.valor)); poe('parcela', moeda(k.parcela)); poe('descontadas', k.descontadas); poe('seguro', moeda(k.seguro)); $('#c-teses').value = (k.teses || []).join('; ');
+  if (!q.get('peca')) $('#peca').value = k.seguro ? 'seguro' : 'nao-contratado'; desenhar();
 }
 async function puxar(cpf) {
   if (so(cpf).length !== 11) return;
@@ -108,10 +115,17 @@ async function carregarClientes() {
   if (q.get('cpf')) { $('#cpf-busca').value = fmtCpf(q.get('cpf')); puxar(q.get('cpf')); }
 }
 document.addEventListener('input', desenhar);
+// papel timbrado: guardado só neste aparelho
+const TIMBRE = (() => { try { return JSON.parse(localStorage.getItem('xyz-timbre') || '{}'); } catch (e) { return {}; } })();
+const salvaTimbre = () => { try { localStorage.setItem('xyz-timbre', JSON.stringify(TIMBRE)); } catch (e) { $('#t-logo-info').textContent = 'Não consegui salvar neste aparelho (logotipo grande demais?).'; } };
+$('#t-cab').value = TIMBRE.cab || ''; $('#t-rod').value = TIMBRE.rod || ''; $('#t-logo-info').textContent = TIMBRE.logo ? ' logotipo salvo ✔' : '';
+$('#t-cab').addEventListener('input', e => { e.stopPropagation(); TIMBRE.cab = e.target.value; salvaTimbre(); });
+$('#t-rod').addEventListener('input', e => { e.stopPropagation(); TIMBRE.rod = e.target.value; salvaTimbre(); });
+$('#t-logo').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; if (f.size > 300000) { $('#t-logo-info').textContent = ' imagem grande demais: use uma com até 300 KB'; return; } const r = new FileReader(); r.onload = () => { TIMBRE.logo = r.result; salvaTimbre(); $('#t-logo-info').textContent = ' logotipo salvo ✔'; }; r.readAsDataURL(f); });
 $('#copiar').onclick = async () => { try { await navigator.clipboard.writeText(TXT); $('#copiar').textContent = 'Copiado ✔'; } catch (e) { $('#copiar').textContent = 'Selecione e copie manualmente'; } setTimeout(() => $('#copiar').textContent = 'Copiar texto', 1800); };
 $('#word').onclick = () => {
   const corpo = TXT.split('\n').map(l => l.trim() ? `<p style="margin:0 0 10pt;text-align:justify;${/^[A-ZÀ-Ú0-9 –\-\/,.ºª()]{12,}$/.test(l.trim()) ? 'font-weight:bold;text-align:center' : 'text-indent:1.25cm'}">${esc(l)}</p>` : '').join('');
-  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Arial;font-size:12pt;line-height:1.5}@page{margin:3cm 2cm 2cm 3cm}</style></head><body>${corpo}</body></html>`;
+  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Arial;font-size:12pt;line-height:1.5}@page{margin:3cm 2cm 2cm 3cm}</style></head><body>${TIMBRE.logo || TIMBRE.cab ? `<div style="text-align:center;border-bottom:1px solid #999;padding-bottom:6pt;margin-bottom:18pt">${TIMBRE.logo ? `<img src="${TIMBRE.logo}" height="60"><br>` : ''}${TIMBRE.cab ? `<span style="font-size:10pt">${esc(TIMBRE.cab).replace(/\n/g, '<br>')}</span>` : ''}</div>` : ''}${corpo}${TIMBRE.rod ? `<div style="text-align:center;border-top:1px solid #999;padding-top:6pt;margin-top:24pt;font-size:9pt">${esc(TIMBRE.rod).replace(/\n/g, '<br>')}</div>` : ''}</body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff', doc], { type: 'application/msword' })); a.download = 'peca_' + $('#peca').value + '_' + ($('#c-nome').value || 'cliente').replace(/\s+/g, '_').slice(0, 40) + '.doc'; a.click();
 };
 (async () => {

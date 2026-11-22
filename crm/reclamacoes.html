@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Central de reclamações · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--painel:rgba(5,13,32,.82);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+main{max-width:1000px;margin:0 auto;padding:20px 14px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:22px}h2{font-size:16px;margin:0 0 8px}
+a.btn,button{background:#0f2552;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
+button.ok{background:#0d3b24;border-color:rgba(34,197,94,.5)}button:disabled{opacity:.5}
+.sub{color:var(--suave);font-size:13px}
+.bloco{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:14px;margin-bottom:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px;cursor:pointer}.kpi.sel{border-color:#8cc8ff}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
+input,select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:16px}
+.linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.oab{display:inline-flex;gap:8px;align-items:center;background:#0f2552;border:1px solid var(--borda);border-radius:99px;padding:5px 6px 5px 12px;font-size:13px;margin:4px 6px 0 0}.oab button{padding:2px 8px;border-radius:99px;font-size:12px}
+.it{background:var(--painel);border:1px solid var(--borda);border-left:4px solid var(--borda);border-radius:var(--raio);padding:12px 14px;margin-bottom:10px}
+.it.atrasada{border-left-color:var(--vermelho)}.it.hoje{border-left-color:var(--ouro)}.it.semana{border-left-color:var(--azul)}.it.feita{opacity:.65;border-left-color:var(--verde)}
+.it .topo{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}.it h3{font-size:15px}
+.tag{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap;background:rgba(30,144,255,.15);color:#8cc8ff;border:1px solid var(--borda)}
+.tag.v{background:rgba(239,68,68,.18);color:#fca5a5;border-color:rgba(239,68,68,.5)}.tag.a{background:rgba(251,191,36,.15);color:#fde68a;border-color:rgba(251,191,36,.45)}.tag.g{background:rgba(34,197,94,.15);color:#86efac;border-color:rgba(34,197,94,.45)}
+.it p{font-size:13px;color:var(--suave);margin-top:6px;line-height:1.5}.it details{margin-top:6px}.it summary{cursor:pointer;font-size:13px;color:#8cc8ff}.it .txt{white-space:pre-wrap;font-size:13px;line-height:1.55;margin-top:6px;color:var(--texto)}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.nota{font-size:12.5px;color:var(--suave);line-height:1.6;margin-top:14px}
+</style>
+</head>
+<body hidden>
+<main>
+<header><div><h1>📮 Central de reclamações</h1><div class="sub" id="sub">carregando…</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+
+<div class="bloco">
+  <h2>Nova reclamação ao banco</h2>
+  <div class="sub">Registre aqui a reclamação que você protocolou no SAC ou na Ouvidoria. O sistema conta 10 dias úteis; se o banco não resolver, o caso vai para a inicial com o protocolo como prova.</div>
+  <form id="f" style="margin-top:10px">
+    <div class="linha">
+      <select id="r-cli" style="flex:1;min-width:230px"><option value="">Escolher cliente…</option></select>
+      <select id="r-ctr" hidden style="flex:1;min-width:230px"></select>
+    </div>
+    <div class="linha" style="margin-top:8px">
+      <input id="r-nome" placeholder="Nome do cliente" required style="flex:1;min-width:200px">
+      <input id="r-banco" placeholder="Banco" required style="flex:1;min-width:160px">
+      <input id="r-contrato" placeholder="Nº do contrato" style="width:170px">
+    </div>
+    <div class="linha" style="margin-top:8px">
+      <select id="r-canal"><option>Ouvidoria</option><option>SAC</option><option>consumidor.gov.br</option><option>Banco Central</option><option>Procon</option><option>E-mail / carta</option></select>
+      <input id="r-prot" placeholder="Protocolo" style="width:190px">
+      <label class="sub">Enviada em <input type="date" id="r-data" required></label>
+      <button class="ok" id="r-btn">Registrar</button>
+      <a class="btn" id="r-carta" target="_blank">Gerar a carta</a>
+    </div>
+    <div class="sub" id="r-msg" style="margin-top:6px"></div>
+  </form>
+</div>
+
+<div class="kpis" id="kpis"></div>
+<div id="lista"></div>
+<p class="nota"><b>Como ler.</b> O prazo é de 10 dias úteis a partir do envio (segunda a sexta, sem feriados), que é o prazo de resposta das ouvidorias dos bancos; confira a norma do Banco Central em vigor. A reclamação não é obrigatória para entrar com a ação, mas o protocolo sem resposta ajuda a afastar a alegação de falta de interesse de agir e mostra a recusa do banco. Guarde o comprovante do protocolo na pasta do cliente.</p>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—', so = v => String(v || '').replace(/\D/g, '');
+const hoje = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+const dias = v => Math.round((new Date(v + 'T12:00:00') - new Date(hoje() + 'T12:00:00')) / 864e5);
+const ST = { aberta: 'aguardando o banco', resolvida: 'banco resolveu', respondida_sem_solucao: 'respondeu sem resolver', sem_resposta: 'sem resposta', virou_acao: 'virou ação' };
+let EU = null, L = [], FILTRO = 'aberta', CLI = null;
+const peca = (r, qual) => 'pecas.html?peca=' + qual + (r.cpf ? '&cpf=' + r.cpf : '') + '&banco=' + encodeURIComponent(r.banco || '') + '&contrato=' + encodeURIComponent(r.contrato || '') + '&protocolo=' + encodeURIComponent(r.protocolo || '') + (EU.papel !== 'admin' ? '&de=controle' : '');
+function desenhar() {
+  const n = f => L.filter(f).length, venc = r => r.status === 'aberta' && dias(r.vence) < 0;
+  $('#kpis').innerHTML = [['aberta', 'Aguardando', n(r => r.status === 'aberta' && !venc(r))], ['vencida', 'Prazo vencido', n(venc)], ['fim', 'Encerradas', n(r => r.status !== 'aberta')]].map(([k, t, v]) => `<div class="kpi${FILTRO === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('');
+  const vis = L.filter(r => FILTRO === 'fim' ? r.status !== 'aberta' : FILTRO === 'vencida' ? venc(r) : r.status === 'aberta' && !venc(r));
+  $('#lista').innerHTML = vis.length ? vis.map(r => { const d = dias(r.vence), ab = r.status === 'aberta';
+    return `<div class="it ${!ab ? 'feita' : d < 0 ? 'atrasada' : d <= 2 ? 'hoje' : 'semana'}"><div class="topo"><h3>${esc(r.cliente)} <small style="color:var(--suave);font-weight:400">× ${esc(r.banco)}</small></h3>${!ab ? `<span class="tag g">${esc(ST[r.status] || r.status)}</span>` : d < 0 ? `<span class="tag v">prazo venceu há ${-d} dia${d === -1 ? '' : 's'}</span>` : `<span class="tag${d <= 2 ? ' a' : ''}">${d === 0 ? 'vence hoje' : 'faltam ' + d + ' dia' + (d === 1 ? '' : 's')} · ${dBR(r.vence)}</span>`}</div>
+      <p>${esc(r.canal)}${r.protocolo ? ' · protocolo <b style="color:var(--texto)">' + esc(r.protocolo) + '</b>' : ' · <b style="color:#fde68a">sem protocolo anotado</b>'}${r.contrato ? ' · contrato ' + esc(r.contrato) : ''} · enviada em ${dBR(r.enviada_em)}${EU.papel === 'admin' ? ' · ' + esc(r.advogado) : ''}${r.resposta ? '<br>Resposta: ' + esc(r.resposta) : ''}</p>
+      <div class="acoes">${ab ? `<button class="ok" data-s="resolvida" data-id="${r.id}">Banco resolveu</button><button data-s="respondida_sem_solucao" data-id="${r.id}">Respondeu sem resolver</button>${d < 0 ? `<button data-s="sem_resposta" data-id="${r.id}">Não respondeu</button>` : ''}` : `<button data-s="aberta" data-id="${r.id}">Reabrir</button>`}
+        ${r.status === 'respondida_sem_solucao' || r.status === 'sem_resposta' || (ab && d < 0) ? `<a class="btn" href="${peca(r, 'nao-contratado')}" target="_blank" data-acao="${r.id}">Gerar a inicial</a>` : ''}<a class="btn" href="${peca(r, 'reclamacao')}" target="_blank">Ver a carta</a></div></div>`; }).join('')
+    : `<div class="bloco sub">${L.length ? 'Nada nesse filtro.' : 'Nenhuma reclamação registrada ainda.'}</div>`;
+}
+async function carregar() {
+  const { data, error } = await sb.rpc('recl_lista'); if (error) { $('#sub').textContent = 'não consegui carregar: ' + error.message; return; }
+  L = data || []; $('#sub').textContent = `${L.filter(r => r.status === 'aberta').length} aguardando resposta`; desenhar();
+}
+function carta() { $('#r-carta').href = peca({ cpf: so($('#r-cli').value), banco: $('#r-banco').value, contrato: $('#r-contrato').value, protocolo: $('#r-prot').value }, 'reclamacao'); }
+$('#f').addEventListener('input', carta);
+$('#kpis').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { FILTRO = k.dataset.f; desenhar(); } });
+$('#lista').addEventListener('click', async e => {
+  const a = e.target.closest('[data-acao]'); if (a) { sb.rpc('recl_status', { p_id: +a.dataset.acao, p_status: 'virou_acao' }).then(carregar); return; }
+  const b = e.target.closest('[data-s]'); if (!b) return; let resp = null;
+  if (b.dataset.s === 'resolvida' || b.dataset.s === 'respondida_sem_solucao') { resp = prompt('O que o banco respondeu? (opcional)') ; if (resp === null) return; }
+  b.disabled = true; const { error } = await sb.rpc('recl_status', { p_id: +b.dataset.id, p_status: b.dataset.s, p_resposta: resp }); if (error) { b.disabled = false; b.textContent = error.message; return; } carregar(); });
+$('#r-cli').addEventListener('change', async e => {
+  const cpf = e.target.value; CLI = null; $('#r-ctr').hidden = true; if (!cpf) return;
+  $('#r-nome').value = e.target.selectedOptions[0].dataset.nome || '';
+  const { data } = await sb.rpc('peca_dados', { p_cpf: so(cpf) }); CLI = data; const K = (data && data.contratos) || [];
+  if (K.length) { $('#r-ctr').hidden = false; $('#r-ctr').innerHTML = '<option value="">Escolher contrato…</option>' + K.map((k, i) => `<option value="${i}">${esc((k.banco || 'banco?') + ' · ' + dBR(k.data) + (k.numero ? ' · nº ' + k.numero : ''))}</option>`).join(''); }
+  carta();
+});
+$('#r-ctr').addEventListener('change', e => { const k = CLI && CLI.contratos[+e.target.value]; if (!k || e.target.value === '') return; $('#r-banco').value = k.banco || ''; $('#r-contrato').value = k.numero || ''; carta(); });
+$('#f').addEventListener('submit', async e => { e.preventDefault(); const b = $('#r-btn'); b.disabled = true;
+  const { error } = await sb.rpc('recl_salvar', { p: { cpf: so($('#r-cli').value), cliente: $('#r-nome').value, banco: $('#r-banco').value, contrato: $('#r-contrato').value, canal: $('#r-canal').value, protocolo: $('#r-prot').value, enviada_em: $('#r-data').value } });
+  b.disabled = false; $('#r-msg').textContent = error ? 'Não salvou: ' + error.message : 'Registrada. O prazo de 10 dias úteis começou a contar.'; if (!error) { ['r-banco', 'r-contrato', 'r-prot'].forEach(i => $('#' + i).value = ''); FILTRO = 'aberta'; carregar(); } });
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
+    const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
+    if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
+    EU = eu; if (eu.papel !== 'admin' || new URLSearchParams(location.search).get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
+    $('#r-data').value = hoje(); carta();
+    const { data: cs } = await sb.rpc('peca_clientes');
+    $('#r-cli').innerHTML = '<option value="">Escolher cliente (ou digite o nome abaixo)…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}" data-nome="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
+    document.body.hidden = false; carregar();
+  } catch (e) { location.replace('./'); }
+})();
+</script>
+</body>
+</html>
