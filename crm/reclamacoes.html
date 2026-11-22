@@ -57,6 +57,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
       <a class="btn" id="r-carta" target="_blank">Gerar a carta</a>
     </div>
     <div class="sub" id="r-msg" style="margin-top:6px"></div>
+    <div id="canais" hidden style="margin-top:12px;padding:12px 14px;border:1px solid rgba(251,191,36,.4);border-radius:12px;background:rgba(251,191,36,.06)"></div>
   </form>
 </div>
 
@@ -92,8 +93,38 @@ async function carregar() {
   const { data, error } = await sb.rpc('recl_lista'); if (error) { $('#sub').textContent = 'não consegui carregar: ' + error.message; return; }
   L = data || []; $('#sub').textContent = `${L.filter(r => r.status === 'aberta').length} aguardando resposta`; desenhar();
 }
+/* ---------- central do banco: e-mail com 1 clique, arquivo do e-mail e carta ---------- */
+let CANAIS = [];
+const semAc = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+function canalDe(banco) { const b = ' ' + semAc(banco) + ' '; if (b.trim().length < 2) return null; let melhor = null, tam = 0; for (const c of CANAIS) for (const k of c.chaves || []) { const q = ' ' + semAc(k) + ' '; if (b.includes(q) && q.length > tam) { melhor = c; tam = q.length; } } return melhor; }
+function textoRecl(c) {
+  const nome = $('#r-nome').value.trim() || '[NOME DO CLIENTE]', cpf = so($('#r-cli').value), ctr = $('#r-contrato').value.trim(), adv = (EU && EU.nome) || '[ADVOGADO]';
+  const cpfF = cpf.length === 11 ? cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '[CPF]';
+  return { assunto: `Reclamação formal - ${nome} - CPF ${cpfF}${ctr ? ' - contrato ' + ctr : ''}`,
+    corpo: [`À Ouvidoria de ${(c && (c.razao || c.nome)) || $('#r-banco').value || '[BANCO]'}`, '',
+      `Na qualidade de advogado(a) de ${nome}, CPF ${cpfF}, venho registrar RECLAMAÇÃO FORMAL referente ao contrato de empréstimo consignado${ctr ? ' nº ' + ctr : ''} firmado com esta instituição.`, '',
+      'O(a) cliente não reconhece ter contratado, de forma livre e informada, o seguro prestamista e os demais encargos acessórios embutidos na operação, cobrados junto com o empréstimo.', '',
+      'Diante disso, requer:', '1) cópia integral do contrato, da apólice ou certificado do seguro e do comprovante de que a contratação do seguro foi opcional;', '2) o cancelamento do seguro e dos encargos acessórios não contratados;', '3) a devolução dos valores cobrados, com o recálculo das parcelas;', '4) o número de protocolo desta reclamação e a resposta por escrito neste mesmo e-mail.', '',
+      'Fica a instituição ciente de que a falta de resposta ou a recusa, no prazo de 10 dias úteis (Resolução CMN nº 4.860/2020), será levada ao Judiciário como prova da tentativa de solução administrativa.', '',
+      'Segue anexa a procuração.', '', 'Atenciosamente,', adv, (EU && EU.email) || ''].join('\n') };
+}
+function canais() {
+  const cx = $('#canais'), c = canalDe($('#r-banco').value); if (!cx) return;
+  if (!$('#r-banco').value.trim()) { cx.hidden = true; return; } cx.hidden = false;
+  if (!c) { cx.innerHTML = '<b style="color:#fde68a">Central deste banco ainda não cadastrada.</b> <span class="sub">Use "Gerar a carta" e avise a XYZ para incluirmos o e-mail e o endereço.</span>'; return; }
+  const t = textoRecl(c), para = c.email_ouvidoria || c.email_sac || '';
+  const mailto = 'mailto:' + encodeURIComponent(para) + '?subject=' + encodeURIComponent(t.assunto) + '&body=' + encodeURIComponent(t.corpo);
+  const end = [c.endereco, c.cidade_uf, c.cep ? 'CEP ' + c.cep : ''].filter(Boolean).join(' · ');
+  cx.innerHTML = `<b style="color:#fde68a">Central do banco: ${esc(c.razao || c.nome)}</b>
+    <div class="sub" style="margin:6px 0 10px;line-height:1.6">${para ? 'E-mail' + (c.email_ouvidoria ? ' da Ouvidoria' : ' do SAC') + ': <b style="color:var(--texto)">' + esc(para) + '</b><br>' : '<b style="color:#fca5a5">Este banco não divulga e-mail de ouvidoria.</b> Use o formulário ou a carta.<br>'}${end ? 'Endereço para carta: <b style="color:var(--texto)">' + esc(end) + '</b><br>' : ''}${c.tel_ouvidoria ? 'Ouvidoria ' + esc(c.tel_ouvidoria) + ' · ' : ''}${c.tel_sac ? 'SAC ' + esc(c.tel_sac) : ''}${c.obs ? '<br>' + esc(c.obs) : ''}</div>
+    <div class="linha">${para ? '<a class="btn" id="c-mail" href="' + esc(mailto) + '">Enviar e-mail ao banco</a><button type="button" class="btn sec" id="c-eml">Baixar o e-mail (arquivo)</button>' : ''}${c.formulario ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(c.formulario) + '">Abrir formulário da Ouvidoria</a>' : ''}<button type="button" class="btn sec" id="c-copia">Copiar o texto</button><a class="btn sec" id="c-carta" target="_blank" href="${esc($('#r-carta').href || '#')}">Carta para imprimir</a></div>
+    <div class="sub" style="margin-top:8px">O e-mail abre no seu programa de e-mail, já preenchido: anexe a procuração e envie. Depois salve o e-mail enviado em PDF (com data e hora) para juntar como prova e clique em Registrar com o canal "E-mail / carta".</div>`;
+  const cp = $('#c-copia'); if (cp) cp.onclick = () => navigator.clipboard.writeText(t.assunto + '\n\n' + t.corpo).then(() => { cp.textContent = 'Copiado'; });
+  const em = $('#c-eml'); if (em) em.onclick = () => { const eml = ['To: ' + para, 'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(t.assunto))) + '?=', 'X-Unsent: 1', 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', t.corpo].join('\r\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([eml], { type: 'message/rfc822' })); a.download = 'reclamacao-' + semAc($('#r-nome').value).toLowerCase().replace(/ /g, '-').slice(0, 40) + '.eml'; a.click(); };
+  const ml = $('#c-mail'); if (ml) ml.addEventListener('click', () => { $('#r-canal').value = 'E-mail / carta'; });
+}
 function carta() { $('#r-carta').href = peca({ cpf: so($('#r-cli').value), banco: $('#r-banco').value, contrato: $('#r-contrato').value, protocolo: $('#r-prot').value }, 'reclamacao'); }
-$('#f').addEventListener('input', carta);
+$('#f').addEventListener('input', () => { carta(); canais(); });
 $('#kpis').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { FILTRO = k.dataset.f; desenhar(); } });
 $('#lista').addEventListener('click', async e => {
   const a = e.target.closest('[data-acao]'); if (a) { sb.rpc('recl_status', { p_id: +a.dataset.acao, p_status: 'virou_acao' }).then(carregar); return; }
@@ -107,17 +138,18 @@ $('#r-cli').addEventListener('change', async e => {
   if (K.length) { $('#r-ctr').hidden = false; $('#r-ctr').innerHTML = '<option value="">Escolher contrato…</option>' + K.map((k, i) => `<option value="${i}">${esc((k.banco || 'banco?') + ' · ' + dBR(k.data) + (k.numero ? ' · nº ' + k.numero : ''))}</option>`).join(''); }
   carta();
 });
-$('#r-ctr').addEventListener('change', e => { const k = CLI && CLI.contratos[+e.target.value]; if (!k || e.target.value === '') return; $('#r-banco').value = k.banco || ''; $('#r-contrato').value = k.numero || ''; carta(); });
+$('#r-ctr').addEventListener('change', e => { const k = CLI && CLI.contratos[+e.target.value]; if (!k || e.target.value === '') return; $('#r-banco').value = k.banco || ''; $('#r-contrato').value = k.numero || ''; carta(); canais(); });
 $('#f').addEventListener('submit', async e => { e.preventDefault(); const b = $('#r-btn'); b.disabled = true;
   const { error } = await sb.rpc('recl_salvar', { p: { cpf: so($('#r-cli').value), cliente: $('#r-nome').value, banco: $('#r-banco').value, contrato: $('#r-contrato').value, canal: $('#r-canal').value, protocolo: $('#r-prot').value, enviada_em: $('#r-data').value } });
   b.disabled = false; $('#r-msg').textContent = error ? 'Não salvou: ' + error.message : 'Registrada. O prazo de resposta começou a contar.'; if (!error) { ['r-banco', 'r-contrato', 'r-prot'].forEach(i => $('#' + i).value = ''); FILTRO = 'aberta'; carregar(); } });
 (async () => {
   try {
     const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
-    const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
+    const { data: eu } = await sb.from('perfis').select('papel,ativo,nome,email').eq('id', session.user.id).single();
     if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
     EU = eu; if (eu.papel !== 'admin' || new URLSearchParams(location.search).get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
     $('#r-data').value = hoje(); carta();
+    sb.from('banco_canais').select('*').then(({ data }) => { CANAIS = data || []; canais(); });
     const { data: cs } = await sb.rpc('peca_clientes');
     $('#r-cli').innerHTML = '<option value="">Escolher cliente (ou digite o nome abaixo)…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}" data-nome="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
     document.body.hidden = false; carregar();
