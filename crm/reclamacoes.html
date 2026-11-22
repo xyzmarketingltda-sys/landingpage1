@@ -100,27 +100,45 @@ function canalDe(banco) { const b = ' ' + semAc(banco) + ' '; if (b.trim().lengt
 function textoRecl(c) {
   const nome = $('#r-nome').value.trim() || '[NOME DO CLIENTE]', cpf = so($('#r-cli').value), ctr = $('#r-contrato').value.trim(), adv = (EU && EU.nome) || '[ADVOGADO]';
   const cpfF = cpf.length === 11 ? cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '[CPF]';
-  return { assunto: `Reclamação formal - ${nome} - CPF ${cpfF}${ctr ? ' - contrato ' + ctr : ''}`,
-    corpo: [`À Ouvidoria de ${(c && (c.razao || c.nome)) || $('#r-banco').value || '[BANCO]'}`, '',
-      `Na qualidade de advogado(a) de ${nome}, CPF ${cpfF}, venho registrar RECLAMAÇÃO FORMAL referente ao contrato de empréstimo consignado${ctr ? ' nº ' + ctr : ''} firmado com esta instituição.`, '',
-      'O(a) cliente não reconhece ter contratado, de forma livre e informada, o seguro prestamista e os demais encargos acessórios embutidos na operação, cobrados junto com o empréstimo.', '',
-      'Diante disso, requer:', '1) cópia integral do contrato, da apólice ou certificado do seguro e do comprovante de que a contratação do seguro foi opcional;', '2) o cancelamento do seguro e dos encargos acessórios não contratados;', '3) a devolução dos valores cobrados, com o recálculo das parcelas;', '4) o número de protocolo desta reclamação e a resposta por escrito neste mesmo e-mail.', '',
-      'Fica a instituição ciente de que a falta de resposta ou a recusa, no prazo de 10 dias úteis (Resolução CMN nº 4.860/2020), será levada ao Judiciário como prova da tentativa de solução administrativa.', '',
-      'Segue anexa a procuração.', '', 'Atenciosamente,', adv, (EU && EU.email) || ''].join('\n') };
+  const banco = (c && (c.razao || c.nome)) || $('#r-banco').value || '[BANCO]';
+  return { banco, assunto: `RECLAMAÇÃO FORMAL - ${nome} - CPF ${cpfF}${ctr ? ' - contrato ' + ctr : ''}`,
+    corpo: [`À Ouvidoria de ${banco}${c && c.cnpj ? ' (CNPJ ' + c.cnpj + ')' : ''}`, '',
+      `Ref.: contrato de empréstimo consignado${ctr ? ' nº ' + ctr : ''} - ${nome}, CPF ${cpfF}`, '',
+      `Prezados,`, '',
+      `Na qualidade de advogado(a) constituído(a) de ${nome} (procuração anexa), registro RECLAMAÇÃO FORMAL sobre o contrato acima.`, '',
+      '1. OS FATOS', 'Junto com o empréstimo foi cobrado seguro prestamista e/ou outros encargos acessórios que o(a) cliente não escolheu contratar. Não lhe foi dada a opção de recusar o seguro nem de contratá-lo com outra seguradora, e o valor foi somado ao financiamento, com juros sobre ele.', '',
+      '2. O DIREITO', 'A prática é venda casada (art. 39, I, do Código de Defesa do Consumidor) e viola o dever de informação clara (art. 6º, III). O Superior Tribunal de Justiça fixou, no Tema 972, que o consumidor não pode ser compelido a contratar seguro com a instituição financeira ou com seguradora por ela indicada. A cobrança indevida deve ser devolvida em dobro (art. 42, parágrafo único, do CDC).', '',
+      '3. OS PEDIDOS', 'a) cópia integral do contrato, da apólice ou do certificado do seguro e da prova de que a contratação foi opcional;', 'b) cancelamento do seguro e dos encargos acessórios não contratados;', 'c) devolução dos valores cobrados, em dobro, com o recálculo das parcelas;', 'd) número de protocolo desta reclamação e resposta por escrito neste mesmo e-mail.', '',
+      '4. O PRAZO', 'A resposta é aguardada em até 10 dias úteis (Resolução CMN nº 4.860/2020). O silêncio ou a recusa serão levados ao Judiciário como prova da tentativa de solução administrativa e da resistência da instituição.', '',
+      'Atenciosamente,', adv, (EU && EU.email) || ''].join('\n') };
+}
+async function pdfRecl(c, para) {
+  if (!window.jspdf) await new Promise((ok, er) => { const sc = document.createElement('script'); sc.src = 'vendor/jspdf.umd.min.js'; sc.onload = ok; sc.onerror = er; document.head.appendChild(sc); });
+  const t = textoRecl(c), doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), agora = new Date(), M = 20, LARG = 170; let y = 20;
+  const linha = (txt, o = {}) => { doc.setFont('helvetica', o.b ? 'bold' : 'normal'); doc.setFontSize(o.t || 11); for (const l of doc.splitTextToSize(txt || ' ', LARG)) { if (y > 277) { doc.addPage(); y = 20; } doc.text(l, M, y); y += o.e || 5.6; } };
+  linha(para.includes('@') ? 'RECLAMAÇÃO ENVIADA POR E-MAIL' : 'RECLAMAÇÃO FORMAL', { b: 1, t: 14, e: 8 });
+  linha('De: ' + ((EU && EU.nome) || '') + ((EU && EU.email) ? ' <' + EU.email + '>' : '')); linha('Para: ' + para); linha('Assunto: ' + t.assunto);
+  linha('Gerado em: ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+  y += 2; doc.setDrawColor(150); doc.line(M, y, M + LARG, y); y += 7;
+  t.corpo.split('\n').forEach(l => linha(l, { b: /^\d\. [A-ZÇÃÕÉ ]+$/.test(l) || l.startsWith('Ref.:') }));
+  doc.save('reclamacao-' + semAc($('#r-nome').value).toLowerCase().replace(/ /g, '-').slice(0, 40) + '.pdf');
 }
 function canais() {
   const cx = $('#canais'), c = canalDe($('#r-banco').value); if (!cx) return;
   if (!$('#r-banco').value.trim()) { cx.hidden = true; return; } cx.hidden = false;
-  if (!c) { cx.innerHTML = '<b style="color:#fde68a">Central deste banco ainda não cadastrada.</b> <span class="sub">Use "Gerar a carta" e avise a XYZ para incluirmos o e-mail e o endereço.</span>'; return; }
+  if (!c) { cx.innerHTML = '<b style="color:#fde68a">Central deste banco ainda não cadastrada.</b> <span class="sub">Avise a XYZ para incluirmos.</span>'; return; }
   const t = textoRecl(c), para = c.email_ouvidoria || c.email_sac || '';
   const mailto = 'mailto:' + encodeURIComponent(para) + '?subject=' + encodeURIComponent(t.assunto) + '&body=' + encodeURIComponent(t.corpo);
   const end = [c.endereco, c.cidade_uf, c.cep ? 'CEP ' + c.cep : ''].filter(Boolean).join(' · ');
-  cx.innerHTML = `<b style="color:#fde68a">Central do banco: ${esc(c.razao || c.nome)}</b>
-    <div class="sub" style="margin:6px 0 10px;line-height:1.6">${para ? 'E-mail' + (c.email_ouvidoria ? ' da Ouvidoria' : ' do SAC') + ': <b style="color:var(--texto)">' + esc(para) + '</b><br>' : '<b style="color:#fca5a5">Este banco não divulga e-mail de ouvidoria.</b> Use o formulário ou a carta.<br>'}${end ? 'Endereço para carta: <b style="color:var(--texto)">' + esc(end) + '</b><br>' : ''}${c.tel_ouvidoria ? 'Ouvidoria ' + esc(c.tel_ouvidoria) + ' · ' : ''}${c.tel_sac ? 'SAC ' + esc(c.tel_sac) : ''}${c.obs ? '<br>' + esc(c.obs) : ''}</div>
-    <div class="linha">${para ? '<a class="btn" id="c-mail" href="' + esc(mailto) + '">Enviar e-mail ao banco</a><button type="button" class="btn sec" id="c-eml">Baixar o e-mail (arquivo)</button>' : ''}${c.formulario ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(c.formulario) + '">Abrir formulário da Ouvidoria</a>' : ''}<button type="button" class="btn sec" id="c-copia">Copiar o texto</button><a class="btn sec" id="c-carta" target="_blank" href="${esc($('#r-carta').href || '#')}">Carta para imprimir</a></div>
-    <div class="sub" style="margin-top:8px">O e-mail abre no seu programa de e-mail, já preenchido: anexe a procuração e envie. Depois salve o e-mail enviado em PDF (com data e hora) para juntar como prova e clique em Registrar com o canal "E-mail / carta".</div>`;
-  const cp = $('#c-copia'); if (cp) cp.onclick = () => navigator.clipboard.writeText(t.assunto + '\n\n' + t.corpo).then(() => { cp.textContent = 'Copiado'; });
-  const em = $('#c-eml'); if (em) em.onclick = () => { const eml = ['To: ' + para, 'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(t.assunto))) + '?=', 'X-Unsent: 1', 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', t.corpo].join('\r\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([eml], { type: 'message/rfc822' })); a.download = 'reclamacao-' + semAc($('#r-nome').value).toLowerCase().replace(/ /g, '-').slice(0, 40) + '.eml'; a.click(); };
+  const tels = [c.tel_ouvidoria ? 'Ouvidoria ' + c.tel_ouvidoria : '', c.tel_sac ? 'SAC ' + c.tel_sac : ''].filter(Boolean).join(' · ');
+  cx.innerHTML = `<b style="color:#fde68a">Central do banco: ${esc(c.razao || c.nome)}</b>` + (para
+    ? `<div class="sub" style="margin:6px 0 10px;line-height:1.6">E-mail ${c.email_ouvidoria ? 'da Ouvidoria' : 'do SAC'}: <b style="color:var(--texto)">${esc(para)}</b>${tels ? '<br>' + esc(tels) : ''}</div>
+       <div class="linha"><a class="btn" id="c-mail" href="${esc(mailto)}">Enviar e-mail ao banco</a><button type="button" class="btn sec" id="c-pdf">Baixar o e-mail em PDF</button></div>
+       <div class="sub" style="margin-top:8px">O e-mail abre no seu programa de e-mail com o modelo pronto: anexe a procuração e envie. O PDF traz o mesmo texto, com remetente, destinatário, data e hora, para juntar ao processo. Depois clique em Registrar para contar o prazo.</div>`
+    : `<div class="sub" style="margin:6px 0 10px;line-height:1.6"><b style="color:#fca5a5">Este banco não divulga e-mail de Ouvidoria.</b> Ele só recebe reclamação por telefone, formulário no site ou carta.${tels ? '<br>' + esc(tels) : ''}${end ? '<br>Carta: <b style="color:var(--texto)">' + esc(end) + '</b>' : ''}</div>
+       <div class="linha">${c.formulario ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(c.formulario) + '">Abrir o formulário da Ouvidoria</a>' : ''}<button type="button" class="btn sec" id="c-pdf">Baixar a reclamação em PDF</button></div>
+       <div class="sub" style="margin-top:8px">Use o texto do PDF no formulário ou envie-o como carta, e anote o protocolo ao Registrar.</div>`);
+  const pd = $('#c-pdf'); if (pd) pd.onclick = () => { pd.disabled = true; pdfRecl(c, para || (c.razao || c.nome)).catch(() => { pd.textContent = 'Não consegui gerar o PDF'; }).finally(() => { pd.disabled = false; }); };
   const ml = $('#c-mail'); if (ml) ml.addEventListener('click', () => { $('#r-canal').value = 'E-mail / carta'; });
 }
 function carta() { $('#r-carta').href = peca({ cpf: so($('#r-cli').value), banco: $('#r-banco').value, contrato: $('#r-contrato').value, protocolo: $('#r-prot').value }, 'reclamacao'); }
@@ -149,7 +167,7 @@ $('#f').addEventListener('submit', async e => { e.preventDefault(); const b = $(
     if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
     EU = eu; if (eu.papel !== 'admin' || new URLSearchParams(location.search).get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
     $('#r-data').value = hoje(); carta();
-    sb.from('banco_canais').select('*').then(({ data }) => { CANAIS = data || []; canais(); });
+    fetch('bancos-canais.json?v=20261122').then(r => r.json()).then(j => { CANAIS = j.bancos || []; canais(); }).catch(() => {});
     const { data: cs } = await sb.rpc('peca_clientes');
     $('#r-cli').innerHTML = '<option value="">Escolher cliente (ou digite o nome abaixo)…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}" data-nome="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
     document.body.hidden = false; carregar();
