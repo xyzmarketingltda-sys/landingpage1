@@ -393,7 +393,7 @@ body.embed{background:transparent}
     <button data-aba="ranking">Ranking</button>
     <button data-aba="remarketing" id="nav-rmk">📣 Remarketing <span id="rmk-qt" hidden style="margin-left:4px;padding:1px 7px;border-radius:99px;background:#f97316;color:#fff;font-size:11px;font-weight:800"></span></button>
     <a class="nav-link" href="hiscon.html" style="margin-left:auto">🔎 HISCON, contratos e seguro</a>
-    <a class="nav-link" href="processos.html" style="margin-left:8px" title="Antes de indicar: confere se o cliente já tem processo contra o banco, pelo CPF e pelo número do contrato">⚖️ Litispendência</a>
+    <a class="nav-link" id="nav-litis" href="processos.html" style="margin-left:8px" title="Antes de indicar: confere se o cliente já tem processo contra o banco, pelo CPF e pelo número do contrato" hidden>⚖️ Litispendência</a>
     <a class="nav-link" id="nav-prev" href="previdenciario.html" style="margin-left:8px" hidden>⚖️ Previdenciário</a>
     <a class="nav-link" id="nav-painel" href="painel.html" style="margin-left:8px" hidden>📱 Painel</a>
     <a class="nav-link" id="nav-irreg" href="irregularidades.html" style="margin-left:8px" hidden>🔎 Irregularidades</a>
@@ -898,6 +898,7 @@ async function iniciar() {
   $('#nav-painel').hidden = !admin;    // painel do dono (celular): só admin
   $('#nav-irreg').hidden = !admin;     // irregularidades dos contratos: só admin e advogados (pelo /controle)
   $('#nav-prev').hidden = !admin;      // triagem previdenciária: por enquanto só admin e advogados
+  $('#nav-litis').hidden = !(admin || eu.litis === true);   // litispendência: só admin e quem o admin liberar (Atendentes > Acessos e senhas)
   $('#f-at-box').hidden = !admin;
   $('#c-at-box').hidden = !admin;
   $$('.col-at').forEach(x => x.hidden = !admin);
@@ -2066,17 +2067,22 @@ async function carregarContas() {
   const box = $('#contas'); if (!box || !eu || eu.papel !== 'admin') return;
   const { data, error } = await sb.rpc('contas_lista');
   if (error) { box.innerHTML = '<p style="color:var(--suave);font-size:13px">Não consegui carregar: ' + esc(traduz(error)) + '</p>'; return; }
+  const { data: lib } = await sb.from('perfis').select('id,litis'); const LIT = new Set((lib || []).filter(x => x.litis).map(x => x.id));   // quem vê a litispendência
   const dia = d => new Date(d).toLocaleDateString('pt-BR');
-  const linha = c => `<div class="linha-at" data-conta="${c.id}"><div><b>${esc(c.nome)}</b><small>${esc(c.papel === 'advogado' ? 'login: ' + String(c.email || '').split('@')[0] : c.email)} · ${c.ultimo_acesso ? 'último acesso em ' + dia(c.ultimo_acesso) : '<span style="color:#fde68a">nunca entrou</span>'}${c.trocar_senha ? ' · <span style="color:#fde68a">vai criar senha nova no próximo acesso</span>' : ''}${c.ativo ? '' : ' · bloqueado'}</small></div>
-      <div class="acoes"><button class="btn sec peq" data-prov="${c.id}">Senha provisória</button><button class="btn sec peq" data-troca="${c.id}" data-v="${c.trocar_senha ? 0 : 1}">${c.trocar_senha ? 'Dispensar troca' : 'Exigir troca'}</button></div></div>`;
+  const linha = c => `<div class="linha-at" data-conta="${c.id}"><div><b>${esc(c.nome)}</b><small>${esc(c.papel === 'advogado' ? 'login: ' + String(c.email || '').split('@')[0] : c.email)} · ${c.ultimo_acesso ? 'último acesso em ' + dia(c.ultimo_acesso) : '<span style="color:#fde68a">nunca entrou</span>'}${c.trocar_senha ? ' · <span style="color:#fde68a">vai criar senha nova no próximo acesso</span>' : ''}${LIT.has(c.id) ? ' · <span style="color:#86efac">vê a litispendência</span>' : ''}${c.ativo ? '' : ' · bloqueado'}</small></div>
+      <div class="acoes" style="flex-wrap:wrap"><button class="btn sec peq" data-litis="${c.id}" data-v="${LIT.has(c.id) ? 0 : 1}">${LIT.has(c.id) ? 'Tirar litispendência' : 'Liberar litispendência'}</button><button class="btn sec peq" data-prov="${c.id}">Senha provisória</button><button class="btn sec peq" data-troca="${c.id}" data-v="${c.trocar_senha ? 0 : 1}">${c.trocar_senha ? 'Dispensar troca' : 'Exigir troca'}</button></div></div>`;
   const grupo = (tit, L) => L.length ? `<h4 style="margin:14px 0 2px;font-size:12.5px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em">${tit} · ${L.length}</h4>` + L.map(linha).join('') : '';
   const adv = (data || []).filter(c => c.papel === 'advogado'), eq = (data || []).filter(c => c.papel !== 'advogado' && c.id !== eu.id);
   const semTroca = adv.filter(c => !c.trocar_senha).length, nunca = adv.filter(c => !c.ultimo_acesso).length;
-  box.innerHTML = `<p style="font-size:12.5px;color:var(--suave);line-height:1.55;margin:0 0 10px">A <b>senha provisória</b> é sorteada pelo sistema, aparece uma vez só para você repassar, e a pessoa é obrigada a criar a dela ao entrar. A senha antiga para de funcionar na hora. <b>Exigir troca</b> mantém a senha atual, mas obriga a pessoa a criar outra no próximo acesso.${nunca ? ' <span style="color:#fde68a">' + nunca + ' advogado(s) nunca entraram: para esses, o mais seguro é gerar a senha provisória.</span>' : ''}</p>`
+  box.innerHTML = `<p style="font-size:12.5px;color:var(--suave);line-height:1.55;margin:0 0 10px">A <b>senha provisória</b> é sorteada pelo sistema, aparece uma vez só para você repassar, e a pessoa é obrigada a criar a dela ao entrar. A senha antiga para de funcionar na hora. <b>Exigir troca</b> mantém a senha atual, mas obriga a pessoa a criar outra no próximo acesso. A <b>litispendência</b> (conferir se o cliente já tem processo) aparece só para os administradores e para quem estiver liberado aqui${LIT.size ? ': hoje, ' + esc((data || []).filter(c => LIT.has(c.id)).map(c => c.nome).join(', ')) : ''}.${nunca ? ' <span style="color:#fde68a">' + nunca + ' advogado(s) nunca entraram: para esses, o mais seguro é gerar a senha provisória.</span>' : ''}</p>`
     + (semTroca ? `<div style="margin-bottom:6px"><button class="btn sec peq" id="troca-advs">Exigir troca de senha de todos os advogados (${semTroca})</button></div>` : '')
     + grupo('Advogados', adv) + grupo('Equipe', eq);
   // dois toques para confirmar (sem janela do navegador)
   const confirmar = (b, txt) => { if (b.dataset.conf) return true; const o = b.textContent; b.dataset.conf = '1'; b.textContent = txt; b.classList.add('perigo'); setTimeout(() => { delete b.dataset.conf; b.textContent = o; b.classList.remove('perigo'); }, 4000); return false; };
+  box.querySelectorAll('[data-litis]').forEach(b => b.onclick = async () => {
+    b.disabled = true; const { error } = await sb.rpc('litis_liberar', { p_id: b.dataset.litis, p_valor: b.dataset.v === '1' });
+    error ? toast(traduz(error), true) : toast(b.dataset.v === '1' ? 'Litispendência liberada. Aparece no próximo acesso da pessoa.' : 'Litispendência tirada dessa conta.'); carregarContas();
+  });
   box.querySelectorAll('[data-troca]').forEach(b => b.onclick = async () => {
     const { error } = await sb.rpc('exigir_troca_senha', { p_id: b.dataset.troca, p_papel: null, p_valor: b.dataset.v === '1' });
     error ? toast(traduz(error), true) : toast(b.dataset.v === '1' ? 'Vai criar senha nova no próximo acesso.' : 'Troca dispensada.'); carregarContas();

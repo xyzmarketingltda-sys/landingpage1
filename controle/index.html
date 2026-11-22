@@ -161,7 +161,7 @@ html{background:#02060f}
       <div class="grp"><span>1 · Analisar o caso</span><div class="its">
         <a href="../crm/hiscon.html?de=controle" title="Envie o HISCON ou os contratos em PDF e veja as teses"><i>📄</i><div><b>HISCON e contratos</b><small>Envie os PDFs e veja as teses</small></div></a>
         <a href="../crm/irregularidades.html?de=controle" title="O que o robô achou lendo os contratos dos seus clientes: menor de idade, representante legal, tarifa, juros, giro de carteira"><i>🔎</i><div><b>Irregularidades</b><small>O que o robô achou nos contratos</small></div></a>
-        <a href="../crm/processos.html?de=controle" title="Confere no Diário de Justiça se o cliente já tem processo contra o mesmo banco, antes de entrar com a ação"><i>⚖️</i><div><b>Litispendência</b><small>O cliente já tem processo?</small></div></a>
+        <a id="f-litis" hidden href="../crm/processos.html?de=controle" title="Confere no Diário de Justiça se o cliente já tem processo contra o mesmo banco, antes de entrar com a ação"><i>⚖️</i><div><b>Litispendência</b><small>O cliente já tem processo?</small></div></a>
         <a href="../crm/previdenciario.html?de=controle" title="CNIS + carta de concessão: aponta se o benefício pode ser revisto"><i>🧓</i><div><b>Previdenciário</b><small>Revisão e direito a benefício</small></div></a>
       </div></div>
       <div class="grp"><span>2 · Preparar a ação</span><div class="its">
@@ -261,6 +261,7 @@ async function iniciar() {
   // senha provisória (ou troca pedida pela XYZ): só entra depois de criar a própria senha
   $('#login').hidden = true; try { await XYZSenha.exigir(sb, p); } catch (e) { console.warn('senha', e); }
   eu = p; $('#login').hidden = true; $('#app').hidden = false;
+  $('#f-litis').hidden = !(p.papel === 'admin' || p.litis === true);   // litispendência: só admin e quem a XYZ liberou (perfis.litis)
   $('#eu-nome').textContent = p.papel === 'advogado' ? (['Carina','Cibele','Danyelle','Junny','Rita'].includes(p.nome) ? 'Dra. ' : 'Dr. ') + (p.nome === 'Luiz' ? 'Luís' : p.nome) : p.nome + ' (admin)';
   try { XYZPresenca.entrar(sb, eu, {}); } catch (e) {}
   carregar(); avisoDesafio(); setInterval(avisoDesafio, 120000); avisosPush();

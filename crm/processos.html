@@ -31,7 +31,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .nota{font-size:12.5px;color:var(--suave);line-height:1.6;margin-top:14px}
 </style>
-<style>.abas{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.abas button.sel{border-color:#8cc8ff;background:#143068}.pub{border-top:1px solid rgba(30,144,255,.15);padding-top:8px}</style>
+<style>[hidden]{display:none!important}.abas{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.abas button.sel{border-color:#8cc8ff;background:#143068}.pub{border-top:1px solid rgba(30,144,255,.15);padding-top:8px}</style>
 </head>
 <body hidden>
 <main>
@@ -68,7 +68,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
   <div id="l-busca"></div>
 </section>
 
-<p class="nota"><b>Como ler.</b> A fonte é a consulta pública do Diário de Justiça Eletrônico Nacional (CNJ), que mostra o que foi <b>publicado</b>: intimações, despachos, decisões e sentenças. O Diário não tem busca por CPF; a conferência acha o CPF e o número do contrato quando eles estão escritos no texto da publicação, o que é comum em sentenças e decisões, mas não em todo despacho. Por isso <b>"nada encontrado" não garante que não existe processo</b>: ação antiga (antes de o tribunal publicar no Diário Nacional), em segredo de justiça, ou cuja publicação não cita CPF nem contrato pode ficar de fora. Não mostra juntadas nem as peças dos autos.</p>
+<p class="nota"><b>Como ler.</b> A fonte é a consulta pública do Diário de Justiça Eletrônico Nacional (CNJ), que mostra o que foi <b>publicado</b>: intimações, despachos, decisões e sentenças. <span id="nota-litis">O Diário não tem busca por CPF; a conferência acha o CPF e o número do contrato quando eles estão escritos no texto da publicação, o que é comum em sentenças e decisões, mas não em todo despacho. Por isso <b>"nada encontrado" não garante que não existe processo</b>: ação antiga (antes de o tribunal publicar no Diário Nacional), em segredo de justiça, ou cuja publicação não cita CPF nem contrato pode ficar de fora.</span> Não mostra juntadas nem as peças dos autos.</p>
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -144,7 +144,7 @@ document.addEventListener('click', async e => {
   const v = e.target.closest('[data-visto]'); if (v) { v.disabled = true; const [c, n] = v.dataset.visto.split('|'); await sb.rpc('litis_visto', { p_cliente: +c, p_numero: n }); carregarRobo(); return; }
   const rl = e.target.closest('[data-reler]'); if (rl) { rl.disabled = true; rl.textContent = 'relendo o Diário…'; const cx = rl.closest('.ev');
     try { const pubs = await aoVivo(rl.dataset.reler); cx.innerHTML = pubs.length ? resumo(pubs) + '<div class="sub" style="margin-bottom:8px">Lido agora, direto do Diário.</div>' + pubsHtml(pubs) : '<div class="sub">Nada publicado no Diário Nacional com esse número até agora.</div>'; } catch (err) { rl.disabled = false; rl.textContent = /429/.test(err.message) ? 'O Diário pediu para esperar. Tente em um minuto.' : 'Não consegui: ' + err.message; } return; }
-  const a = e.target.closest('[data-aba]'); if (a) { document.querySelectorAll('[data-aba]').forEach(x => x.classList.toggle('sel', x === a)); ['conf', 'acomp', 'robo', 'busca'].forEach(k => $('#aba-' + k).hidden = k !== a.dataset.aba); }
+  const a = e.target.closest('[data-aba]'); if (a) { document.querySelectorAll('[data-aba]').forEach(x => x.classList.toggle('sel', x === a)); ['conf', 'acomp', 'robo', 'busca'].forEach(k => { const s = $('#aba-' + k); if (s) s.hidden = k !== a.dataset.aba; }); }
 });
 // ---------- achados do robô ----------
 async function carregarRobo() {
@@ -170,17 +170,20 @@ $('#f-busca').addEventListener('submit', async e => { e.preventDefault(); const 
 (async () => {
   try {
     const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
-    const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
+    const { data: eu } = await sb.from('perfis').select('papel,ativo,litis').eq('id', session.user.id).single();
     if (!eu || !eu.ativo || !['admin', 'advogado', 'atendente'].includes(eu.papel)) throw 0;
     EU = eu; const qs = new URLSearchParams(location.search);
+    // litispendência (conferir antes de indicar + achados do robô): só admin e quem o admin liberou (perfis.litis). O banco recusa os demais.
+    const LITIS = eu.papel === 'admin' || eu.litis === true;
+    if (!LITIS) { if (eu.papel === 'atendente') throw 0; ['conf', 'robo'].forEach(k => { document.querySelector('[data-aba=' + k + ']').remove(); $('#aba-' + k).remove(); }); $('#nota-litis').remove(); document.querySelector('[data-aba=acomp]').classList.add('sel'); $('#aba-acomp').hidden = false; }
     if (eu.papel !== 'admin' || qs.get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
     // atendente: só a conferência antes de indicar (CPF de cliente dela ou dados do lead à mão); o resto é de advogado e admin
     if (eu.papel === 'atendente') { document.querySelector('.abas').hidden = true; $('#cli').hidden = true; $('#c-cpf').style.flex = '1'; $('#c-cpf').placeholder = 'CPF do cliente (se já está lançado no CRM)'; document.querySelector('#f-conf details').open = true; document.body.hidden = false; if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); } return; }
-    const { data: cs } = await sb.rpc('peca_clientes');
-    $('#cli').innerHTML = '<option value="">Escolher um cliente do CRM…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join('');
+    if (LITIS) { const { data: cs } = await sb.rpc('peca_clientes');
+      $('#cli').innerHTML = '<option value="">Escolher um cliente do CRM…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join(''); }
     if (eu.papel === 'admin') { const { data: advs } = await sb.rpc('lista_advogados'); $('#a-adv').hidden = false; $('#a-adv').innerHTML = '<option value="">Para mim (admin)</option>' + (advs || []).map(x => x.lista_advogados ?? x).sort().map(x => `<option>${esc(x)}</option>`).join(''); }
-    document.body.hidden = false; await carregarAcomp(); carregarRobo();
-    if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); }
+    document.body.hidden = false; await carregarAcomp(); if (LITIS) carregarRobo();
+    if (LITIS && qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); }
     if (['acomp', 'robo', 'busca'].includes(qs.get('aba'))) { const b = document.querySelector('[data-aba=' + qs.get('aba') + ']'); if (b && !b.hidden) b.click(); }
     // veio do CRM pedindo um processo: abre direto o histórico dele (e passa a acompanhar, se ainda não acompanha)
     if (so(qs.get('proc')).length === 20) { const n = so(qs.get('proc')); document.querySelector('[data-aba=acomp]').click();
