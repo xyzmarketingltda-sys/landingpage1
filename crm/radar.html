@@ -41,17 +41,36 @@ table.r td.n{text-align:right;font-variant-numeric:tabular-nums}
 .selo.poucos{background:rgba(255,255,255,.06);color:var(--suave);border:1px solid var(--borda)}
 .nota-n{font-weight:800;font-size:16px}
 details.ex{border:1px solid var(--borda);border-radius:12px;padding:10px 12px;margin:8px 0}details.ex summary{cursor:pointer;line-height:1.5}details.ex small{color:var(--suave)}.ex-a{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}.ex-t{white-space:pre-wrap;font-size:14px;line-height:1.6;max-height:60vh;overflow:auto}
+#mapa-box{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(220px,.75fr);gap:14px;margin:12px 0;background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px}
+#mapa{width:100%;height:auto;max-height:78vh;display:block}
+#mapa .uf{fill:#0b1d44;stroke:#2a4d8f;stroke-width:.7;cursor:pointer;transition:fill .15s}#mapa .uf:hover{fill:#143068}#mapa .uf.sel{stroke:#8cc8ff;stroke-width:1.6}
+#mapa .sig{fill:#9fb0c8;font-size:9px;pointer-events:none;text-anchor:middle;opacity:.55}
+#mapa .b{cursor:pointer;stroke:#02060f;stroke-width:.5;opacity:.88}#mapa .b:hover{stroke:#fff;stroke-width:1.4;opacity:1}
+#mapa .p{fill:none;stroke-width:1.2;pointer-events:none;transform-box:fill-box;transform-origin:center;animation:pulso 2.6s ease-out infinite}
+@keyframes pulso{0%{transform:scale(1);opacity:.85}100%{transform:scale(3.2);opacity:0}}
+#mapa .anel{fill:none;stroke:#3b82f6;stroke-width:.5;opacity:.16;pointer-events:none}
+#varre{transform-origin:310px 300px;animation:gira 7s linear infinite;pointer-events:none}@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#mapa .p,#varre{animation:none}#mapa .p{display:none}}
+#mapa-lado h3{font-size:14px;margin:0 0 6px}#mapa-lado .leg{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--suave);margin-bottom:10px}#mapa-lado .leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+#ufs{max-height:52vh;overflow:auto;font-size:13px}#ufs div{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer}#ufs div:hover,#ufs div.sel{background:#0f2552}#ufs small{color:var(--suave)}
+#dica{position:fixed;z-index:9;background:#061230;border:1px solid var(--borda);border-radius:10px;padding:8px 10px;font-size:12.5px;pointer-events:none;max-width:260px;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+#uf-chip{display:none;align-items:center;gap:6px;background:#0f2552;border:1px solid #8cc8ff;border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer}
+@media (max-width:760px){#mapa-box{grid-template-columns:1fr}#ufs{max-height:200px}}
 </style>
 </head>
 <body hidden>
 <main>
 <header><div><h1>🎯 Radar por comarca</h1><div class="sub" id="sub">carregando…</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+<div id="mapa-box"><div><svg id="mapa" viewBox="0 0 640 620" role="img" aria-label="Mapa do Brasil com as comarcas"></svg></div>
+<div id="mapa-lado"><h3 id="lado-t">Brasil</h3><div class="leg"><span><i style="background:#22c55e"></i>investir</span><span><i style="background:#facc15"></i>testar</span><span><i style="background:#ef4444"></i>evitar</span><span><i style="background:#64748b"></i>poucos dados</span></div>
+<div class="sub" style="margin-bottom:8px">Cada bola é uma comarca: o tamanho é o número de sentenças e a cor é o selo. Toque num estado para ver as comarcas dele; toque numa bola para ir direto à comarca.</div><div id="ufs"></div></div></div>
+<div id="dica" hidden></div>
 <div class="linha">
   <select id="f-trib"><option value="">Todos os tribunais</option></select>
   <select id="f-tese"><option value="">Todas as teses de consignado</option><option value="nao_contratado">Não contratado / fraude</option><option value="cartao">Cartão consignado (RMC/RCC)</option><option value="seguro">Seguro / venda casada</option><option value="juros">Juros / revisional</option><option value="refin">Refinanciamento / portabilidade</option></select>
   <select id="f-rito"><option value="">Juizado e Vara</option><option value="jec">Só Juizado Especial</option><option value="vara">Só Vara Cível</option></select>
   <select id="f-selo"><option value="">Todos os selos</option><option>investir</option><option>testar</option><option>evitar</option><option>poucos dados</option></select>
-  <input id="q" placeholder="Buscar comarca…">
+  <span id="uf-chip" title="Tirar o filtro de estado"></span><input id="q" placeholder="Buscar comarca…">
 </div>
 <div class="kpis" id="kpis"></div>
 <div style="overflow-x:auto"><table class="r"><thead><tr><th>Comarca</th><th>Selo</th><th class="n">Nota</th><th class="n">Sentenças</th><th class="n">Procedentes</th><th class="n">Parciais</th><th class="n">Improcedentes</th><th class="n">Acordos</th><th class="n">Dano moral (mediana)</th><th class="n">Em dobro</th></tr></thead><tbody id="lista"></tbody></table></div>
@@ -70,10 +89,61 @@ details.ex{border:1px solid var(--borda);border-radius:12px;padding:10px 12px;ma
 const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const brl = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }), dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—';
-let DADOS = [];
+let DADOS = [], MAPA = null, UFSEL = '';
+const COR = { investir: '#22c55e', testar: '#facc15', evitar: '#ef4444', 'poucos dados': '#64748b' };
+const TRF = { TRF1: 'AC AM AP BA DF GO MA MT PA PI RO RR TO', TRF2: 'RJ ES', TRF3: 'SP MS', TRF4: 'RS SC PR', TRF5: 'AL CE PB PE RN SE', TRF6: 'MG' };
+const chave = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+// onde fica cada comarca: estado pelo tribunal (TJSP -> SP), cidade pelo nome; Justiça Federal sem cidade vai para a capital do estado
+function situar(d) {
+  if (d._ok !== undefined || !MAPA) return; d._ok = false;
+  const c = d.comarca || ''; if (/^N[úu]cleo|^\(|2ª inst/i.test(c)) return;
+  const ufs = d.tribunal === 'TJDFT' ? ['DF'] : /^TJ[A-Z]{2}$/.test(d.tribunal) ? [d.tribunal.slice(2)] : (TRF[d.tribunal] || '').split(' ').filter(Boolean);
+  const jf = c.match(/^Justiça Federal ([A-Z]{2})$/);
+  if (jf) { const u = jf[1], xy = MAPA.mun[u] && MAPA.mun[u][MAPA.cap[u]]; if (xy) { d._uf = u; d._xy = xy; d._ok = true; } return; }
+  const nomes = [c.replace(/\s*\(Capital\)/i, ''), c.split(/\s+e\s+(?=[A-ZÀ-Ú])/)[0]];
+  for (const n of nomes) for (const u of ufs) { const xy = MAPA.mun[u] && MAPA.mun[u][chave(n)]; if (xy) { d._uf = u; d._xy = xy; d._ok = true; return; } }
+  if (ufs.length === 1) d._uf = ufs[0];
+}
+function notaDe(L) { const m = L.reduce((a, d) => a + d.procedentes + d.parciais + d.improcedentes, 0); return m ? Math.round(100 * L.reduce((a, d) => a + d.procedentes + 0.6 * d.parciais, 0) / m) : null; }
+const seloDe = (n, m) => m < 15 || n == null ? 'poucos dados' : n >= 70 ? 'investir' : n >= 50 ? 'testar' : 'evitar';
+const irTabela = () => document.querySelector('table.r').scrollIntoView({ behavior: 'smooth', block: 'start' });
+function escolherUF(u) { UFSEL = UFSEL === u ? '' : u; desenhar(); mapa(); if (UFSEL) irTabela(); }
+function mapa() {
+  if (!MAPA) return; DADOS.forEach(situar);
+  const porUF = {}; DADOS.forEach(d => { if (d._uf) (porUF[d._uf] = porUF[d._uf] || []).push(d); });
+  const est = Object.keys(MAPA.uf).map(u => { const L = porUF[u] || [], m = L.reduce((a, d) => a + d.procedentes + d.parciais + d.improcedentes, 0), n = notaDe(L); return { u, L, m, n, selo: seloDe(n, m), tot: L.reduce((a, d) => a + d.sentencas, 0) }; });
+  const bolas = DADOS.filter(d => d._ok && (!UFSEL || d._uf === UFSEL)).sort((a, b) => ((b.selo === 'poucos dados') - (a.selo === 'poucos dados')) || b.sentencas - a.sentencas);   // cinzas embaixo, maiores antes
+  const r = d => Math.min(15, 2.2 + Math.sqrt(d.sentencas) * 0.62);
+  const vivos = new Set(bolas.filter(d => d.selo !== 'poucos dados').slice(0, 28));
+  $('#mapa').innerHTML = `<defs><linearGradient id="gv" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3b82f6" stop-opacity=".22"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>`
+    + [60, 130, 200, 270].map(x => `<circle class="anel" cx="310" cy="300" r="${x}"/>`).join('')
+    + est.map(e => `<path class="uf${UFSEL === e.u ? ' sel' : ''}" data-uf="${e.u}" d="${MAPA.uf[e.u]}" style="${e.selo !== 'poucos dados' ? 'fill:' + COR[e.selo] + '22' : ''}"/>`).join('')
+    + est.map(e => `<text class="sig" x="${MAPA.ctr[e.u][0]}" y="${MAPA.ctr[e.u][1] + 3}">${e.u}</text>`).join('')
+    + `<g id="varre"><path d="M310,300 L310,20 A280,280 0 0 1 400,35 Z" fill="url(#gv)"/></g>`
+    + bolas.map(d => vivos.has(d) ? `<circle class="p" cx="${d._xy[0]}" cy="${d._xy[1]}" r="${r(d).toFixed(1)}" stroke="${COR[d.selo]}"/>` : '').join('')
+    + bolas.map(d => `<circle class="b" data-i="${DADOS.indexOf(d)}" cx="${d._xy[0]}" cy="${d._xy[1]}" r="${r(d).toFixed(1)}" fill="${COR[d.selo]}"${d.selo === 'poucos dados' ? ' style="opacity:.5"' : ''}/>`).join('');
+  $('#lado-t').textContent = UFSEL ? MAPA.nome[UFSEL] : 'Brasil';
+  $('#ufs').innerHTML = est.filter(e => e.tot).sort((a, b) => (b.n ?? -1) - (a.n ?? -1)).map(e => `<div data-uf="${e.u}" class="${UFSEL === e.u ? 'sel' : ''}"><span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${COR[e.selo]};margin-right:7px"></i><b>${e.u}</b> ${esc(MAPA.nome[e.u])}</span><small>nota ${e.n ?? '—'} · ${e.tot.toLocaleString('pt-BR')} sent.</small></div>`).join('');
+  $('#uf-chip').style.display = UFSEL ? 'inline-flex' : 'none'; $('#uf-chip').textContent = UFSEL ? 'Estado: ' + UFSEL + '  ✕' : '';
+  const fora = DADOS.filter(d => !d._ok).reduce((a, d) => a + d.sentencas, 0), tot = DADOS.reduce((a, d) => a + d.sentencas, 0);
+  $('#mapa').insertAdjacentHTML('beforeend', `<text x="8" y="612" fill="#9fb0c8" font-size="9.5">${tot ? Math.round(100 * (tot - fora) / tot) : 0}% das sentenças no mapa; o resto é núcleo estadual ou vara sem cidade no nome</text>`);
+}
+function dica(ev, h) { const t = $('#dica'); if (!h) { t.hidden = true; return; } t.innerHTML = h; t.hidden = false; t.style.left = Math.min(ev.clientX + 14, innerWidth - 270) + 'px'; t.style.top = Math.min(ev.clientY + 14, innerHeight - 110) + 'px'; }
+function ligarMapa() {
+  const m = $('#mapa');
+  m.addEventListener('click', ev => { const b = ev.target.closest('.b'), u = ev.target.closest('.uf');
+    if (b) { const d = DADOS[+b.dataset.i]; UFSEL = d._uf || ''; $('#q').value = d.comarca.replace(/\s*\(Capital\)/, ''); desenhar(); mapa(); irTabela(); }
+    else if (u) escolherUF(u.dataset.uf); });
+  m.addEventListener('mousemove', ev => { const b = ev.target.closest('.b'), u = ev.target.closest('.uf');
+    if (b) { const d = DADOS[+b.dataset.i]; dica(ev, `<b>${esc(d.comarca)}</b> · ${esc(d.tribunal)}<br>${esc(d.selo)}${d.nota != null ? ' · nota ' + d.nota : ''}<br>${d.sentencas} sentenças: ${d.procedentes} proc. · ${d.parciais} parc. · ${d.improcedentes} improc.<br>dano moral ${brl(d.dano_moral_mediano)}`); }
+    else if (u) dica(ev, `<b>${esc(MAPA.nome[u.dataset.uf])}</b><br>toque para ver as comarcas`); else dica(ev, null); });
+  m.addEventListener('mouseleave', ev => dica(ev, null));
+  $('#ufs').addEventListener('click', ev => { const x = ev.target.closest('[data-uf]'); if (x) escolherUF(x.dataset.uf); });
+  $('#uf-chip').addEventListener('click', () => { UFSEL = ''; $('#q').value = ''; desenhar(); mapa(); });
+}
 function desenhar() {
   const q = $('#q').value.trim().toLowerCase(), selo = $('#f-selo').value;
-  const vis = DADOS.filter(d => (!selo || d.selo === selo) && (!q || (d.comarca + ' ' + d.tribunal).toLowerCase().includes(q)));
+  const vis = DADOS.filter(d => (!UFSEL || d._uf === UFSEL) && (!selo || d.selo === selo) && (!q || (d.comarca + ' ' + d.tribunal).toLowerCase().includes(q)));
   $('#lista').innerHTML = vis.length ? vis.slice(0, 600).map(d => `<tr><td><b>${esc(d.comarca)}</b> <small style="color:var(--suave)">${esc(d.tribunal)}</small></td><td><span class="selo ${d.selo === 'poucos dados' ? 'poucos' : d.selo}">${esc(d.selo)}</span></td><td class="n nota-n">${d.nota ?? '—'}</td><td class="n">${d.sentencas}</td><td class="n">${d.procedentes}</td><td class="n">${d.parciais}</td><td class="n">${d.improcedentes}</td><td class="n">${d.acordos}</td><td class="n">${brl(d.dano_moral_mediano)}</td><td class="n">${d.dobro_pct == null ? '—' : d.dobro_pct + '%'}</td></tr>`).join('')
     : '<tr><td colspan="10" style="padding:22px;color:var(--suave)">Ainda não há sentenças coletadas para esse filtro. O robô lê o Diário de Justiça aos poucos; volte mais tarde.</td></tr>';
 }
@@ -85,7 +155,7 @@ async function carregar() {
   const tot = DADOS.reduce((a, d) => a + d.sentencas, 0), de = DADOS.map(d => d.de).sort()[0], ate = DADOS.map(d => d.ate).sort().pop(), c = s => DADOS.filter(d => d.selo === s).length;
   $('#sub').textContent = tot ? `${tot.toLocaleString('pt-BR')} sentenças de consignado · publicadas de ${dBR(de)} a ${dBR(ate)}` : 'coleta em andamento';
   $('#kpis').innerHTML = [['Comarcas', DADOS.length], ['Investir', c('investir')], ['Testar', c('testar')], ['Evitar', c('evitar')], ['Poucos dados', c('poucos dados')]].map(([t, v]) => `<div class="kpi"><b>${v}</b><span>${t}</span></div>`).join('');
-  desenhar();
+  DADOS.forEach(situar); desenhar(); mapa();
   const NOME = { banco_nao_juntou_contrato: 'Banco não juntou o contrato', contrato_juntado: 'Banco juntou o contrato', selfie_biometria: 'Selfie / biometria', geolocalizacao_ip: 'Geolocalização / IP', assinatura_digital: 'Assinatura ou contratação digital', credito_em_conta_provado: 'Crédito em conta / TED', pericia: 'Perícia', tema_1061: 'Tema 1.061 do STJ', analfabeto: 'Analfabeto / a rogo', idoso: 'Idoso / hipervulnerável', venda_casada: 'Venda casada', seguro_prestamista: 'Seguro prestamista', tarifa: 'Tarifa de cadastro', juros_teto_inss: 'Teto de juros do INSS', taxa_media_bacen: 'Taxa média do Banco Central', margem_consignavel: 'Margem consignável', refinanciamento: 'Refinanciamento', portabilidade: 'Portabilidade', cartao_rmc: 'Cartão consignado (RMC/RCC)', prescricao_decadencia: 'Prescrição / decadência', litigancia_ma_fe: 'Litigância de má-fé', advocacia_predatoria: 'Advocacia predatória / demandas em massa', sem_dano_moral: 'Juiz afastou o dano moral', compensacao_valor_recebido: 'Compensação com o valor recebido', cartao: 'Tese: cartão consignado', nao_contratado: 'Tese: não contratado / fraude', seguro: 'Tese: seguro', juros: 'Tese: juros', refin: 'Tese: refinanciamento / portabilidade' };
   const { data: sn } = await sb.rpc('juri_sinais', { p_tribunal: $('#f-trib').value || null });
   $('#sinais').innerHTML = (sn || []).length ? sn.map(x => `<tr><td><b>${esc(NOME[x.sinal] || x.sinal)}</b></td><td class="n">${x.sentencas}</td><td class="n">${x.procedentes}</td><td class="n">${x.parciais}</td><td class="n">${x.improcedentes}</td><td class="n nota-n">${x.nota ?? '—'}</td><td class="n">${brl(x.dano_moral_mediano)}</td></tr>`).join('') : '<tr><td colspan="7" style="padding:18px;color:var(--suave)">Ainda sem volume suficiente.</td></tr>';
@@ -108,7 +178,7 @@ $('#ex-b').addEventListener('click', exemplos); $('#ex-q').addEventListener('key
     const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
     if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
     if (eu.papel !== 'admin' || new URLSearchParams(location.search).get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
-    document.body.hidden = false; carregar(); exemplos();
+    document.body.hidden = false; ligarMapa(); try { MAPA = await (await fetch('br-mapa.json?v=1')).json(); } catch (e) { $('#mapa-box').hidden = true; } carregar(); exemplos();
   } catch (e) { location.replace('./'); }
 })();
 </script>
