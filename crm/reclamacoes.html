@@ -38,7 +38,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 
 <div class="bloco">
   <h2>Nova reclamação ao banco</h2>
-  <div class="sub">Registre aqui a reclamação que você protocolou no SAC ou na Ouvidoria. O sistema conta 10 dias úteis; se o banco não resolver, o caso vai para a inicial com o protocolo como prova.</div>
+  <div class="sub">Registre aqui a reclamação que você protocolou no SAC ou na Ouvidoria. O sistema conta o prazo de resposta do canal (Ouvidoria: 10 dias úteis; SAC: 7 dias corridos; consumidor.gov.br: 10 dias corridos) e os 30 dias que a lei dá ao banco para devolver. Se o banco não resolver, o caso vai para a inicial com o protocolo como prova.</div>
   <form id="f" style="margin-top:10px">
     <div class="linha">
       <select id="r-cli" style="flex:1;min-width:230px"><option value="">Escolher cliente…</option></select>
@@ -62,7 +62,8 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 
 <div class="kpis" id="kpis"></div>
 <div id="lista"></div>
-<p class="nota"><b>Como ler.</b> O prazo é de 10 dias úteis a partir do envio (segunda a sexta, sem feriados), que é o prazo de resposta das ouvidorias dos bancos; confira a norma do Banco Central em vigor. A reclamação não é obrigatória para entrar com a ação, mas o protocolo sem resposta ajuda a afastar a alegação de falta de interesse de agir e mostra a recusa do banco. Guarde o comprovante do protocolo na pasta do cliente.</p>
+<p class="nota"><b>Como ler.</b> O prazo de resposta depende do canal: Ouvidoria e Banco Central, 10 dias úteis (Resolução CMN 4.860/2020); SAC, 7 dias corridos (Decreto 11.034/2022); consumidor.gov.br, 10 dias corridos. Os dias úteis são contados de segunda a sexta, sem feriados.</p>
+<p class="nota"><b>Por que reclamar antes de entrar com a ação.</b> 1) A omissão ou a recusa do banco diante do pedido do cliente é indício suficiente para a devolução em dobro (STJ, Tema 929, acórdão publicado em 03/11/2026). 2) A reclamação notifica o banco, que tem 30 dias para devolver o desconto indevido, integral e atualizado (Lei 15.327/2026, arts. 2º e 3º). 3) Em Minas Gerais a tentativa prévia é exigida para a ação (TJMG, IRDR 91), e o STJ decide o mesmo para o país no Tema 1.396, ainda sem julgamento. Guarde o comprovante do protocolo e a resposta na pasta do cliente.</p>
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -70,6 +71,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—', so = v => String(v || '').replace(/\D/g, '');
+const mais = (iso, n) => { if (!iso) return ''; const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const hoje = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 const dias = v => Math.round((new Date(v + 'T12:00:00') - new Date(hoje() + 'T12:00:00')) / 864e5);
 const ST = { aberta: 'aguardando o banco', resolvida: 'banco resolveu', respondida_sem_solucao: 'respondeu sem resolver', sem_resposta: 'sem resposta', virou_acao: 'virou ação' };
@@ -81,7 +83,7 @@ function desenhar() {
   const vis = L.filter(r => FILTRO === 'fim' ? r.status !== 'aberta' : FILTRO === 'vencida' ? venc(r) : r.status === 'aberta' && !venc(r));
   $('#lista').innerHTML = vis.length ? vis.map(r => { const d = dias(r.vence), ab = r.status === 'aberta';
     return `<div class="it ${!ab ? 'feita' : d < 0 ? 'atrasada' : d <= 2 ? 'hoje' : 'semana'}"><div class="topo"><h3>${esc(r.cliente)} <small style="color:var(--suave);font-weight:400">× ${esc(r.banco)}</small></h3>${!ab ? `<span class="tag g">${esc(ST[r.status] || r.status)}</span>` : d < 0 ? `<span class="tag v">prazo venceu há ${-d} dia${d === -1 ? '' : 's'}</span>` : `<span class="tag${d <= 2 ? ' a' : ''}">${d === 0 ? 'vence hoje' : 'faltam ' + d + ' dia' + (d === 1 ? '' : 's')} · ${dBR(r.vence)}</span>`}</div>
-      <p>${esc(r.canal)}${r.protocolo ? ' · protocolo <b style="color:var(--texto)">' + esc(r.protocolo) + '</b>' : ' · <b style="color:#fde68a">sem protocolo anotado</b>'}${r.contrato ? ' · contrato ' + esc(r.contrato) : ''} · enviada em ${dBR(r.enviada_em)}${EU.papel === 'admin' ? ' · ' + esc(r.advogado) : ''}${r.resposta ? '<br>Resposta: ' + esc(r.resposta) : ''}</p>
+      <p>${esc(r.canal)}${r.protocolo ? ' · protocolo <b style="color:var(--texto)">' + esc(r.protocolo) + '</b>' : ' · <b style="color:#fde68a">sem protocolo anotado</b>'}${r.contrato ? ' · contrato ' + esc(r.contrato) : ''} · enviada em ${dBR(r.enviada_em)}${ab ? ' · devolução pela Lei 15.327 até ' + dBR(mais(r.enviada_em, 30)) : ''}${EU.papel === 'admin' ? ' · ' + esc(r.advogado) : ''}${r.resposta ? '<br>Resposta: ' + esc(r.resposta) : ''}</p>
       <div class="acoes">${ab ? `<button class="ok" data-s="resolvida" data-id="${r.id}">Banco resolveu</button><button data-s="respondida_sem_solucao" data-id="${r.id}">Respondeu sem resolver</button>${d < 0 ? `<button data-s="sem_resposta" data-id="${r.id}">Não respondeu</button>` : ''}` : `<button data-s="aberta" data-id="${r.id}">Reabrir</button>`}
         ${r.status === 'respondida_sem_solucao' || r.status === 'sem_resposta' || (ab && d < 0) ? `<a class="btn" href="${peca(r, 'nao-contratado')}" target="_blank" data-acao="${r.id}">Gerar a inicial</a>` : ''}<a class="btn" href="${peca(r, 'reclamacao')}" target="_blank">Ver a carta</a></div></div>`; }).join('')
     : `<div class="bloco sub">${L.length ? 'Nada nesse filtro.' : 'Nenhuma reclamação registrada ainda.'}</div>`;
@@ -108,7 +110,7 @@ $('#r-cli').addEventListener('change', async e => {
 $('#r-ctr').addEventListener('change', e => { const k = CLI && CLI.contratos[+e.target.value]; if (!k || e.target.value === '') return; $('#r-banco').value = k.banco || ''; $('#r-contrato').value = k.numero || ''; carta(); });
 $('#f').addEventListener('submit', async e => { e.preventDefault(); const b = $('#r-btn'); b.disabled = true;
   const { error } = await sb.rpc('recl_salvar', { p: { cpf: so($('#r-cli').value), cliente: $('#r-nome').value, banco: $('#r-banco').value, contrato: $('#r-contrato').value, canal: $('#r-canal').value, protocolo: $('#r-prot').value, enviada_em: $('#r-data').value } });
-  b.disabled = false; $('#r-msg').textContent = error ? 'Não salvou: ' + error.message : 'Registrada. O prazo de 10 dias úteis começou a contar.'; if (!error) { ['r-banco', 'r-contrato', 'r-prot'].forEach(i => $('#' + i).value = ''); FILTRO = 'aberta'; carregar(); } });
+  b.disabled = false; $('#r-msg').textContent = error ? 'Não salvou: ' + error.message : 'Registrada. O prazo de resposta começou a contar.'; if (!error) { ['r-banco', 'r-contrato', 'r-prot'].forEach(i => $('#' + i).value = ''); FILTRO = 'aberta'; carregar(); } });
 (async () => {
   try {
     const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
