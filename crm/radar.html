@@ -75,6 +75,7 @@ details.ex{border:1px solid var(--borda);border-radius:12px;padding:10px 12px;ma
   <span id="uf-chip" title="Tirar o filtro de estado"></span><input id="q" placeholder="Buscar comarca…">
 </div>
 <div class="kpis" id="kpis"></div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid rgba(140,200,255,.35);background:rgba(30,144,255,.08);border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:13.5px"><span style="flex:1;min-width:200px">📄 No fim desta página há <b>sentenças reais</b> de cada tribunal e tese, para ler ou usar de exemplo. Role até o fim ou toque no botão.</span><button class="btn" id="b-ir-ex" style="cursor:pointer">Ver sentenças reais ↓</button></div>
 <div style="overflow-x:auto"><table class="r"><thead><tr><th>Comarca</th><th>Selo</th><th class="n">Nota</th><th class="n">Sentenças</th><th class="n">Procedentes</th><th class="n">Parciais</th><th class="n">Improcedentes</th><th class="n">Acordos</th><th class="n">Dano moral (mediana)</th><th class="n">Em dobro</th></tr></thead><tbody id="lista"></tbody></table></div>
 <h2 style="margin:26px 0 6px;font-size:17px">O que pesa nas sentenças</h2>
 <div class="sub">Para cada assunto que aparece no texto das sentenças de mérito, como elas terminaram. Mostra o que ganha e o que perde.</div>
@@ -177,6 +178,7 @@ $('#ex-b').addEventListener('click', exemplos); $('#ex-q').addEventListener('key
 ['f-trib', 'f-tese', 'f-rito'].forEach(i => $('#' + i).addEventListener('change', carregar));
 // ---------- jurimetria: ranking de estados por produto ----------
 const PROD = { seguro: 'Seguro prestamista / venda casada', nao_contratado: 'Não contratado / fraude', cartao: 'Cartão consignado (RMC/RCC)', juros: 'Juros / revisional', refin: 'Refinanciamento / portabilidade' };
+$('#b-ir-ex').addEventListener('click', () => $('#ex-q').scrollIntoView({ behavior: 'smooth', block: 'start' }));
 $('#juri-x').addEventListener('click', () => { $('#juri').hidden = true; });
 $('#b-juri').addEventListener('click', async () => { $('#juri').hidden = false; $('#juri-c').textContent = 'carregando…';
   const { data, error } = await sb.rpc('juri_jurimetria'); if (error) { $('#juri-c').textContent = 'não consegui carregar: ' + error.message; return; }
