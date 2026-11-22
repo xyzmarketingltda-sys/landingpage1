@@ -91,6 +91,7 @@ function dataBR(v) { v = String(v).trim(); let m;
 function num(v) { v = String(v).trim().replace(/[R$\s]/g, ''); if (!/^-?[\d.,]+$/.test(v)) return null; if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.'); const n = parseFloat(v); return isNaN(n) ? null : n; }
 const brl = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 function mostra(k, v) { v = String(v ?? '').trim(); if (!v || /^(null|nan|none)$/i.test(v)) return { t: '—', vazio: true };
+  if (/^(true|false)$/i.test(v)) return { t: /^true$/i.test(v) ? 'Sim' : 'Não' };
   if (/cpf/.test(k) && so(v).length >= 9 && so(v).length <= 11) return { t: fmtCPF(v) };
   if (ehDinheiro(k)) { const n = num(v); if (n != null) return { t: brl(n), din: true }; }
   if (ehData(k)) return { t: dataBR(v) };
@@ -100,21 +101,35 @@ function idade(v) { const d = dataBR(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if
 
 /* ---------- desenhar ---------- */
 let RES = null, SEL = 0;
+const INFO = Object.fromEntries(GRUPOS.map(g => [g[0], g])); INFO.outros = ['outros', '🗂️', 'Outros dados'];
+// desenha uma linha "rótulo: valor" de um campo de uma linha da base
+function campoHTML(c, linha) { const m = mostra(c.k, linha[c.n]); return `<div class="campo"><span>${esc(rotulo(c.n))}</span><b class="${m.vazio ? 'vazio' : m.din ? 'din' : ''}" ${m.vazio ? '' : 'title="Toque para copiar"'}>${esc(m.t)}</b></div>`; }
 function desenhar() {
-  const L = RES.linhas, cols = RES.colunas.map(c => ({ n: c, k: chave(c) })), l = L[SEL] || {};
+  const L = RES.linhas, cols = RES.colunas.map(c => ({ n: c, k: chave(c) })), l = L[0] || {};
   const acha = re => cols.find(c => re.test(c.k) && String(l[c.n] || '').trim());
-  const cNome = cols.find(c => /nome/.test(c.k) && !/mae|pai|banco|municipio|cidade|orgao|aps|social/.test(c.k)), cNasc = acha(/nasc/), cUF = acha(/^uf$|_uf$|^uf_|estado$/), cCid = acha(/cidade|municipio/), cEsp = acha(/especie/);
+  const cNome = cols.find(c => /nome/.test(c.k) && !/mae|pai|banco|municipio|cidade|orgao|aps|social|represent/.test(c.k)), cNasc = acha(/nasc/), cUF = acha(/^uf$|_uf$|^uf_|estado$/), cCid = acha(/cidade|municipio/), cEsp = acha(/especie/);
   const id = cNasc ? idade(l[cNasc.n]) : null;
-  // destaques: até 4 valores em dinheiro, com margem e valor do benefício na frente
-  const dins = cols.filter(c => ehDinheiro(c.k) && num(l[c.n]) != null).sort((a, b) => (/margem|livre|disponivel/.test(b.k) - /margem|livre|disponivel/.test(a.k)) || (/benef|renda|^mr$|salario/.test(b.k) - /benef|renda|^mr$|salario/.test(a.k))).slice(0, 4);
-  let h = `<div class="heroi"><h2>${esc(cNome ? l[cNome.n] || 'Sem nome na base' : 'Registro encontrado')}</h2><div class="sub">CPF ${fmtCPF(RES.cpf)} · ${L.length} registro(s) na base${RES.mais ? ' (mostrando os primeiros ' + L.length + ')' : ''}</div>
+  // destaques: até 4 valores em dinheiro do benefício/margem (não os do contrato), com margem e valor do benefício na frente
+  const dins = cols.filter(c => grupoDe(c.k) !== 'emprestimo' && ehDinheiro(c.k) && num(l[c.n]) != null).sort((a, b) => (/margem|livre|disponivel/.test(b.k) - /margem|livre|disponivel/.test(a.k)) || (/benef|renda|^mr$|salario/.test(b.k) - /benef|renda|^mr$|salario/.test(a.k))).slice(0, 4);
+  let h = `<div class="heroi"><h2>${esc(cNome ? l[cNome.n] || 'Sem nome na base' : 'Registro encontrado')}</h2><div class="sub">CPF ${fmtCPF(RES.cpf)} · ${L.length} contrato(s) na base${RES.mais ? ' (mostrando os primeiros ' + L.length + ')' : ''}</div>
     <div class="chips">${id != null ? `<span class="chip o">${id} anos</span>` : ''}${cNasc ? `<span class="chip">nasc. ${esc(dataBR(l[cNasc.n]))}</span>` : ''}${cCid || cUF ? `<span class="chip">📍 ${esc([cCid && l[cCid.n], cUF && l[cUF.n]].filter(Boolean).join(' / '))}</span>` : ''}${cEsp ? `<span class="chip g">espécie ${esc(l[cEsp.n])}</span>` : ''}</div>
     ${dins.length ? '<div class="dest">' + dins.map(c => `<div><span>${esc(rotulo(c.n))}</span><b>${brl(num(l[c.n]))}</b></div>`).join('') + '</div>' : ''}</div>`;
-  if (L.length > 1) { const cNB = cols.find(c => /^nb$|_nb$|^nb_|benef/.test(c.k) && so(L[0][c.n]).length >= 6) || cols.find(c => /contrato/.test(c.k));
-    h += '<div class="abas">' + L.map((x, i) => `<button type="button" data-i="${i}" class="${i === SEL ? 'sel' : ''}">${i + 1}${cNB && x[cNB.n] ? ' · ' + esc(rotulo(cNB.n)) + ' ' + esc(x[cNB.n]) : 'º registro'}</button>`).join('') + '</div>'; }
   const por = {}; cols.forEach(c => { (por[grupoDe(c.k)] = por[grupoDe(c.k)] || []).push(c); });
-  const ordem = ['pessoa', 'beneficio', 'margem', 'emprestimo', 'pagamento', 'contato', 'endereco', 'outros'], INFO = Object.fromEntries(GRUPOS.map(g => [g[0], g])); INFO.outros = ['outros', '🗂️', 'Outros dados'];
-  h += '<div class="grade">' + ordem.filter(g => por[g]).map(g => `<div class="cart"><h3><i>${INFO[g][1]}</i>${INFO[g][2]}</h3>` + por[g].map(c => { const m = mostra(c.k, l[c.n]); return `<div class="campo"><span>${esc(rotulo(c.n))}</span><b class="${m.vazio ? 'vazio' : m.din ? 'din' : ''}" ${m.vazio ? '' : 'title="Toque para copiar"'}>${esc(m.t)}</b></div>`; }).join('') + '</div>').join('') + '</div>';
+  // dados do cliente/benefício (iguais em todos os contratos): tira o grupo "emprestimo", que é por contrato
+  const ordemCli = ['pessoa', 'beneficio', 'margem', 'pagamento', 'contato', 'endereco', 'outros'];
+  h += '<div class="grade">' + ordemCli.filter(g => por[g]).map(g => `<div class="cart"><h3><i>${INFO[g][1]}</i>${INFO[g][2]}</h3>` + por[g].map(c => campoHTML(c, l)).join('') + '</div>').join('') + '</div>';
+  // contratos: um card por linha da base, com o banco no título
+  const ce = por['emprestimo'] || [];
+  if (ce.length) {
+    const cBanco = ce.find(c => /contrato_banco_nome|^banco_nome$/.test(c.k)) || ce.find(c => /banco/.test(c.k) && /nome/.test(c.k)) || ce.find(c => /banco/.test(c.k));
+    const cNum = ce.find(c => /numero_contrato|contrato_numero|^contrato$/.test(c.k)) || ce.find(c => /contrato/.test(c.k) && !/banco|data|dt/.test(c.k));
+    h += `<h3 style="margin:22px 2px 0;font-size:16px;color:#bfe3ff">🏦 Contratos detalhados (${L.length})</h3>`;
+    h += '<div class="grade">' + L.map((row, i) => {
+      const banco = cBanco && String(row[cBanco.n] || '').trim() ? rotulo(row[cBanco.n]) : 'Contrato';
+      const nnum = cNum && String(row[cNum.n] || '').trim() ? ' · nº ' + esc(row[cNum.n]) : '';
+      return `<div class="cart"><h3><i>🏦</i>${esc(banco)}<span class="sub" style="margin-left:auto;font-weight:400">${i + 1}/${L.length}</span></h3><div class="campo"><span>Contrato</span><b class="vazio" style="color:var(--texto)">${nnum ? esc(cNum ? row[cNum.n] : '') : '—'}</b></div>` + ce.filter(c => c !== cNum).map(c => campoHTML(c, row)).join('') + '</div>';
+    }).join('') + '</div>';
+  }
   $('#saida').innerHTML = h;
 }
 $('#saida').addEventListener('click', e => { const a = e.target.closest('[data-i]'); if (a) { SEL = +a.dataset.i; desenhar(); return; }
