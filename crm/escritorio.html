@@ -1119,7 +1119,7 @@ gl.addEventListener('click', e => {
   }
   const eh = melhor.id === eu.id, nome = nomeExib(melhor.p);
   const ops = eh ? [['pc', '💻 Usar meu computador'], ['tomarcafe', '☕ Tomar um café na bancada'], ...(atores.get(eu.id)?.livre ? [['sentar', '🪑 Voltar pra minha mesa']] : []), ['acenar', '👋 Acenar para todos'], ['dancar', '💃 Dançar'], ['cafe', '☕ Chamar pro café'], ['palmas', '👏 Bater palmas']]
-                 : [['acenar', `👋 Acenar para ${nome}`], ['highfive', '✋ Toca aqui!'], ['coracao', '❤️ Mandar coração'], ['palmas', '👏 Aplaudir']];
+                 : [['acenar', `👋 Acenar para ${esc(nome)}`], ['highfive', '✋ Toca aqui!'], ['coracao', '❤️ Mandar coração'], ['palmas', '👏 Aplaudir']];
   m.innerHTML = `<b>${esc(melhor.p.papel === 'advogado' ? nomeExib(melhor.p) : melhor.p.nome)}${eh ? ' (você)' : ''}</b>` + ops.map(([k, t]) => `<button data-a="${k}">${t}</button>`).join('') +
     `<form id="f-falar"><input id="i-falar" maxlength="80" placeholder="Dizer algo…"><button class="btn" style="padding:6px 10px">➤</button></form>`;
   m.style.left = Math.min(innerWidth - 190, e.clientX + 8) + 'px'; m.style.top = Math.min(innerHeight - 260, e.clientY + 8) + 'px'; m.hidden = false;
