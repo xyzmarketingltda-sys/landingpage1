@@ -38,7 +38,8 @@
   // só de dígitos do número do contrato (testado: buscar o número inteiro com hífen, só os dígitos colados ou um pedaço não acha nada).
   const trechoBusca = n => { const segs = String(n || '').split(/\D+/).filter(Boolean).sort((a, b) => b.length - a.length), m = segs[0] || ''; return m.length >= 8 ? m : ''; };   // menos de 8 dígitos casa com número de qualquer coisa
   /* p = { cpf, nome, cep ou uf, contratos: [{ n, banco, p }] } (contratos já em ordem de prioridade)
-     o = { aviso(texto), pausa, maxContratos, meses, federal }
+     o = { aviso(texto), pausa, maxContratos, meses, federal, desde }
+     desde ('AAAA-MM-DD'): conferência rápida do dia a dia, só o que foi publicado dessa data em diante (maxContratos: 0 pula os contratos)
      devolve { achados, consultas, erros, bancos, uf, contratosConferidos, contratosTotal } */
   async function verificar(p, o) {
     o = o || {}; const aviso = o.aviso || (() => {}), pausa = o.pausa || 700, M = new Map(), erros = []; let consultas = 0;
@@ -47,7 +48,8 @@
     // um trecho de busca por contrato (e a versão sem zeros à esquerda, quando houver), lembrando de qual banco é cada número
     const alvo = new Map();
     (p.contratos || []).forEach(k => { const t = trechoBusca(k.n); if (!t) return; const z = t.replace(/^0+/, ''); [t].concat(z !== t && z.length >= 9 ? [z] : []).forEach(v => { if (!alvo.has(v)) alvo.set(v, { n: String(k.n), bancos: bancosEm(k.banco) }); }); });
-    const todos = [...alvo.keys()], nums = todos.slice(0, o.maxContratos || 25);
+    const todos = [...alvo.keys()], nums = todos.slice(0, o.maxContratos === 0 ? 0 : (o.maxContratos || 25));
+    const hojeISO = new Date().toISOString().slice(0, 10), janela = /^\d{4}-\d{2}-\d{2}$/.test(o.desde || '') ? '&dataDisponibilizacaoInicio=' + o.desde + '&dataDisponibilizacaoFim=' + hojeISO : '';
     const por = (it, prova, contrato) => {
       if (it.ativo === false) return; const n = it.numeroprocessocommascara || it.numero_processo || '?';
       if (!M.has(n)) M.set(n, { numero: n, tribunal: it.siglaTribunal || '', orgao: it.nomeOrgao || '', classe: it.nomeClasse || '', nomes: new Map(), pubs: new Map(), provas: new Set(), contratos: new Set(), advs: new Set() });
@@ -61,7 +63,7 @@
     try {
       if (cpfFmt) {
         const reCpf = new RegExp('(^|\\D)' + cpf.slice(0, 3) + '\\.?' + cpf.slice(3, 6) + '\\.?' + cpf.slice(6, 9) + '\\s?-?\\s?' + cpf.slice(9) + '(\\D|$)');
-        for (const q of [cpfFmt, cpf]) await tenta('CPF no texto das publicações', async () => { const r = await buscar('texto=' + encodeURIComponent(q), { pausa }); r.itens.forEach(it => { if (reCpf.test(limpar(it.texto))) por(it, 'cpf'); }); });
+        for (const q of [cpfFmt, cpf]) await tenta('CPF no texto das publicações', async () => { const r = await buscar('texto=' + encodeURIComponent(q) + janela, { pausa }); r.itens.forEach(it => { if (reCpf.test(limpar(it.texto))) por(it, 'cpf'); }); });
       }
       for (const n of nums) await tenta('contrato nº ' + alvo.get(n).n, async () => {
         const r = await buscar('texto=' + n, { max: 1, pausa }), re = new RegExp('(^|\\D)0*' + n + '(\\D|$)'), dono = alvo.get(n);
@@ -73,7 +75,7 @@
           // sem o nome do cliente e sem o banco, número igual é quase sempre de outra pessoa (protocolo, outro contrato, valor): só entra se pedirem (o.fracos) e em texto de consignado
           if (mesmoNome || (mesmoBanco && consig && n.length >= 9)) por(it, 'contrato', dono.n); else if (o.fracos && consig && n.length >= 9) por(it, 'contrato_num', dono.n); }); });
       if (nome.split(' ').length >= 2) {
-        const de = new Date(Date.now() - (o.meses || 24) * 30.4 * 864e5).toISOString().slice(0, 10), ate = new Date().toISOString().slice(0, 10);
+        const de = janela ? o.desde : new Date(Date.now() - (o.meses || 24) * 30.4 * 864e5).toISOString().slice(0, 10), ate = hojeISO;
         const tribs = tribunaisDaUF(uf).filter(t => o.federal !== false || !/^TRF/.test(t) || bancosCli.includes('Caixa'));
         for (const t of (tribs.length ? tribs : [''])) await tenta('nome' + (t ? ' no ' + t : ' no Brasil todo'), async () => {
           const r = await buscar('nomeParte=' + encodeURIComponent(p.nome.trim()) + (t ? '&siglaTribunal=' + t : '') + '&dataDisponibilizacaoInicio=' + de + '&dataDisponibilizacaoFim=' + ate, { max: 2, pausa });
