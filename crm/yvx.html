@@ -201,6 +201,7 @@ function analisar(L, cols) {
     if (ver.length) return Object.assign(o, { st: 'ver', tit: o.troco != null && o.troco < o.trocoMin ? 'Atende as regras, mas o troco não fecha na taxa usada' : 'Atende as regras, mas confira', txt: ver });
     return Object.assign(o, { st: 'ok', tit: 'Porta com refinanciamento', txt: [] });
   });
+  contratos.forEach((c, n) => { c.i = n; c.banco = g(L[n], 'contrato_banco_nome') || 'Contrato'; c.num = g(L[n], 'numero_contrato'); });
   return { cli, novo, contratos, inval, idM, esp, taxa: taxaQ() };
 }
 const ICO = { ok: '✅', nao: '⛔', ver: '⚠️', na: '➖' };
@@ -212,6 +213,7 @@ function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'
     <div class="chips" style="margin-top:0"><span class="chip g">${ok.length} porta(m)</span><span class="chip o">${ver.length} para conferir</span><span class="chip r">${nao.length} não porta(m)</span>${A.inval ? '<span class="chip o">invalidez</span>' : ''}${A.idM != null ? `<span class="chip">idade ${anosMeses(A.idM)}</span>` : ''}</div>
     <div class="dest"><div><span>Troco estimado nos que portam</span><b>${brl(soma)}</b></div><div><span>Empréstimo novo pela margem</span><b>${A.novo.ok ? brl(A.novo.valor) : '—'}</b></div><div><span>Margem livre</span><b>${A.novo.margem != null ? brl(A.novo.margem) : '—'}</b></div></div>
     ${A.novo.ok ? `<div class="sub" style="margin-top:8px">Novo: parcela de ${brl(A.novo.margem)} em ${A.novo.prazo}x.</div>` : A.novo.negativa ? '<div class="sub" style="margin-top:8px">Margem negativa: a Quali opera se o negativo sair da parcela e a operação cobrir o troco.</div>' : A.novo.margem != null && A.novo.margem < 20 ? '<div class="sub" style="margin-top:8px">Margem abaixo da parcela mínima de R$ 20,00 para empréstimo novo.</div>' : ''}
+    ${ok.concat(ver).length ? '<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">' + ok.concat(ver).map(c => `<button type="button" data-ir="${c.i}" style="text-align:left;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-color:${c.st === 'ok' ? 'rgba(34,197,94,.5)' : 'rgba(251,191,36,.5)'}">${ICO[c.st]} <b>${esc(c.banco)}</b>${c.num ? '<span class="sub">nº ' + esc(c.num) + '</span>' : ''}${c.troco != null ? '<span style="margin-left:auto;color:#fde68a">troco ' + brl(c.troco) + '</span>' : ''}<span class="sub">ver contrato ↓</span></button>`).join('') + '</div>' : ''}
     <ul>${li(A.cli.bloq, '#fca5a5')}${li(A.cli.avisos, '#fde68a')}${li(A.cli.infos, 'var(--suave)')}</ul>
     <div class="sub" style="margin-top:10px">Taxa usada na estimativa: <input id="q-taxa" inputmode="decimal" value="${String(A.taxa).replace('.', ',')}"> % ao mês. Ajuste para a tabela da Quali. Os valores são estimativa com a mesma parcela no prazo máximo; o valor final sai na calculadora da Quali.</div></div>`; }
 
@@ -248,13 +250,14 @@ function desenhar() {
       const nnum = cNum && String(row[cNum.n] || '').trim() ? ' · nº ' + esc(row[cNum.n]) : '';
       const cCod = ce.find(c => /contrato_banco_codigo|banco_cod/.test(c.k)), cb = cCod ? cod3(row[cCod.n]) : '';
       const ico = LOGOS.has(cb) ? `<img src="bancos/${cb}.svg" alt="" loading="lazy" style="width:28px;height:28px;object-fit:contain;background:#fff;border-radius:7px;padding:3px;flex:none">` : '<i>🏦</i>';
-      return `<div class="cart"><h3>${ico}${esc(banco)}<span class="sub" style="margin-left:auto;font-weight:400">${i + 1}/${L.length}</span></h3>${A ? vereditoHTML(A.contratos[i]) : ''}<div class="campo"><span>Contrato</span><b class="vazio" style="color:var(--texto)">${nnum ? esc(cNum ? row[cNum.n] : '') : '—'}</b></div>` + ce.filter(c => c !== cNum).map(c => campoHTML(c, row)).join('') + '</div>';
+      return `<div class="cart" id="ct-${i}"><h3>${ico}${esc(banco)}<span class="sub" style="margin-left:auto;font-weight:400">${i + 1}/${L.length}</span></h3>${A ? vereditoHTML(A.contratos[i]) : ''}<div class="campo"><span>Contrato</span><b class="vazio" style="color:var(--texto)">${nnum ? esc(cNum ? row[cNum.n] : '') : '—'}</b></div>` + ce.filter(c => c !== cNum).map(c => campoHTML(c, row)).join('') + '</div>';
     }).join('') + '</div>';
   }
   $('#saida').innerHTML = h;
 }
 $('#saida').addEventListener('change', e => { if (e.target.id !== 'q-taxa') return; const v = parseFloat(String(e.target.value).replace(',', '.')); if (v > 0 && v < 5) { try { localStorage.setItem('yvx_taxa', v); } catch (x) {} desenhar(); } else toast('Taxa inválida'); });
 $('#saida').addEventListener('click', e => { if (e.target.closest('#b-op')) { OPON = !OPON; try { localStorage.setItem('yvx_op', OPON ? '1' : '0'); } catch (x) {} desenhar(); return; }
+  const ir = e.target.closest('[data-ir]'); if (ir) { const el = document.getElementById('ct-' + ir.dataset.ir); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.transition = 'box-shadow .3s'; el.style.boxShadow = '0 0 0 3px #fbbf24, 0 0 30px rgba(251,191,36,.5)'; setTimeout(() => { el.style.boxShadow = ''; }, 2200); } return; }
   if (e.target.closest('.vd, .op')) return;
   const a = e.target.closest('[data-i]'); if (a) { SEL = +a.dataset.i; desenhar(); return; }
   const b = e.target.closest('.campo b:not(.vazio)'); if (b && navigator.clipboard) navigator.clipboard.writeText(b.textContent).then(() => toast('Copiado: ' + b.textContent)); });
