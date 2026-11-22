@@ -215,6 +215,7 @@ html{background:#02060f}
 <script src="../crm/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../crm/presenca.js?v=20261117n"></script>
+<script src="../crm/senha.js?v=20261122a"></script>
 <script>
 const CFG = window.CRM_CONFIG, sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -257,6 +258,8 @@ async function iniciar() {
   const { data: p } = await sb.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
   if (!p || !p.ativo) { await sb.auth.signOut(); $('#login').hidden = false; $('#l-erro').textContent = 'Acesso não liberado. Fale com a XYZ.'; return; }
   if (p.papel === 'atendente') return location.href = '../crm/';
+  // senha provisória (ou troca pedida pela XYZ): só entra depois de criar a própria senha
+  $('#login').hidden = true; try { await XYZSenha.exigir(sb, p); } catch (e) { console.warn('senha', e); }
   eu = p; $('#login').hidden = true; $('#app').hidden = false;
   $('#eu-nome').textContent = p.papel === 'advogado' ? (['Carina','Cibele','Danyelle','Junny','Rita'].includes(p.nome) ? 'Dra. ' : 'Dr. ') + (p.nome === 'Luiz' ? 'Luís' : p.nome) : p.nome + ' (admin)';
   try { XYZPresenca.entrar(sb, eu, {}); } catch (e) {}

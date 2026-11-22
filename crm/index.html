@@ -580,6 +580,10 @@ body.embed{background:transparent}
             <div id="lista-at"></div>
           </div>
           <div class="bloco vidro">
+            <h3>🔑 Acessos e senhas <small style="color:var(--suave);font-weight:400">· advogados e equipe</small></h3>
+            <div id="contas"></div>
+          </div>
+          <div class="bloco vidro">
             <h3>🔒 Quem mexeu nas senhas do INSS</h3>
             <div id="logs"></div>
           </div>
@@ -677,6 +681,7 @@ body.embed{background:transparent}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="presenca.js?v=20261118e"></script>
+<script src="senha.js?v=20261122a"></script>
 <script src="comissao.js?v=5"></script>
 <script>
 /* ================= FUNDO 3D (galáxia de partículas conectadas) ================= */
@@ -882,6 +887,8 @@ async function iniciar() {
     return mostrarLogin('Seu acesso não está liberado. Fale com o administrador.');
   }
   if (perfil.papel === 'advogado') return location.href = '../controle/';
+  // senha provisória (ou troca pedida pelo admin): só entra depois de criar a própria senha
+  $('#login').hidden = true; try { await XYZSenha.exigir(sb, perfil); } catch (e) { console.warn('senha', e); }
   eu = perfil;
   $('#login').hidden = true; $('#app').hidden = false;
   $('#eu-nome').textContent = eu.nome;
@@ -1537,7 +1544,7 @@ function abrirAba(aba) {
   if (aba === 'clientes') carregarClientes();
   if (aba === 'ranking') carregarRanking();
   if (aba === 'remarketing') carregarRemarketing(true);
-  if (aba === 'atendentes') { carregarEquipe(); carregarLogs(); }
+  if (aba === 'atendentes') { carregarEquipe(); carregarLogs(); carregarContas(); }
 }
 
 /* ---------- clientes ---------- */
@@ -2053,6 +2060,49 @@ async function atualizarFlutuante() {
 
 /* ---------- atendentes (admin) ---------- */
 let fotoPara = null;
+/* Acessos e senhas (só admin): senha provisória sorteada pelo sistema e troca obrigatória no próximo acesso.
+   A senha provisória aparece uma única vez nesta tela, para o admin repassar; não fica guardada. */
+async function carregarContas() {
+  const box = $('#contas'); if (!box || !eu || eu.papel !== 'admin') return;
+  const { data, error } = await sb.rpc('contas_lista');
+  if (error) { box.innerHTML = '<p style="color:var(--suave);font-size:13px">Não consegui carregar: ' + esc(traduz(error)) + '</p>'; return; }
+  const dia = d => new Date(d).toLocaleDateString('pt-BR');
+  const linha = c => `<div class="linha-at" data-conta="${c.id}"><div><b>${esc(c.nome)}</b><small>${esc(c.papel === 'advogado' ? 'login: ' + String(c.email || '').split('@')[0] : c.email)} · ${c.ultimo_acesso ? 'último acesso em ' + dia(c.ultimo_acesso) : '<span style="color:#fde68a">nunca entrou</span>'}${c.trocar_senha ? ' · <span style="color:#fde68a">vai criar senha nova no próximo acesso</span>' : ''}${c.ativo ? '' : ' · bloqueado'}</small></div>
+      <div class="acoes"><button class="btn sec peq" data-prov="${c.id}">Senha provisória</button><button class="btn sec peq" data-troca="${c.id}" data-v="${c.trocar_senha ? 0 : 1}">${c.trocar_senha ? 'Dispensar troca' : 'Exigir troca'}</button></div></div>`;
+  const grupo = (tit, L) => L.length ? `<h4 style="margin:14px 0 2px;font-size:12.5px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em">${tit} · ${L.length}</h4>` + L.map(linha).join('') : '';
+  const adv = (data || []).filter(c => c.papel === 'advogado'), eq = (data || []).filter(c => c.papel !== 'advogado' && c.id !== eu.id);
+  const semTroca = adv.filter(c => !c.trocar_senha).length, nunca = adv.filter(c => !c.ultimo_acesso).length;
+  box.innerHTML = `<p style="font-size:12.5px;color:var(--suave);line-height:1.55;margin:0 0 10px">A <b>senha provisória</b> é sorteada pelo sistema, aparece uma vez só para você repassar, e a pessoa é obrigada a criar a dela ao entrar. A senha antiga para de funcionar na hora. <b>Exigir troca</b> mantém a senha atual, mas obriga a pessoa a criar outra no próximo acesso.${nunca ? ' <span style="color:#fde68a">' + nunca + ' advogado(s) nunca entraram: para esses, o mais seguro é gerar a senha provisória.</span>' : ''}</p>`
+    + (semTroca ? `<div style="margin-bottom:6px"><button class="btn sec peq" id="troca-advs">Exigir troca de senha de todos os advogados (${semTroca})</button></div>` : '')
+    + grupo('Advogados', adv) + grupo('Equipe', eq);
+  // dois toques para confirmar (sem janela do navegador)
+  const confirmar = (b, txt) => { if (b.dataset.conf) return true; const o = b.textContent; b.dataset.conf = '1'; b.textContent = txt; b.classList.add('perigo'); setTimeout(() => { delete b.dataset.conf; b.textContent = o; b.classList.remove('perigo'); }, 4000); return false; };
+  box.querySelectorAll('[data-troca]').forEach(b => b.onclick = async () => {
+    const { error } = await sb.rpc('exigir_troca_senha', { p_id: b.dataset.troca, p_papel: null, p_valor: b.dataset.v === '1' });
+    error ? toast(traduz(error), true) : toast(b.dataset.v === '1' ? 'Vai criar senha nova no próximo acesso.' : 'Troca dispensada.'); carregarContas();
+  });
+  const todos = $('#troca-advs'); if (todos) todos.onclick = async () => {
+    if (!confirmar(todos, 'Toque de novo para confirmar')) return;
+    const { data: n, error } = await sb.rpc('exigir_troca_senha', { p_id: null, p_papel: 'advogado', p_valor: true });
+    error ? toast(traduz(error), true) : toast(n + ' advogado(s) vão criar senha nova no próximo acesso.'); carregarContas();
+  };
+  box.querySelectorAll('[data-prov]').forEach(b => b.onclick = async () => {
+    if (!confirmar(b, 'Trocar a senha agora?')) return;
+    b.disabled = true;
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      const r = await fetch(CFG_URL() + '/functions/v1/acesso', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token, apikey: (window.CRM_CONFIG || {}).SUPABASE_ANON_KEY }, body: JSON.stringify({ acao: 'provisoria', id: b.dataset.prov }) });
+      const j = await r.json(); if (!r.ok || !j.senha) throw new Error(j.erro || 'falhou');
+      await carregarContas();
+      const lin = $('#contas [data-conta="' + b.dataset.prov + '"]'); if (!lin) return;
+      const cx = document.createElement('div'); cx.style.cssText = 'flex-basis:100%;border:1px solid rgba(251,191,36,.5);background:rgba(251,191,36,.08);border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.5';
+      cx.innerHTML = 'Senha provisória de <b>' + esc(j.nome) + '</b>: <b style="font-size:17px;letter-spacing:.04em;user-select:all" id="prov-val"></b> <button class="btn sec peq" id="prov-cop" style="margin-left:6px">Copiar</button><br><small style="color:var(--suave)">Anote ou copie agora: ela não aparece de novo. No primeiro acesso a pessoa cria a senha dela.</small>';
+      lin.appendChild(cx); cx.querySelector('#prov-val').textContent = j.senha;
+      cx.querySelector('#prov-cop').onclick = async () => { try { await navigator.clipboard.writeText(j.senha); toast('Copiada.'); } catch (e) { toast('Não consegui copiar. Selecione e copie.', true); } };
+    } catch (e) { toast('Não consegui gerar a senha: ' + (e.message || e), true); b.disabled = false; }
+  });
+}
+
 async function carregarEquipe() {
   const [{ data: perfis, error }, { data: conv }] = await Promise.all([
     sb.from('perfis').select('*').order('nome'),
