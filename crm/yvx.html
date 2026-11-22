@@ -107,7 +107,7 @@ function mostra(k, v) { v = String(v ?? '').trim(); if (!v || /^(null|nan|none)$
   if (k === 'consignavel' && /^[01]$/.test(v)) return { t: v === '1' ? 'Sim' : 'Não' };
   if (/^uf$|_uf$|^uf_/.test(k) && UFS[v.toUpperCase()]) return { t: UFS[v.toUpperCase()] + ' (' + v.toUpperCase() + ')' };
   if (/sexo/.test(k) && /^[MF]$/i.test(v)) return { t: /^m$/i.test(v) ? 'Masculino' : 'Feminino' };
-  if (k === 'taxa') { const n = num(v); if (n != null) return { t: n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '% ao mês' }; }
+  if (k === 'taxa') { const n = num(v); if (n != null) return { t: n.toFixed(2) + '%' }; }
   if (/cpf/.test(k) && so(v).length >= 9 && so(v).length <= 11) return { t: fmtCPF(v) };
   if (ehDinheiro(k)) { const n = num(v); if (n != null) return { t: brl(n), din: true }; }
   if (ehData(k)) return { t: dataBR(v) };
