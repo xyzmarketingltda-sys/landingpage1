@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prazos e intimações · XYZ CRM</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--painel:rgba(5,13,32,.82);--borda:rgba(30,144,255,.25);--texto:#eaf3ff;--suave:#93a9c9;--azul:#1e90ff;--verde:#22c55e;--vermelho:#ef4444;--ouro:#fbbf24;--raio:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:radial-gradient(ellipse at 50% -10%,#0a2a66 0%,#02060f 60%) fixed;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;min-height:100vh}
+main{max-width:1000px;margin:0 auto;padding:20px 14px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:22px}h2{font-size:16px;margin:0 0 8px}
+a.btn,button{background:#0f2552;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
+button.ok{background:#0d3b24;border-color:rgba(34,197,94,.5)}button:disabled{opacity:.5}
+.sub{color:var(--suave);font-size:13px}
+.bloco{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:14px;margin-bottom:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px;cursor:pointer}.kpi.sel{border-color:#8cc8ff}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
+input,select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:16px}
+.linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.oab{display:inline-flex;gap:8px;align-items:center;background:#0f2552;border:1px solid var(--borda);border-radius:99px;padding:5px 6px 5px 12px;font-size:13px;margin:4px 6px 0 0}.oab button{padding:2px 8px;border-radius:99px;font-size:12px}
+.it{background:var(--painel);border:1px solid var(--borda);border-left:4px solid var(--borda);border-radius:var(--raio);padding:12px 14px;margin-bottom:10px}
+.it.atrasada{border-left-color:var(--vermelho)}.it.hoje{border-left-color:var(--ouro)}.it.semana{border-left-color:var(--azul)}.it.feita{opacity:.65;border-left-color:var(--verde)}
+.it .topo{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}.it h3{font-size:15px}
+.tag{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap;background:rgba(30,144,255,.15);color:#8cc8ff;border:1px solid var(--borda)}
+.tag.v{background:rgba(239,68,68,.18);color:#fca5a5;border-color:rgba(239,68,68,.5)}.tag.a{background:rgba(251,191,36,.15);color:#fde68a;border-color:rgba(251,191,36,.45)}.tag.g{background:rgba(34,197,94,.15);color:#86efac;border-color:rgba(34,197,94,.45)}
+.it p{font-size:13px;color:var(--suave);margin-top:6px;line-height:1.5}.it details{margin-top:6px}.it summary{cursor:pointer;font-size:13px;color:#8cc8ff}.it .txt{white-space:pre-wrap;font-size:13px;line-height:1.55;margin-top:6px;color:var(--texto)}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.nota{font-size:12.5px;color:var(--suave);line-height:1.6;margin-top:14px}
+</style>
+</head>
+<body hidden>
+<main>
+<header><div><h1>⏰ Prazos e intimações</h1><div class="sub" id="sub">carregando…</div></div><div><a class="btn" id="voltar" href="./">← CRM</a></div></header>
+
+<div class="bloco">
+  <h2>OABs acompanhadas</h2>
+  <div class="sub">Cadastre a OAB uma vez. O sistema lê o Diário de Justiça Eletrônico Nacional algumas vezes por dia e traz as intimações sozinho.</div>
+  <div id="oabs" style="margin:8px 0"></div>
+  <form class="linha" id="f-oab">
+    <select id="o-adv" hidden></select>
+    <input id="o-num" inputmode="numeric" placeholder="Número da OAB" style="width:170px" required>
+    <select id="o-uf" required></select>
+    <button class="ok" id="o-btn">Acompanhar</button>
+  </form>
+</div>
+
+<div class="kpis" id="kpis"></div>
+<div class="linha" style="margin-bottom:10px"><input id="q" placeholder="Buscar por processo, parte, vara ou tipo…" style="flex:1;min-width:200px"><select id="f-adv" hidden></select></div>
+<div id="lista"></div>
+<p class="nota"><b>Como ler.</b> As intimações vêm do Diário de Justiça Eletrônico Nacional (CNJ), pela OAB cadastrada. O tipo de prazo e o vencimento são <b>sugestão automática</b>: sentença em Juizado conta 10 dias úteis para recurso inominado e em Vara 15 para apelação; nos despachos vale o prazo escrito no texto, quando há. A conta é em dias úteis (segunda a sexta), a partir do dia útil seguinte à publicação, <b>sem feriados, recesso nem suspensões</b>. Confira sempre o prazo nos autos. Tribunais que ainda não publicam tudo no Diário Nacional podem não aparecer aqui.</p>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '—';
+const UFS = 'AC AL AM AP BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' ');
+let EU = null, ABERTAS = [], FEITAS = [], FILTRO = 'abertas';
+const hoje = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+const dias = v => v ? Math.round((new Date(v + 'T12:00:00') - new Date(hoje() + 'T12:00:00')) / 864e5) : null;
+function classe(i) { if (i.feito_em) return 'feita'; const d = dias(i.vence); return d == null ? '' : d < 0 ? 'atrasada' : d === 0 ? 'hoje' : d <= 7 ? 'semana' : ''; }
+function quando(i) { const d = dias(i.vence); if (i.feito_em) return '<span class="tag g">feita em ' + dBR(i.feito_em) + '</span>'; if (d == null) return '<span class="tag">sem prazo identificado</span>'; return d < 0 ? `<span class="tag v">venceu há ${-d} dia${d === -1 ? '' : 's'} · ${dBR(i.vence)}</span>` : d === 0 ? '<span class="tag a">vence HOJE</span>' : `<span class="tag${d <= 3 ? ' a' : ''}">vence em ${d} dia${d === 1 ? '' : 's'} · ${dBR(i.vence)}</span>`; }
+function desenhar() {
+  const q = $('#q').value.trim().toLowerCase(), adv = $('#f-adv').value;
+  const base = FILTRO === 'feitas' ? FEITAS : ABERTAS;
+  const vis = base.filter(i => (!adv || i.advogado === adv) && (FILTRO === 'feitas' || FILTRO === 'abertas' || (FILTRO === 'atrasadas' ? dias(i.vence) != null && dias(i.vence) < 0 : FILTRO === 'semana' ? dias(i.vence) != null && dias(i.vence) >= 0 && dias(i.vence) <= 7 : dias(i.vence) == null))
+    && (!q || [i.processo, i.partes, i.orgao, i.tipo_prazo, i.tipo_doc, i.cliente, i.tribunal].join(' ').toLowerCase().includes(q)));
+  const A = ABERTAS.filter(i => !adv || i.advogado === adv), n = f => A.filter(f).length;
+  $('#kpis').innerHTML = [['abertas', 'Abertas', A.length], ['atrasadas', 'Atrasadas', n(i => dias(i.vence) != null && dias(i.vence) < 0)], ['semana', 'Vencem em 7 dias', n(i => dias(i.vence) != null && dias(i.vence) >= 0 && dias(i.vence) <= 7)], ['semprazo', 'Sem prazo identificado', n(i => dias(i.vence) == null)], ['feitas', 'Feitas', FEITAS.filter(i => !adv || i.advogado === adv).length]]
+    .map(([k, t, v]) => `<div class="kpi${FILTRO === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('');
+  $('#lista').innerHTML = vis.length ? vis.slice(0, 300).map(i => `<div class="it ${classe(i)}"><div class="topo"><h3>${esc(i.tipo_prazo || i.tipo_doc || i.tipo_com || 'Intimação')}${i.prazo_dias ? ' <small style="color:var(--suave);font-weight:400">· ' + i.prazo_dias + ' dias úteis</small>' : ''}</h3>${quando(i)}</div>
+      <p><b style="color:var(--texto)">${esc(i.processo || 'processo não informado')}</b> · ${esc(i.tribunal || '')} · ${esc(i.orgao || '')}<br>${i.cliente ? '<b style="color:#86efac">Cliente no CRM: ' + esc(i.cliente) + '</b><br>' : ''}${esc(i.partes || '')}<br>Disponibilizada em ${dBR(i.dia)} · OAB ${esc(i.oab)}${EU.papel === 'admin' ? ' · ' + esc(i.advogado) : ''}</p>
+      <details><summary>Ver o texto</summary><div class="txt">${esc(i.resumo || '')}${(i.resumo || '').length >= 900 ? '…' : ''}</div></details>
+      <div class="acoes">${i.link && /^https:\/\//.test(i.link) ? `<a class="btn" href="${esc(i.link)}" target="_blank" rel="noopener">Abrir no Diário</a>` : ''}<button class="${i.feito_em ? '' : 'ok'}" data-m="${i.id}" data-v="${i.feito_em ? 0 : 1}">${i.feito_em ? 'Reabrir' : 'Marcar como feita'}</button></div></div>`).join('')
+    : `<div class="bloco sub">${ABERTAS.length + FEITAS.length ? 'Nada nesse filtro.' : 'Nenhuma intimação ainda. Depois de cadastrar a OAB, a primeira leitura traz os últimos 30 dias e pode levar até 2 horas.'}</div>`;
+}
+async function carregar() {
+  const [a, f, o] = await Promise.all([sb.rpc('intim_lista', { p_feitas: false }), sb.rpc('intim_lista', { p_feitas: true }), sb.rpc('oab_lista')]);
+  if (a.error) { $('#sub').textContent = 'não consegui carregar: ' + a.error.message; return; }
+  ABERTAS = a.data || []; FEITAS = f.data || [];
+  const O = o.data || [];
+  $('#oabs').innerHTML = O.length ? O.map(x => `<span class="oab">${EU.papel === 'admin' ? '<b>' + esc(x.advogado) + '</b> · ' : ''}OAB ${esc(x.numero)}/${esc(x.uf)}<small style="color:var(--suave)">${x.erro ? '⚠ ' + esc(x.erro) : x.ultima_leitura ? 'lida ' + new Date(x.ultima_leitura).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'aguardando 1ª leitura'}</small><button data-r="${x.id}" title="Parar de acompanhar">✕</button></span>`).join('') : '<span class="sub">Nenhuma OAB cadastrada ainda.</span>';
+  $('#sub').textContent = `${ABERTAS.length} aberta(s) · ${O.length} OAB(s) acompanhada(s)`;
+  if (EU.papel === 'admin') { const advs = [...new Set([...ABERTAS, ...FEITAS].map(i => i.advogado))].sort(), at = $('#f-adv').value; $('#f-adv').hidden = false; $('#f-adv').innerHTML = '<option value="">Todos os advogados</option>' + advs.map(x => `<option>${esc(x)}</option>`).join(''); $('#f-adv').value = at; }
+  desenhar();
+}
+$('#kpis').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { FILTRO = k.dataset.f; desenhar(); } });
+$('#q').addEventListener('input', desenhar); $('#f-adv').addEventListener('change', desenhar);
+$('#lista').addEventListener('click', async e => { const b = e.target.closest('[data-m]'); if (!b) return; b.disabled = true; const { error } = await sb.rpc('intim_marcar', { p_id: +b.dataset.m, p_feito: b.dataset.v === '1' }); if (error) { b.disabled = false; b.textContent = 'Erro: ' + error.message; return; } carregar(); });
+$('#oabs').addEventListener('click', async e => { const b = e.target.closest('[data-r]'); if (!b) return; b.disabled = true; await sb.rpc('oab_remover', { p_id: +b.dataset.r }); carregar(); });
+$('#f-oab').addEventListener('submit', async e => { e.preventDefault(); const b = $('#o-btn'); b.disabled = true;
+  const { error } = await sb.rpc('oab_salvar', { p_numero: $('#o-num').value, p_uf: $('#o-uf').value, p_advogado: EU.papel === 'admin' ? $('#o-adv').value : null });
+  b.disabled = false; if (error) { b.textContent = error.message; setTimeout(() => b.textContent = 'Acompanhar', 4000); return; } $('#o-num').value = ''; carregar(); });
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
+    const { data: eu } = await sb.from('perfis').select('papel,ativo,advogado_chave').eq('id', session.user.id).single();
+    if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
+    EU = eu;
+    if (eu.papel !== 'admin' || new URLSearchParams(location.search).get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
+    $('#o-uf').innerHTML = UFS.map(u => `<option${u === 'SP' ? ' selected' : ''}>${u}</option>`).join('');
+    if (eu.papel === 'admin') { const { data: advs } = await sb.rpc('lista_advogados'); $('#o-adv').hidden = false; $('#o-adv').innerHTML = (advs || []).map(x => x.lista_advogados ?? x).sort().map(x => `<option>${esc(x)}</option>`).join(''); }
+    document.body.hidden = false; carregar();
+  } catch (e) { location.replace('./'); }
+})();
+</script>
+</body>
+</html>
