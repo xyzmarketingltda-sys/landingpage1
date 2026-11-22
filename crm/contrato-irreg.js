@@ -124,8 +124,9 @@
     R.creditoConta = /(?:cr[ée]dito|dep[óo]sito|libera[çc][ãa]o)\s+(?:em|na)\s+conta|conta\s+(?:para|de)\s+(?:cr[ée]dito|libera[çc][ãa]o|dep[óo]sito)|forma\s+de\s+libera[çc][ãa]o[^.]{0,40}(?:TED|conta|DOC)|dados\s+banc[áa]rios\s+para\s+(?:cr[ée]dito|libera)/i.test(T);
     const S = root.detectarSeguro ? root.detectarSeguro(texto, arquivo) : null;
     if (S) {
-      // trava: nenhum seguro passa de metade do valor financiado; se a soma passar, sobra só o maior valor plausível (o resto é número vizinho lido por engano)
-      const base = R.financiado || 0, lim = base ? base * 0.5 : 60000;
+      // trava: seguro alto existe (já houve contrato com 70% do financiado), então o limite é o próprio valor financiado;
+      // se a soma chegar nele, sobra só o maior valor abaixo do limite (o resto é número vizinho lido por engano)
+      const base = R.financiado || 0, lim = base ? base * 0.95 : 60000;
       const vs = (S.seguro || []).map(x => x.v).filter(v => v < lim);
       let seg = vs.reduce((x, y) => x + y, 0); if (seg >= lim) seg = vs.length ? Math.max.apply(null, vs) : 0;
       R.seguro = Math.round(seg * 100) / 100; R.pacote = S.totalPacote || 0;
