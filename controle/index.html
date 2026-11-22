@@ -213,7 +213,14 @@ $('#f-login').onsubmit = async e => {
   const APELIDO = { luis: 'luiz' };
   const chave = APELIDO[slug(u)] || slug(u);
   const email = u.includes('@') ? u.toLowerCase() : chave + '@adv.xyzmarketing.com.br';
-  const { error } = await sb.auth.signInWithPassword({ email, password: $('#l-senha').value });
+  let { error } = await sb.auth.signInWithPassword({ email, password: $('#l-senha').value });
+  // primeiro acesso: a XYZ deixou o convite pronto e a senha digitada agora passa a ser a do advogado
+  if (error && /invalid/i.test(error.message)) {
+    try { const { data: tem } = await sb.rpc('convite_adv_existe', { p_email: email });
+      if (tem) { if ($('#l-senha').value.length < 6) { b.disabled = false; return $('#l-erro').textContent = 'Primeiro acesso: escolha uma senha com pelo menos 6 caracteres.'; }
+        const r = await sb.auth.signUp({ email, password: $('#l-senha').value }); error = r.error;
+        if (!error && !r.data.session) error = (await sb.auth.signInWithPassword({ email, password: $('#l-senha').value })).error; } } catch (e) {}
+  }
   b.disabled = false;
   if (error) return $('#l-erro').textContent = /invalid/i.test(error.message) ? 'Usuário ou senha incorretos.' : error.message;
   iniciar();
