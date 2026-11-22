@@ -129,6 +129,7 @@ html{background:#02060f}
   #lista td:nth-child(6)::before{content:"Procuração"} #lista td:nth-child(9)::before{content:"Status"} #lista td:nth-child(10)::before{content:"Pasta"}
   #lista td[colspan]{grid-column:1/-1} #lista td[colspan]::before{content:none}
 }
+select{color-scheme:dark}select option,select optgroup{background:#061230;color:#eaf3ff}
 </style>
 </head>
 <body>
@@ -281,7 +282,7 @@ async function avisosPush() {
   }
   let reg; try { reg = await navigator.serviceWorker.register('sw.js'); } catch (e) { console.warn('sw', e); return; }
   const ligado = async () => !!(Notification.permission === 'granted' && await reg.pushManager.getSubscription());
-  const pintar = async () => { const on = await ligado(); bt.textContent = on ? 'Avisos ligados' : 'Ativar avisos'; bt.classList.toggle('sec', on); };
+  const pintar = async () => { const on = await ligado(); bt.textContent = on ? 'Desligar avisos' : 'Ativar avisos'; bt.title = on ? 'Os avisos estão ligados neste aparelho. Toque para desligar.' : 'Receba um aviso no celular ou no computador quando uma procuração sua for assinada'; bt.classList.toggle('sec', on); };
   const inscrever = async () => {
     const { chave } = await (await fetch(FN_PUSH)).json();
     const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(chave) });
@@ -290,6 +291,11 @@ async function avisosPush() {
   };
   bt.onclick = async () => {
     try {
+      if (await ligado()) {   // já ligado: o mesmo botão desliga
+        bt.textContent = 'desligando…'; const sub = await reg.pushManager.getSubscription();
+        if (sub) { try { await sb.rpc('push_desligar', { p_endpoint: sub.endpoint }); } catch (e) {} await sub.unsubscribe(); }
+        await pintar(); toast('Avisos desligados neste aparelho'); return;
+      }
       if (ios && !instalado) return alertar('No iPhone, primeiro instale o app: toque em Compartilhar (quadrado com a seta) e em "Adicionar à Tela de Início". Depois abra pelo ícone e toque de novo em "Ativar avisos".');
       if (Notification.permission === 'denied') return alertar('Os avisos estão bloqueados neste aparelho. Libere as notificações deste site nas configurações do navegador e tente de novo.');
       if (await Notification.requestPermission() !== 'granted') return;
@@ -520,6 +526,6 @@ $('#modal').onclick = e => { if (e.target.id === 'modal') $('#modal').hidden = t
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#modal').hidden = true; });
 iniciar();
 </script>
-<script src="fundo.js?v=20261122b" defer></script>
+<script src="fundo.js?v=20261122d" defer></script>
 </body>
 </html>

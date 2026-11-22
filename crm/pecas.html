@@ -35,6 +35,7 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
 #saida{white-space:pre-wrap;background:#fff;color:#111;border-radius:12px;padding:28px 32px;font:15px/1.6 Georgia,'Times New Roman',serif;margin-top:14px;min-height:200px}
 #saida mark{background:#ffe9a8;color:#111;border-radius:3px;padding:0 2px}
 .aviso{border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.08);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:12px}
+select{color-scheme:dark}select option,select optgroup{background:#061230;color:#eaf3ff}
 </style>
 </head>
 <body hidden>
@@ -45,6 +46,7 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
   <select id="cli"><option value="">Escolher cliente (ordem alfabética)…</option></select>
   <input id="cpf-busca" placeholder="ou digite o CPF do cliente" inputmode="numeric" style="background:rgba(255,255,255,.05);border:1px solid var(--borda);border-radius:10px;color:var(--texto);padding:9px 11px;font:inherit;min-width:210px">
   <select id="ctr" hidden></select>
+  <button class="btn" id="ler-drive" type="button" title="Busca o que o robô leu na pasta do cliente no Google Drive e preenche a peça">Ler documentos no Drive</button>
 </div>
 <div class="sub" id="cli-info"></div>
 <div class="linha">
@@ -87,10 +89,25 @@ let CLI = null;
 const so = v => String(v || '').replace(/\D/g, ''), fmtCpf = c => so(c).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'), dBRc = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '';
 const moeda = v => v == null || v === '' ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const poe = (k, v) => { if (v != null && v !== '') $('#c-' + k).value = v; };
+// dados do banco réu (razão social, CNPJ e sede) a partir da base de canais dos bancos
+let BANCOS = null;
+const semAcP = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+async function bancoReu(nome) {
+  try { if (!BANCOS) BANCOS = (await (await fetch('bancos-canais.json?v=20261122c')).json()).bancos || []; } catch (e) { BANCOS = []; }
+  const b = ' ' + semAcP(nome) + ' '; let c = null, tam = 0;
+  for (const x of BANCOS) for (const k of x.chaves || []) { const q = ' ' + semAcP(k) + ' '; if (b.includes(q) && q.length > tam) { c = x; tam = q.length; } }
+  if (!c) return;
+  if (c.razao) $('#c-banco').value = c.razao; poe('cnpj', c.cnpj);
+  const end = [c.endereco, c.cidade_uf, c.cep ? 'CEP ' + c.cep : ''].filter(Boolean).join(', '); if (end && c.endereco && !/caixa postal/i.test(c.endereco)) poe('endBanco', end);
+  desenhar();
+}
+const nomeProprio = t => String(t || '').toLowerCase().replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase()).replace(/\s(De|Da|Do|Dos|Das|E)\s/g, m => m.toLowerCase());
 function usarContrato(i) {
   const k = CLI && CLI.contratos[i]; if (!k) return;
-  ['banco', 'contrato', 'dataContrato', 'valorContrato', 'parcela', 'descontadas', 'seguro'].forEach(c => { $('#c-' + c).value = ''; });
+  ['banco', 'cnpj', 'endBanco', 'contrato', 'dataContrato', 'valorContrato', 'parcela', 'descontadas', 'seguro'].forEach(c => { $('#c-' + c).value = ''; });
   poe('banco', k.banco); poe('contrato', k.numero); poe('dataContrato', dBRc(k.data)); poe('valorContrato', moeda(k.valor)); poe('parcela', moeda(k.parcela)); poe('descontadas', k.descontadas); poe('seguro', moeda(k.seguro)); $('#c-teses').value = (k.teses || []).join('; ');
+  if (!k.valor && k.financiado) poe('valorContrato', moeda(k.financiado));
+  bancoReu(k.banco);
   if (!q.get('peca')) $('#peca').value = k.seguro ? 'seguro' : 'nao-contratado'; desenhar();
 }
 async function puxar(cpf) {
@@ -99,6 +116,7 @@ async function puxar(cpf) {
   const { data, error } = await sb.rpc('peca_dados', { p_cpf: so(cpf) });
   if (error || !data) { CLI = null; $('#ctr').hidden = true; $('#cli-info').textContent = error ? 'Não consegui buscar: ' + error.message : 'CPF não encontrado entre os seus clientes.'; return; }
   CLI = data; poe('nome', data.nome); poe('cpf', fmtCpf(data.cpf));
+  if (!$('#c-advogado').value && data.adv_nome) $('#c-advogado').value = nomeProprio(data.adv_nome) + (data.adv_oab ? ', ' + data.adv_oab : '');
   if (data.cep && !$('#c-endereco').value) $('#c-endereco').value = 'CEP ' + String(data.cep).replace(/(\d{5})(\d{3})/, '$1-$2') + ' (completar rua, número e cidade)';
   const L = data.contratos || [];
   $('#ctr').hidden = !L.length;
@@ -109,6 +127,21 @@ async function puxar(cpf) {
 $('#cli').addEventListener('change', e => { if (e.target.value) { $('#cpf-busca').value = fmtCpf(e.target.value); puxar(e.target.value); } });
 $('#cpf-busca').addEventListener('input', e => { e.stopPropagation(); if (so(e.target.value).length === 11) puxar(e.target.value); });
 $('#ctr').addEventListener('change', e => usarContrato(Number(e.target.value)));
+// botão: lê de novo o que o robô tirou da pasta do Drive e pede uma releitura da pasta
+$('#ler-drive').addEventListener('click', async () => {
+  const cpf = so($('#cpf-busca').value) || so($('#cli').value), b = $('#ler-drive');
+  if (cpf.length !== 11) { $('#cli-info').textContent = 'Escolha o cliente (ou digite o CPF) antes de ler os documentos.'; return; }
+  b.disabled = true; b.textContent = 'Lendo…';
+  let r = null; try { const x = await sb.rpc('peca_ler_drive', { p_cpf: cpf }); r = x.data; } catch (e) {}
+  await puxar(cpf);
+  b.disabled = false; b.textContent = 'Ler documentos no Drive';
+  const n = (CLI && CLI.contratos || []).length, info = $('#cli-info');
+  if (!CLI) return;
+  if (r && r.pasta === false) info.textContent = 'Este cliente ainda não tem pasta ligada no Google Drive. Quando a pasta existir, o robô lê os contratos sozinho.';
+  else info.textContent = (n ? `Preenchi com ${n} contrato(s) lido(s) na pasta: banco, CNPJ, número, data, valor financiado, parcela e seguro. ` : 'O robô ainda não tem contrato lido desta pasta. ')
+    + (r && r.pedido ? 'Pedi ao robô para reler a pasta agora; se entrou documento novo, clique de novo daqui a uns 15 minutos.' : 'A pasta foi relida há menos de 15 minutos.')
+    + ' Confira os valores com o contrato. RG, endereço e número do benefício continuam à mão.';
+});
 async function carregarClientes() {
   const { data } = await sb.rpc('peca_clientes');
   $('#cli').innerHTML = '<option value="">Escolher cliente (ordem alfabética)…</option>' + (data || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)} · ${fmtCpf(c.cpf)}</option>`).join('');
