@@ -109,15 +109,15 @@ const seloDe = (n, m) => m < 1 || n == null ? 'poucos dados' : n >= 70 ? 'invest
 const irTabela = () => document.querySelector('table.r').scrollIntoView({ behavior: 'smooth', block: 'start' });
 function escolherUF(u) { UFSEL = UFSEL === u ? '' : u; desenhar(); mapa(); if (UFSEL) irTabela(); }
 function mapa() {
-  if (!MAPA) return; DADOS.forEach(situar);
+  if (!MAPA) return; DADOS.forEach(situar); const SELO = $('#f-selo').value;   // com um selo escolhido, o mapa mostra só as comarcas daquele selo
   const porUF = {}; DADOS.forEach(d => { if (d._uf) (porUF[d._uf] = porUF[d._uf] || []).push(d); });
   const est = Object.keys(MAPA.uf).map(u => { const L = porUF[u] || [], m = L.reduce((a, d) => a + d.procedentes + d.parciais + d.improcedentes, 0), n = notaDe(L); return { u, L, m, n, selo: seloDe(n, m), tot: L.reduce((a, d) => a + d.sentencas, 0) }; });
-  const bolas = DADOS.filter(d => d._ok && (!UFSEL || d._uf === UFSEL)).sort((a, b) => ((b.selo === 'poucos dados') - (a.selo === 'poucos dados')) || b.sentencas - a.sentencas);   // cinzas embaixo, maiores antes
+  const bolas = DADOS.filter(d => d._ok && (!UFSEL || d._uf === UFSEL) && (!SELO || d.selo === SELO)).sort((a, b) => ((b.selo === 'poucos dados') - (a.selo === 'poucos dados')) || b.sentencas - a.sentencas);   // cinzas embaixo, maiores antes
   const r = d => Math.min(15, 2.2 + Math.sqrt(d.sentencas) * 0.62);
   const vivos = new Set(bolas.filter(d => d.selo !== 'poucos dados').slice(0, 28));
   $('#mapa').innerHTML = `<defs><linearGradient id="gv" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3b82f6" stop-opacity=".22"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>`
     + [60, 130, 200, 270].map(x => `<circle class="anel" cx="310" cy="300" r="${x}"/>`).join('')
-    + est.map(e => `<path class="uf${UFSEL === e.u ? ' sel' : ''}" data-uf="${e.u}" d="${MAPA.uf[e.u]}" style="${e.selo !== 'poucos dados' ? 'fill:' + COR[e.selo] + '22' : ''}"/>`).join('')
+    + est.map(e => `<path class="uf${UFSEL === e.u ? ' sel' : ''}" data-uf="${e.u}" d="${MAPA.uf[e.u]}" style="${SELO ? (e.L.some(d => d.selo === SELO) ? 'fill:' + COR[SELO] + '33' : '') : e.selo !== 'poucos dados' ? 'fill:' + COR[e.selo] + '22' : ''}"/>`).join('')
     + est.map(e => `<text class="sig" x="${MAPA.ctr[e.u][0]}" y="${MAPA.ctr[e.u][1] + 3}">${e.u}</text>`).join('')
     + `<g id="varre"><path d="M310,300 L310,20 A280,280 0 0 1 400,35 Z" fill="url(#gv)"/></g>`
     + bolas.map(d => vivos.has(d) ? `<circle class="p" cx="${d._xy[0]}" cy="${d._xy[1]}" r="${r(d).toFixed(1)}" stroke="${COR[d.selo]}"/>` : '').join('')
@@ -173,7 +173,7 @@ async function exemplos() {
 ['f-trib', 'f-tese'].forEach(i => $('#' + i).addEventListener('change', exemplos));
 $('#ex-b').addEventListener('click', exemplos); $('#ex-q').addEventListener('keydown', e => { if (e.key === 'Enter') exemplos(); });
 ['f-trib', 'f-tese', 'f-rito'].forEach(i => $('#' + i).addEventListener('change', carregar));
-['q', 'f-selo'].forEach(i => $('#' + i).addEventListener('input', desenhar));
+['q', 'f-selo'].forEach(i => $('#' + i).addEventListener('input', desenhar)); $('#f-selo').addEventListener('input', mapa);
 (async () => {
   try {
     const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
