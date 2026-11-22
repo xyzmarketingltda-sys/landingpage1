@@ -126,6 +126,8 @@ const Q = { versao: '03/11/2026',
   agNao: { '104': ['3880'], '237': ['3728', '3737', '3738', '3750', '3925', '3929', '6176', '7160', '7320', '7526', '7615', '7802'], '341': ['500'], '655': ['655'] } };
 let OPON = false; try { OPON = localStorage.getItem('yvx_op') === '1'; } catch (e) {}
 function taxaQ() { let t = 1.85; try { const v = parseFloat(localStorage.getItem('yvx_taxa')); if (v > 0 && v < 5) t = v; } catch (e) {} return t; }
+const PISO_AT = 1621, TETO_AT = 8475.55;   // piso e teto do INSS em 2026
+function projQ() { let piso = 1741, inpc = 4.93; try { const a = parseFloat(localStorage.getItem('yvx_piso')), b = parseFloat(localStorage.getItem('yvx_inpc')); if (a > PISO_AT && a < 3000) piso = a; if (b > 0 && b < 20) inpc = b; } catch (e) {} return { piso, inpc }; }
 const cod3 = v => { const d = so(v); return d ? String(parseInt(d, 10)).padStart(3, '0') : ''; };
 function paraData(v) { const m = dataBR(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
 function mesesDesde(d) { const h = new Date(); let m = (h.getFullYear() - d.getFullYear()) * 12 + h.getMonth() - d.getMonth(); if (h.getDate() < d.getDate()) m--; return m; }
@@ -174,6 +176,12 @@ function analisar(L, cols) {
   const margem = num(g(l, 'valor_margem')), novo = { margem };
   if (margem != null && margem >= 20 && livre && prazoNovo > 0) { novo.ok = true; novo.prazo = prazoNovo; novo.valor = Math.min(150000, margem * fatorPV(i, prazoNovo)); }
   else if (margem != null && margem < 0) novo.negativa = true;
+  // aumento de margem de janeiro (projeção pelo reajuste do piso e do INPC)
+  const vb = num(g(l, 'valor_beneficio')), P = projQ(); let aum = null;
+  if (vb != null && vb > 0) { const noPiso = vb <= PISO_AT + 0.5, nb = noPiso ? P.piso : Math.min(TETO_AT * (1 + P.inpc / 100), Math.max(vb * (1 + P.inpc / 100), P.piso));
+    aum = { vb, nb, dif: nb - vb, m35: (nb - vb) * 0.35, m45: (nb - vb) * 0.45, noPiso, inval, P };
+    const dib = paraData(g(l, 'dib')); if (!noPiso && dib && dib.getFullYear() >= 2026) aum.prop = true;
+    if (livre && !inval && prazoNovo > 0 && aum.m35 >= 20) { aum.prazo = prazoNovo; aum.valor = Math.min(150000, aum.m35 * fatorPV(i, prazoNovo)); } }
   // contratos
   const contratos = L.map(r => {
     const tipo = g(r, 'tipo_emprestimo'), banco = cod3(g(r, 'contrato_banco_codigo')), parc = num(g(r, 'valor_parcela')), saldo = num(g(r, 'saldo'));
@@ -202,8 +210,14 @@ function analisar(L, cols) {
     return Object.assign(o, { st: 'ok', tit: 'Porta com refinanciamento', txt: [] });
   });
   contratos.forEach((c, n) => { c.i = n; c.banco = g(L[n], 'contrato_banco_nome') || 'Contrato'; c.num = g(L[n], 'numero_contrato'); });
-  return { cli, novo, contratos, inval, idM, esp, taxa: taxaQ() };
+  return { cli, novo, aum, contratos, inval, idM, esp, taxa: taxaQ() };
 }
+function aumentoHTML(A) { const a = A.aum; if (!a) return '';
+  const obs = a.inval ? 'Benefício por invalidez: não se enquadra na campanha do aumento de margem.' : a.valor ? `Valor estimado a liberar com a margem nova: <b style="color:#fde68a">${brl(a.valor)}</b> em ${a.prazo}x.` : A.cli.bloq.length ? 'Cliente fora das regras da Quali (veja os impedimentos abaixo).' : 'Aumento de margem abaixo da parcela mínima de R$ 20,00.';
+  return `<div style="margin-top:14px;padding:12px 14px;border-radius:14px;border:1px solid rgba(34,197,94,.45);background:rgba(34,197,94,.07)"><b style="color:#86efac">📈 Aumento de margem em janeiro (projeção, sem divulgação oficial)</b>
+    <div class="dest" style="margin-top:10px"><div><span>Benefício hoje</span><b>${brl(a.vb)}</b></div><div><span>Benefício projetado</span><b>${brl(a.nb)}</b></div><div><span>Aumento da margem (35%)</span><b>${brl(a.m35)}</b></div><div><span>Com cartões (45%)</span><b>${brl(a.m45)}</b></div></div>
+    <div class="sub" style="margin-top:8px;color:var(--texto)">${obs}</div>${a.prop ? '<div class="sub" style="margin-top:4px;color:#fde68a">Benefício iniciado em 2026: o reajuste acima do piso é proporcional ao mês de início, então o aumento real será menor.</div>' : ''}
+    <div class="sub" style="margin-top:8px">${a.noPiso ? 'Recebe o piso: vai para o novo salário mínimo.' : 'Acima do piso: corrigido só pelo INPC, limitado ao teto.'} Piso projetado: R$ <input id="q-piso" inputmode="decimal" value="${String(a.P.piso).replace('.', ',')}"> · INPC projetado: <input id="q-inpc" inputmode="decimal" value="${String(a.P.inpc).replace('.', ',')}"> %. Referência: em 2026 o piso subiu 6,79% e os demais 3,90%; o INPC foi 4,77% em 2025 e 3,71% em 2024.</div></div>`; }
 const ICO = { ok: '✅', nao: '⛔', ver: '⚠️', na: '➖' };
 function vereditoHTML(c) { const est = c.troco != null && c.st !== 'nao' ? `Troco estimado: <b style="display:inline;color:#fde68a">${brl(c.troco)}</b> em ${c.prazo}x (mínimo ${brl(c.trocoMin)}${c.pct ? ', ' + c.pct + '% do saldo' : ''}).` : '';
   return `<div class="vd ${c.st}"><b>${ICO[c.st]} ${esc(c.tit)}</b>${c.txt.map(esc).join('<br>')}${est ? (c.txt.length ? '<br>' : '') + est : ''}</div>`; }
@@ -214,6 +228,7 @@ function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'
     <div class="dest"><div><span>Troco estimado nos que portam</span><b>${brl(soma)}</b></div><div><span>Empréstimo novo pela margem</span><b>${A.novo.ok ? brl(A.novo.valor) : '—'}</b></div><div><span>Margem livre</span><b>${A.novo.margem != null ? brl(A.novo.margem) : '—'}</b></div></div>
     ${A.novo.ok ? `<div class="sub" style="margin-top:8px">Novo: parcela de ${brl(A.novo.margem)} em ${A.novo.prazo}x.</div>` : A.novo.negativa ? '<div class="sub" style="margin-top:8px">Margem negativa: a Quali opera se o negativo sair da parcela e a operação cobrir o troco.</div>' : A.novo.margem != null && A.novo.margem < 20 ? '<div class="sub" style="margin-top:8px">Margem abaixo da parcela mínima de R$ 20,00 para empréstimo novo.</div>' : ''}
     ${ok.concat(ver).length ? '<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">' + ok.concat(ver).map(c => `<button type="button" data-ir="${c.i}" style="text-align:left;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-color:${c.st === 'ok' ? 'rgba(34,197,94,.5)' : 'rgba(251,191,36,.5)'}">${ICO[c.st]} <b>${esc(c.banco)}</b>${c.num ? '<span class="sub">nº ' + esc(c.num) + '</span>' : ''}${c.troco != null ? '<span style="margin-left:auto;color:#fde68a">troco ' + brl(c.troco) + '</span>' : ''}<span class="sub">ver contrato ↓</span></button>`).join('') + '</div>' : ''}
+    ${aumentoHTML(A)}
     <ul>${li(A.cli.bloq, '#fca5a5')}${li(A.cli.avisos, '#fde68a')}${li(A.cli.infos, 'var(--suave)')}</ul>
     <div class="sub" style="margin-top:10px">Taxa usada na estimativa: <input id="q-taxa" inputmode="decimal" value="${String(A.taxa).replace('.', ',')}"> % ao mês. Ajuste para a tabela da Quali. Os valores são estimativa com a mesma parcela no prazo máximo; o valor final sai na calculadora da Quali.</div></div>`; }
 
@@ -255,7 +270,8 @@ function desenhar() {
   }
   $('#saida').innerHTML = h;
 }
-$('#saida').addEventListener('change', e => { if (e.target.id !== 'q-taxa') return; const v = parseFloat(String(e.target.value).replace(',', '.')); if (v > 0 && v < 5) { try { localStorage.setItem('yvx_taxa', v); } catch (x) {} desenhar(); } else toast('Taxa inválida'); });
+$('#saida').addEventListener('change', e => { const lim = { 'q-taxa': ['yvx_taxa', 0, 5], 'q-piso': ['yvx_piso', PISO_AT, 3000], 'q-inpc': ['yvx_inpc', 0, 20] }[e.target.id]; if (!lim) return;
+  const v = parseFloat(String(e.target.value).replace(/\./g, m => /,/.test(e.target.value) ? '' : m).replace(',', '.')); if (v > lim[1] && v < lim[2]) { try { localStorage.setItem(lim[0], v); } catch (x) {} desenhar(); } else toast('Valor inválido'); });
 $('#saida').addEventListener('click', e => { if (e.target.closest('#b-op')) { OPON = !OPON; try { localStorage.setItem('yvx_op', OPON ? '1' : '0'); } catch (x) {} desenhar(); return; }
   const ir = e.target.closest('[data-ir]'); if (ir) { const el = document.getElementById('ct-' + ir.dataset.ir); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.transition = 'box-shadow .3s'; el.style.boxShadow = '0 0 0 3px #fbbf24, 0 0 30px rgba(251,191,36,.5)'; setTimeout(() => { el.style.boxShadow = ''; }, 2200); } return; }
   if (e.target.closest('.vd, .op')) return;
