@@ -148,9 +148,11 @@ function desenhar() {
     : '<tr><td colspan="10" style="padding:22px;color:var(--suave)">Ainda não há sentenças coletadas para esse filtro. O robô lê o Diário de Justiça aos poucos; volte mais tarde.</td></tr>';
 }
 async function carregar() {
-  const { data, error } = await sb.rpc('juri_radar', { p_tribunal: $('#f-trib').value || null, p_tese: $('#f-tese').value || null, p_rito: $('#f-rito').value || null });
-  if (error) { $('#sub').textContent = 'não consegui carregar: ' + error.message; return; }
-  DADOS = data || [];
+  // o servidor entrega no máximo 1.000 linhas por pedido: busca em páginas até acabar (antes o radar parava em 1.000 comarcas)
+  const arg = { p_tribunal: $('#f-trib').value || null, p_tese: $('#f-tese').value || null, p_rito: $('#f-rito').value || null }, vistos = new Map(); let error = null;
+  for (let i = 0; i < 5; i++) { const r = await sb.rpc('juri_radar', arg).range(i * 1000, i * 1000 + 999); if (r.error) { error = r.error; break; } (r.data || []).forEach(d => vistos.set(d.tribunal + '|' + d.comarca, d)); if ((r.data || []).length < 1000) break; }
+  if (error && !vistos.size) { $('#sub').textContent = 'não consegui carregar: ' + error.message; return; }
+  DADOS = [...vistos.values()].sort((x, y) => y.sentencas - x.sentencas);
   if (!$('#f-trib').dataset.ok) { const ts = [...new Set(DADOS.map(d => d.tribunal))].sort(); $('#f-trib').innerHTML = '<option value="">Todos os tribunais</option>' + ts.map(t => `<option>${esc(t)}</option>`).join(''); $('#f-trib').dataset.ok = 1; }
   const tot = DADOS.reduce((a, d) => a + d.sentencas, 0), de = DADOS.map(d => d.de).sort()[0], ate = DADOS.map(d => d.ate).sort().pop(), c = s => DADOS.filter(d => d.selo === s).length;
   $('#sub').textContent = tot ? `${tot.toLocaleString('pt-BR')} sentenças de consignado · publicadas de ${dBR(de)} a ${dBR(ate)}` : 'coleta em andamento';
