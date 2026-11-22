@@ -11,7 +11,7 @@
   const bancosEm = t => BANCOS.filter(([, re]) => re.test(t || '')).map(([k]) => k);
   const so = v => String(v || '').replace(/\D/g, '');
   const chave = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim();
-  const limpar = h => String(h || '').slice(0, 80000).replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+  const limpar = h => String(h || '').slice(0, 250000).replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
   const TRF = { TRF1: 'AC AM AP BA DF GO MA MT PA PI RO RR TO', TRF2: 'RJ ES', TRF3: 'SP MS', TRF4: 'RS SC PR', TRF5: 'AL CE PB PE RN SE', TRF6: 'MG' };
   const tribunaisDaUF = uf => uf ? [uf === 'DF' ? 'TJDFT' : 'TJ' + uf, Object.keys(TRF).find(k => TRF[k].split(' ').includes(uf))].filter(Boolean) : [];
   const FAIXAS = [[1000, 19999, 'SP'], [20000, 28999, 'RJ'], [29000, 29999, 'ES'], [30000, 39999, 'MG'], [40000, 48999, 'BA'], [49000, 49999, 'SE'], [50000, 56999, 'PE'], [57000, 57999, 'AL'], [58000, 58999, 'PB'], [59000, 59999, 'RN'], [60000, 63999, 'CE'], [64000, 64999, 'PI'], [65000, 65999, 'MA'], [66000, 68899, 'PA'], [68900, 68999, 'AP'], [69000, 69299, 'AM'], [69300, 69399, 'RR'], [69400, 69899, 'AM'], [69900, 69999, 'AC'], [70000, 72799, 'DF'], [72800, 72999, 'GO'], [73000, 73699, 'DF'], [73700, 76799, 'GO'], [76800, 76999, 'RO'], [77000, 77999, 'TO'], [78000, 78899, 'MT'], [79000, 79999, 'MS'], [80000, 87999, 'PR'], [88000, 89999, 'SC'], [90000, 99999, 'RS']];
@@ -34,13 +34,20 @@
   const RES = [['parcial', /julgo\s+(?:parcialmente\s+procedente|procedente[s]?\s+em\s+parte)|parcialmente\s+procedente/i], ['improcedente', /julgo\s+(?:totalmente\s+)?improcedente|improcedente[s]?\s+o[s]?\s+pedido/i], ['procedente', /julgo\s+(?:totalmente\s+)?procedente|procedente[s]?\s+o[s]?\s+pedido/i], ['acordo', /homologo[^.]{0,80}(?:acordo|transa[çc][ãa]o)/i], ['extinto', /julgo\s+extint|extingo\s+o\s+(?:processo|feito)/i]];
   const resultado = t => { const i = t.search(/\bjulgo\b|\bhomologo\b|ante o exposto|diante do exposto|isso posto|posto isso/i); const d = t.slice(Math.max(0, i)); const r = RES.find(([, re]) => re.test(d)); return r ? r[0] : null; };
 
-  /* p = { cpf, nome, cep ou uf, contratos: [{ n, banco }] }   o = { aviso(texto), pausa, maxContratos, meses, federal }
-     devolve { achados: [...], consultas, erros: [...], bancos: [...], uf } */
+  // Como o Diário indexa números: por "palavra". "325890378-4" vira as palavras 325890378 e 4, então a busca é pelo maior trecho
+  // só de dígitos do número do contrato (testado: buscar o número inteiro com hífen, só os dígitos colados ou um pedaço não acha nada).
+  const trechoBusca = n => { const segs = String(n || '').split(/\D+/).filter(Boolean).sort((a, b) => b.length - a.length), m = segs[0] || ''; return m.length >= 6 ? m : ''; };
+  /* p = { cpf, nome, cep ou uf, contratos: [{ n, banco, p }] } (contratos já em ordem de prioridade)
+     o = { aviso(texto), pausa, maxContratos, meses, federal }
+     devolve { achados, consultas, erros, bancos, uf, contratosConferidos, contratosTotal } */
   async function verificar(p, o) {
     o = o || {}; const aviso = o.aviso || (() => {}), pausa = o.pausa || 700, M = new Map(), erros = []; let consultas = 0;
     const cpf = so(p.cpf), cpfFmt = cpf.length === 11 ? cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '', nome = chave(p.nome), uf = p.uf || cepUF(p.cep);
     const bancosCli = [...new Set((p.contratos || []).flatMap(k => bancosEm(k.banco)))];
-    const nums = [...new Set((p.contratos || []).map(k => so(k.n)).filter(n => n.length >= 7 && n.length <= 20))].slice(0, o.maxContratos || 12);
+    // um trecho de busca por contrato (e a versão sem zeros à esquerda, quando houver), lembrando de qual banco é cada número
+    const alvo = new Map();
+    (p.contratos || []).forEach(k => { const t = trechoBusca(k.n); if (!t) return; [t, t.replace(/^0+/, '')].forEach(v => { if (v.length >= 6 && !alvo.has(v)) alvo.set(v, { n: String(k.n), bancos: bancosEm(k.banco) }); }); });
+    const todos = [...alvo.keys()], nums = todos.slice(0, o.maxContratos || 25);
     const por = (it, prova, contrato) => {
       if (it.ativo === false) return; const n = it.numeroprocessocommascara || it.numero_processo || '?';
       if (!M.has(n)) M.set(n, { numero: n, tribunal: it.siglaTribunal || '', orgao: it.nomeOrgao || '', classe: it.nomeClasse || '', nomes: new Map(), pubs: new Map(), provas: new Set(), contratos: new Set() });
@@ -50,10 +57,17 @@
     };
     const tenta = async (rotulo, fn) => { aviso(rotulo); try { consultas++; await fn(); } catch (e) { erros.push(rotulo + ': ' + e.message); if (/429/.test(e.message)) throw e; } await espera(pausa); };
     try {
-      if (cpfFmt) await tenta('CPF no texto das publicações', async () => { const r = await buscar('texto=' + encodeURIComponent(cpfFmt), { pausa });
-        r.itens.forEach(it => { if (limpar(it.texto).replace(/\s/g, '').includes(cpfFmt)) por(it, 'cpf'); }); });
-      for (const n of nums) await tenta('contrato nº ' + n, async () => { const r = await buscar('texto=' + n, { max: 1, pausa }); const re = new RegExp('(^|\\D)' + n + '(\\D|$)');
-        r.itens.forEach(it => { const t = limpar(it.texto); if (re.test(t) && /contrato|empr[ée]stimo|consign|c[ée]dula|opera[çc][ãa]o/i.test(t)) por(it, 'contrato', n); }); });
+      if (cpfFmt) {
+        const reCpf = new RegExp('(^|\\D)' + cpf.slice(0, 3) + '\\.?' + cpf.slice(3, 6) + '\\.?' + cpf.slice(6, 9) + '\\s?-?\\s?' + cpf.slice(9) + '(\\D|$)');
+        for (const q of [cpfFmt, cpf]) await tenta('CPF no texto das publicações', async () => { const r = await buscar('texto=' + encodeURIComponent(q), { pausa }); r.itens.forEach(it => { if (reCpf.test(limpar(it.texto))) por(it, 'cpf'); }); });
+      }
+      for (const n of nums) await tenta('contrato nº ' + alvo.get(n).n, async () => {
+        const r = await buscar('texto=' + n, { max: 1, pausa }), re = new RegExp('(^|\\D)0*' + n + '(\\D|$)'), dono = alvo.get(n);
+        r.itens.forEach(it => { const t = limpar(it.texto); if (!re.test(t) || !/contrato|empr[ée]stimo|consign|c[ée]dula|opera[çc][ãa]o|cart[ãa]o/i.test(t)) return;
+          // o mesmo número pode existir em outro banco, para outra pessoa: só vale como "contrato" se o nome do cliente, o CPF ou o banco daquele contrato também aparecer
+          const partes = (it.destinatarios || []).map(d => d.nome).join(' '), mesmoNome = nome.split(' ').length >= 2 && ((it.destinatarios || []).some(d => chave(d.nome) === nome) || chave(t).includes(nome));
+          const mesmoBanco = bancosEm(partes + ' ' + t.slice(0, 6000)).some(b => dono.bancos.includes(b));
+          por(it, mesmoNome || mesmoBanco ? 'contrato' : 'contrato_num', dono.n); }); });
       if (nome.split(' ').length >= 2) {
         const de = new Date(Date.now() - (o.meses || 24) * 30.4 * 864e5).toISOString().slice(0, 10), ate = new Date().toISOString().slice(0, 10);
         const tribs = tribunaisDaUF(uf).filter(t => o.federal !== false || !/^TRF/.test(t) || bancosCli.includes('Caixa'));
@@ -66,15 +80,15 @@
       const pubs = [...a.pubs.values()].sort((x, y) => String(y.dia).localeCompare(String(x.dia))), partes = [...a.nomes].map(([n, polo]) => n + (polo === 'A' ? ' (autor)' : polo === 'P' ? ' (réu)' : '')).slice(0, 8).join('; ');
       const tudo = pubs.map(x => x.txt.slice(0, 3000)).join(' ');
       const bancos = bancosEm(partes).length ? bancosEm(partes) : bancosEm(tudo.slice(0, 4000)), conflito = bancos.filter(b => bancosCli.includes(b));
-      const certo = a.provas.has('cpf') || a.provas.has('contrato'), sent = pubs.find(x => /senten[çc]a|ac[óo]rd[ãa]o/i.test(x.tipo) || /\bjulgo\s+(?:\w+\s+)?(?:im)?procedente/i.test(x.txt));
-      // nível: contrato citado = litispendência quase certa; CPF + mesmo banco = mesma pessoa contra o mesmo banco; nome é só indício
-      const nivel = a.provas.has('contrato') ? 'contrato' : a.provas.has('cpf') ? (conflito.length ? 'cpf_banco' : 'cpf') : conflito.length ? (a.provas.has('nome_uf') ? 'nome_uf_banco' : 'nome_banco') : 'nome';
+      const sent = pubs.find(x => /senten[çc]a|ac[óo]rd[ãa]o/i.test(x.tipo) || /\bjulgo\s+(?:\w+\s+)?(?:im)?procedente/i.test(x.txt));
+      // nível, do mais forte para o mais fraco: contrato citado e confirmado; CPF + mesmo banco; número de contrato sem confirmação; nome + banco; CPF com outro réu; só nome
+      const nivel = a.provas.has('contrato') ? 'contrato' : a.provas.has('cpf') ? (conflito.length ? 'cpf_banco' : 'cpf') : a.provas.has('contrato_num') ? 'contrato_num' : conflito.length ? (a.provas.has('nome_uf') ? 'nome_uf_banco' : 'nome_banco') : 'nome';
       const area = /consignad|empr[ée]stimo|\bRMC\b|\bRCC\b|cart[ãa]o de cr[ée]dito|seguro prestamista/i.test(tudo) || bancos.length ? 'Bancário' : /\bINSS\b|previdenci|aposentadoria|aux[íi]lio|\bBPC\b|\bLOAS\b|pens[ãa]o por morte/i.test(tudo + ' ' + partes) ? 'Previdenciário' : 'Outra área';
-      return { numero: a.numero, tribunal: a.tribunal, orgao: a.orgao, classe: a.classe, partes, bancos, conflito, provas: [...a.provas], contratos: [...a.contratos], certo, nivel, area, sentenca: sent ? { dia: sent.dia, resultado: resultado(sent.txt) } : null, pubs };
+      return { numero: a.numero, tribunal: a.tribunal, orgao: a.orgao, classe: a.classe, partes, bancos, conflito, provas: [...a.provas], contratos: [...a.contratos], certo: nivel === 'contrato' || nivel === 'cpf_banco', nivel, area, sentenca: sent ? { dia: sent.dia, resultado: resultado(sent.txt) } : null, pubs };
     });
-    const peso = { contrato: 0, cpf_banco: 1, nome_uf_banco: 2, nome_banco: 3, cpf: 4, nome: 5 };
+    const peso = { contrato: 0, cpf_banco: 1, contrato_num: 2, nome_uf_banco: 3, nome_banco: 4, cpf: 5, nome: 6 };
     achados.sort((x, y) => (peso[x.nivel] - peso[y.nivel]) || String(y.pubs[0].dia).localeCompare(String(x.pubs[0].dia)));
-    return { achados, consultas, erros, bancos: bancosCli, uf, contratosConferidos: nums.length };
+    return { achados, consultas, erros, bancos: bancosCli, uf, contratosConferidos: nums.length, contratosTotal: todos.length };
   }
 
   /* Situação do processo, lida das publicações (sem IA): em que fase está, o que já aconteceu e o que costuma vir depois.
@@ -103,7 +117,7 @@
     return { fase: at ? at.rot : 'Em andamento (sem fase identificada)', desde: at ? at.dia : ult.dia, proximo: at ? at.prox : 'Abra a última publicação para ver o que o juiz determinou.', resultado: visto.sentenca ? visto.sentenca.res : null, sentencaEm: visto.sentenca ? visto.sentenca.dia : null,
       ultima: { dia: ult.dia, tipo: ult.tipo }, parado: dias, marcos, total: L.length, primeira: L[0].dia };
   }
-  const ROTULO = { contrato: 'cita o número do contrato', cpf_banco: 'CPF confere e é contra banco dos contratos', cpf: 'CPF confere, outro réu', nome_uf_banco: 'mesmo nome, no estado do cliente, contra banco dos contratos', nome_banco: 'mesmo nome contra banco dos contratos (pode ser homônimo)', nome: 'mesmo nome (pode ser homônimo)' };
+  const ROTULO = { contrato: 'cita o número do contrato', cpf_banco: 'CPF confere e é contra banco dos contratos', contrato_num: 'cita um número igual ao do contrato (sem nome nem banco para confirmar)', cpf: 'CPF confere, outro réu', nome_uf_banco: 'mesmo nome, no estado do cliente, contra banco dos contratos', nome_banco: 'mesmo nome contra banco dos contratos (pode ser homônimo)', nome: 'mesmo nome (pode ser homônimo)' };
   root.XYZLitis = { verificar, buscar, bancosEm, cepUF, tribunaisDaUF, limpar, resultado, situacao, ROTULO, BANCOS };
   if (typeof module !== 'undefined') module.exports = root.XYZLitis;
 })(typeof window !== 'undefined' ? window : globalThis);
