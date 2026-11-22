@@ -40,6 +40,7 @@ table.r td.n{text-align:right;font-variant-numeric:tabular-nums}
 .selo.evitar{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}
 .selo.poucos{background:rgba(255,255,255,.06);color:var(--suave);border:1px solid var(--borda)}
 .nota-n{font-weight:800;font-size:16px}
+details.ex{border:1px solid var(--linha,#2a2a3a);border-radius:12px;padding:10px 12px;margin:8px 0}details.ex summary{cursor:pointer;line-height:1.5}details.ex small{color:var(--suave)}.ex-a{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}.ex-t{white-space:pre-wrap;font-size:14px;line-height:1.6;max-height:60vh;overflow:auto}
 </style>
 </head>
 <body hidden>
@@ -57,6 +58,10 @@ table.r td.n{text-align:right;font-variant-numeric:tabular-nums}
 <h2 style="margin:26px 0 6px;font-size:17px">O que pesa nas sentenças</h2>
 <div class="sub">Para cada assunto que aparece no texto das sentenças de mérito, como elas terminaram. Mostra o que ganha e o que perde.</div>
 <div style="overflow-x:auto;margin-top:10px"><table class="r"><thead><tr><th>Aparece na sentença</th><th class="n">Sentenças</th><th class="n">Procedentes</th><th class="n">Parciais</th><th class="n">Improcedentes</th><th class="n">Nota</th><th class="n">Dano moral (mediana)</th></tr></thead><tbody id="sinais"></tbody></table></div>
+<h2 style="margin:26px 0 6px;font-size:17px">Sentenças procedentes de exemplo</h2>
+<div class="sub">Sentenças totalmente procedentes, com dano moral, tiradas do Diário de Justiça. Seguem o tribunal e a tese escolhidos acima. Sirva-se da fundamentação como referência e confira no link do Diário antes de citar.</div>
+<div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap"><input id="ex-q" placeholder="Buscar no texto (ex.: perícia, analfabeto, Bradesco)…" style="flex:1;min-width:220px"><button class="btn" id="ex-b" type="button">Buscar</button></div>
+<div id="exemplos"></div>
 <p class="nota"><b>Como ler.</b> Fonte: sentenças publicadas no Diário de Justiça Eletrônico Nacional (CNJ) sobre empréstimo consignado em benefício do INSS (servidor público, militar e prefeitura ficam de fora), em ações de procedimento comum ou de Juizado. A nota vai de 0 a 100: procedente vale 1, parcialmente procedente 0,6 e improcedente 0; acordos e extinções ficam fora da conta. Selo: 70 ou mais = investir, 50 a 69 = testar, abaixo de 50 = evitar; com menos de 15 sentenças decididas no mérito, "poucos dados". A classificação é automática, pelo texto do dispositivo: serve para comparar comarcas, não substitui a leitura dos julgados. "Em dobro" é a parcela das procedências em que o juiz falou em devolução em dobro, entre as que trataram do assunto.</p>
 </main>
 <script src="config.js"></script>
@@ -85,6 +90,16 @@ async function carregar() {
   const { data: sn } = await sb.rpc('juri_sinais', { p_tribunal: $('#f-trib').value || null });
   $('#sinais').innerHTML = (sn || []).length ? sn.map(x => `<tr><td><b>${esc(NOME[x.sinal] || x.sinal)}</b></td><td class="n">${x.sentencas}</td><td class="n">${x.procedentes}</td><td class="n">${x.parciais}</td><td class="n">${x.improcedentes}</td><td class="n nota-n">${x.nota ?? '—'}</td><td class="n">${brl(x.dano_moral_mediano)}</td></tr>`).join('') : '<tr><td colspan="7" style="padding:18px;color:var(--suave)">Ainda sem volume suficiente.</td></tr>';
 }
+const TESE = { cartao: 'Cartão consignado', nao_contratado: 'Não contratado / fraude', seguro: 'Seguro', juros: 'Juros', refin: 'Refinanciamento / portabilidade' };
+async function exemplos() {
+  $('#exemplos').innerHTML = '<div class="sub">carregando…</div>';
+  const { data, error } = await sb.rpc('juri_exemplos', { p_tribunal: $('#f-trib').value || null, p_tese: $('#f-tese').value || null, p_busca: $('#ex-q').value.trim() || null });
+  if (error) { $('#exemplos').innerHTML = '<div class="sub">não consegui carregar: ' + esc(error.message) + '</div>'; return; }
+  $('#exemplos').innerHTML = (data || []).length ? data.map(x => `<details class="ex"><summary><b>${esc(x.tribunal)}${x.comarca ? ' · ' + esc(x.comarca) : ''}</b> · ${dBR(x.dia)} · ${x.rito === 'jec' ? 'Juizado' : 'Vara'}${x.banco ? ' · ' + esc(x.banco) : ''} · dano moral ${brl(x.dano_moral)}${x.dobro ? ' · em dobro' : ''}<br><small>${(x.teses || []).map(t => esc(TESE[t] || t)).join(', ') || 'consignado INSS'}${x.processo ? ' · proc. ' + esc(x.processo) : ''}</small></summary><div class="ex-a">${x.link && /^https:\/\//.test(x.link) ? `<a class="btn" href="${esc(x.link)}" target="_blank" rel="noopener">Abrir no Diário</a>` : ''}<button class="btn" type="button" onclick="navigator.clipboard.writeText(this.parentNode.nextElementSibling.textContent);this.textContent='Copiado'">Copiar texto</button></div><div class="ex-t">${esc(x.texto)}</div></details>`).join('')
+    : '<div class="sub" style="padding:14px 0">Ainda não há exemplo para esse filtro. O robô vai guardando conforme lê o Diário.</div>';
+}
+['f-trib', 'f-tese'].forEach(i => $('#' + i).addEventListener('change', exemplos));
+$('#ex-b').addEventListener('click', exemplos); $('#ex-q').addEventListener('keydown', e => { if (e.key === 'Enter') exemplos(); });
 ['f-trib', 'f-tese', 'f-rito'].forEach(i => $('#' + i).addEventListener('change', carregar));
 ['q', 'f-selo'].forEach(i => $('#' + i).addEventListener('input', desenhar));
 (async () => {
@@ -93,7 +108,7 @@ async function carregar() {
     const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
     if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
     if (eu.papel !== 'admin' || new URLSearchParams(location.search).get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
-    document.body.hidden = false; carregar();
+    document.body.hidden = false; carregar(); exemplos();
   } catch (e) { location.replace('./'); }
 })();
 </script>
