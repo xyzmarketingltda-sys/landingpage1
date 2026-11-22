@@ -1415,7 +1415,7 @@ async function carregarProcessos() {
   $('#gp-lista').innerHTML = (data || []).map(p => `<tr data-id="${p.id}">
     <td><input class="ed" data-f="nome" value="${esc(p.nome)}"></td>
     <td><input class="ed" data-f="advogado" value="${esc(p.advogado || '')}" style="max-width:120px"></td>
-    <td><input class="ed" data-f="numero" value="${esc(p.numero || '')}"></td>
+    <td style="white-space:nowrap"><input class="ed" data-f="numero" value="${esc(p.numero || '')}">${String(p.numero || '').replace(/\D/g, '').length === 20 ? ` <a href="processos.html?proc=${String(p.numero).replace(/\D/g, '')}&rot=${encodeURIComponent((p.nome || '') + ' · ' + (p.advogado || ''))}" target="_blank" title="Histórico do processo no Diário, fase atual e resumo" style="color:#8cc8ff;text-decoration:none">📜 histórico</a>` : ''}</td>
     <td><input class="ed" data-f="comissao_pct" value="${p.comissao_pct ?? ''}" style="max-width:70px" title="% de comissão"></td>
     <td><select class="ed" data-f="status">${st.map(s => `<option${s === p.status ? ' selected' : ''}>${s}</option>`).join('')}</select></td>
     <td><input class="ed" data-f="observacoes" value="${esc(p.observacoes || '')}" title="${esc(p.observacoes || '')}" placeholder="banco, sentença, pendência…" style="min-width:220px${/⚠/.test(p.observacoes || '') ? ';border-color:rgba(251,191,36,.7)' : ''}"></td>

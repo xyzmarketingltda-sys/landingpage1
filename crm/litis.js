@@ -76,7 +76,34 @@
     achados.sort((x, y) => (peso[x.nivel] - peso[y.nivel]) || String(y.pubs[0].dia).localeCompare(String(x.pubs[0].dia)));
     return { achados, consultas, erros, bancos: bancosCli, uf, contratosConferidos: nums.length };
   }
+
+  /* Situação do processo, lida das publicações (sem IA): em que fase está, o que já aconteceu e o que costuma vir depois.
+     pubs = [{ dia, tipo, txt ou texto }]. É leitura automática do que saiu no Diário: serve de resumo, não substitui os autos. */
+  const MARCOS = [
+    ['arquivado', 9, /arquivem-se|arquivado definitivamente|baixa definitiva|remetam-se ao arquivo/i, 'Arquivado', 'Processo encerrado. Se havia valor a receber, confira se o alvará foi levantado antes do arquivamento.'],
+    ['alvara', 8, /alvar[áa]|mandado de levantamento|levantamento d[eo]s? valor|expe[çc]a-se .{0,30}(?:of[íi]cio|guia) .{0,40}transfer/i, 'Alvará / levantamento', 'Dinheiro liberado ou em liberação. Acompanhar a expedição e o crédito na conta.'],
+    ['execucao', 7, /cumprimento de senten|pagamento volunt[áa]rio|art\.?\s*523|penhora|sisbajud|bacenjud|impugna[çc][ãa]o ao cumprimento/i, 'Cumprimento de sentença', 'Fase de cobrança. O banco é intimado a pagar em 15 dias; sem pagamento, cabe multa de 10% e penhora.'],
+    ['transito', 6, /tr[âa]nsito em julgado|transitou em julgado|transitad[ao] em julgado/i, 'Trânsito em julgado', 'Decisão definitiva. Próximo passo: pedir o cumprimento de sentença com a planilha de cálculo.'],
+    ['acordao', 5, /ac[óo]rd[ãa]o|acordam os|negaram provimento|deram (?:parcial )?provimento|turma recursal/i, 'Acórdão (recurso julgado)', 'Recurso julgado. Ver se cabem embargos de declaração; depois, aguardar o trânsito em julgado.'],
+    ['recurso', 4, /recurso inominado|apela[çc][ãa]o|contrarraz[õo]es|embargos de declara[çc][ãa]o/i, 'Recurso', 'Há recurso em andamento. Conferir prazo de contrarrazões ou aguardar o julgamento.'],
+    ['sentenca', 3, /\bjulgo\s+(?:\w+\s+)?(?:im)?procedente|julgo\s+extint|homologo[^.]{0,80}(?:acordo|transa)/i, 'Sentença', 'Sentença publicada. Conferir o prazo de recurso (10 dias úteis no Juizado, 15 na Vara) e se vale recorrer.'],
+    ['instrucao', 2, /per[íi]cia|perito|laudo pericial|audi[êe]ncia|especifi\w+ (?:as )?provas/i, 'Instrução (provas, perícia ou audiência)', 'Fase de provas. Conferir data de audiência ou prazo para falar sobre o laudo.'],
+    ['replica', 1, /r[ée]plica|manifest\w+(?:-se)? sobre a contesta|contesta[çc][ãa]o/i, 'Contestação / réplica', 'O banco contestou. Próximo passo: réplica e, depois, provas ou julgamento.'],
+    ['inicio', 0, /cite-se|cita[çc][ãa]o|emend\w+ (?:a )?(?:peti[çc][ãa]o )?inicial|tutela de urg[êe]ncia|gratuidade/i, 'Início (citação, emenda ou liminar)', 'Processo no começo. Conferir se há emenda a cumprir e se a liminar foi decidida.']];
+  function situacao(pubs) {
+    const L = (pubs || []).map(x => ({ dia: String(x.dia || '').slice(0, 10), tipo: x.tipo || '', t: String(x.txt != null ? x.txt : x.texto || '') })).filter(x => x.dia).sort((a, b) => a.dia.localeCompare(b.dia));
+    if (!L.length) return null;
+    const visto = {}, marcos = [];
+    L.forEach(x => { const alvo = x.tipo + ' ' + x.t; let m = MARCOS.find(k => (k[0] === 'sentenca' && /senten[çc]a/i.test(x.tipo)) || (k[0] === 'acordao' && /ac[óo]rd[ãa]o/i.test(x.tipo))) || MARCOS.find(k => k[2].test(alvo));
+      if (!m) return; const r = m[0] === 'sentenca' ? resultado(x.t) : null;
+      if (!visto[m[0]] || visto[m[0]].dia < x.dia) visto[m[0]] = { dia: x.dia, rank: m[1], rot: m[3], prox: m[4], res: r };
+      const ult = marcos[marcos.length - 1]; if (!ult || ult.cod !== m[0]) marcos.push({ cod: m[0], dia: x.dia, rot: m[3] + (r ? ': ' + ({ procedente: 'procedente', parcial: 'parcialmente procedente', improcedente: 'improcedente', acordo: 'acordo homologado', extinto: 'extinto' })[r] : '') }); });
+    const at = Object.values(visto).sort((a, b) => b.dia.localeCompare(a.dia) || b.rank - a.rank)[0], ult = L[L.length - 1];
+    const dias = Math.round((Date.now() - new Date(ult.dia + 'T12:00:00').getTime()) / 864e5);
+    return { fase: at ? at.rot : 'Em andamento (sem fase identificada)', desde: at ? at.dia : ult.dia, proximo: at ? at.prox : 'Abra a última publicação para ver o que o juiz determinou.', resultado: visto.sentenca ? visto.sentenca.res : null, sentencaEm: visto.sentenca ? visto.sentenca.dia : null,
+      ultima: { dia: ult.dia, tipo: ult.tipo }, parado: dias, marcos, total: L.length, primeira: L[0].dia };
+  }
   const ROTULO = { contrato: 'cita o número do contrato', cpf_banco: 'CPF confere e é contra banco dos contratos', cpf: 'CPF confere, outro réu', nome_uf_banco: 'mesmo nome, no estado do cliente, contra banco dos contratos', nome_banco: 'mesmo nome contra banco dos contratos (pode ser homônimo)', nome: 'mesmo nome (pode ser homônimo)' };
-  root.XYZLitis = { verificar, buscar, bancosEm, cepUF, tribunaisDaUF, limpar, resultado, ROTULO, BANCOS };
+  root.XYZLitis = { verificar, buscar, bancosEm, cepUF, tribunaisDaUF, limpar, resultado, situacao, ROTULO, BANCOS };
   if (typeof module !== 'undefined') module.exports = root.XYZLitis;
 })(typeof window !== 'undefined' ? window : globalThis);

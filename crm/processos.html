@@ -72,7 +72,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="litis.js?v=20261122a"></script>
+<script src="litis.js?v=20261122b"></script>
 <script>
 const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY), LT = XYZLitis;
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -81,6 +81,16 @@ const fmtProc = n => so(n).length === 20 ? so(n).replace(/(\d{7})(\d{2})(\d{4})(
 const RES = { procedente: 'procedente', parcial: 'parcialmente procedente', improcedente: 'improcedente', acordo: 'acordo', extinto: 'extinto' };
 const COR = { contrato: 'v', cpf_banco: 'v', nome_uf_banco: 'a', nome_banco: 'a', cpf: '', nome: '' };
 let EU = null, ACOMP = [], SEG = new Set();
+// resumo da situação do processo, montado pelas publicações
+function resumo(pubs) {
+  const s = LT.situacao(pubs); if (!s) return '';
+  return `<div class="bloco" style="margin:8px 0;border-color:rgba(140,200,255,.5)"><b>Situação atual: ${esc(s.fase)}</b> <span class="sub">desde ${dBR(s.desde)}</span>
+    <p style="margin-top:6px;font-size:13.5px;line-height:1.55">${s.resultado ? 'Sentença de ' + dBR(s.sentencaEm) + ': <b>' + esc(RES[s.resultado]) + '</b>. ' : ''}Última publicação em ${dBR(s.ultima.dia)} (${esc(s.ultima.tipo)}), há ${s.parado} dia${s.parado === 1 ? '' : 's'}${s.parado > 60 ? ' <b style="color:#fde68a">· sem novidade há mais de 2 meses</b>' : ''}. ${s.total} publicação(ões) desde ${dBR(s.primeira)}.</p>
+    <p style="margin-top:6px;font-size:13.5px"><b>O que costuma vir agora:</b> ${esc(s.proximo)}</p>
+    <p class="sub" style="margin-top:6px"><b>Caminho até aqui:</b> ${s.marcos.map(m => dBR(m.dia) + ' ' + esc(m.rot)).join(' → ')}</p>
+    <p class="sub" style="margin-top:6px">Resumo automático do que saiu no Diário. Juntadas e petições não aparecem aqui: confirme nos autos.</p></div>`;
+}
+async function aoVivo(numero) { const r = await LT.buscar('numeroProcesso=' + so(numero), { max: 3 }); return r.itens.filter(i => i.ativo !== false).map(it => ({ dia: it.data_disponibilizacao, tipo: it.tipoDocumento || it.tipoComunicacao || 'Publicação', link: /^https:\/\//.test(it.link || '') ? it.link : '', txt: LT.limpar(it.texto) })).sort((a, b) => String(b.dia).localeCompare(String(a.dia))); }
 const pubsHtml = pubs => pubs.map(x => `<div class="txt pub"><b>${dBR(x.dia)} · ${esc(x.tipo)}</b>${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener" style="color:#8cc8ff">abrir no Diário</a>` : ''}<br>${esc(String(x.txt ?? x.texto ?? '').slice(0, 1400))}${String(x.txt ?? x.texto ?? '').length > 1400 ? '…' : ''}</div>`).join('');
 const btSeguir = (n, rot) => so(n).length !== 20 || (EU && EU.papel === 'atendente') ? '' : SEG.has(so(n)) ? '<span class="tag g">acompanhando</span>' : `<button data-seguir="${so(n)}" data-rot="${esc(rot || '')}">Acompanhar este processo</button>`;
 function cartao(a, cliente) {
@@ -125,13 +135,15 @@ function desenharAcomp() {
 async function carregarAcomp() { const { data } = await sb.rpc('acomp_lista'); ACOMP = data || []; SEG = new Set(ACOMP.map(a => a.numero)); $('#n-acomp').textContent = ACOMP.length ? '(' + ACOMP.length + ')' : ''; desenharAcomp(); }
 $('#k-acomp').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { desenharAcomp.f = k.dataset.f; desenharAcomp(); } });
 $('#q-acomp').addEventListener('input', desenharAcomp);
-$('#l-acomp').addEventListener('toggle', async e => { const d = e.target; if (!d.open || !d.dataset.ev || d.dataset.ok) return; d.dataset.ok = 1; const { data } = await sb.rpc('acomp_eventos', { p_numero: d.dataset.ev }); d.querySelector('.ev').outerHTML = (data || []).length ? pubsHtml(data) : '<div class="sub">Nada publicado no Diário Nacional com esse número até agora.</div>'; }, true);
+$('#l-acomp').addEventListener('toggle', async e => { const d = e.target; if (!d.open || !d.dataset.ev || d.dataset.ok) return; d.dataset.ok = 1; const { data } = await sb.rpc('acomp_eventos', { p_numero: d.dataset.ev }); d.querySelector('.ev').outerHTML = `<div class="ev">` + ((data || []).length ? resumo(data) + `<div class="acoes" style="margin:0 0 8px"><button data-reler="${esc(d.dataset.ev)}">Reler o Diário agora e refazer o resumo</button></div>` + pubsHtml(data) : `<div class="sub">Nada publicado no Diário Nacional com esse número até agora.</div><div class="acoes" style="margin-top:8px"><button data-reler="${esc(d.dataset.ev)}">Reler o Diário agora</button></div>`) + '</div>'; }, true);
 $('#f-acomp').addEventListener('submit', async e => { e.preventDefault(); const { error } = await sb.rpc('acomp_seguir', { p_numero: $('#a-num').value, p_rotulo: $('#a-rot').value, p_advogado: EU.papel === 'admin' ? $('#a-adv').value : null });
   $('#m-acomp').textContent = error ? 'Não salvou: ' + error.message : 'Pronto. A primeira leitura sai em até 10 minutos.'; if (!error) { $('#a-num').value = ''; $('#a-rot').value = ''; carregarAcomp(); } });
 document.addEventListener('click', async e => {
   const s = e.target.closest('[data-seguir]'); if (s) { s.disabled = true; const { error } = await sb.rpc('acomp_seguir', { p_numero: s.dataset.seguir, p_rotulo: s.dataset.rot || null, p_advogado: null }); if (error) { s.textContent = error.message; return; } SEG.add(s.dataset.seguir); s.outerHTML = '<span class="tag g">acompanhando</span>'; carregarAcomp(); return; }
   const p = e.target.closest('[data-parar]'); if (p) { p.disabled = true; await sb.rpc('acomp_parar', { p_id: +p.dataset.parar }); carregarAcomp(); return; }
   const v = e.target.closest('[data-visto]'); if (v) { v.disabled = true; const [c, n] = v.dataset.visto.split('|'); await sb.rpc('litis_visto', { p_cliente: +c, p_numero: n }); carregarRobo(); return; }
+  const rl = e.target.closest('[data-reler]'); if (rl) { rl.disabled = true; rl.textContent = 'relendo o Diário…'; const cx = rl.closest('.ev');
+    try { const pubs = await aoVivo(rl.dataset.reler); cx.innerHTML = pubs.length ? resumo(pubs) + '<div class="sub" style="margin-bottom:8px">Lido agora, direto do Diário.</div>' + pubsHtml(pubs) : '<div class="sub">Nada publicado no Diário Nacional com esse número até agora.</div>'; } catch (err) { rl.disabled = false; rl.textContent = /429/.test(err.message) ? 'O Diário pediu para esperar. Tente em um minuto.' : 'Não consegui: ' + err.message; } return; }
   const a = e.target.closest('[data-aba]'); if (a) { document.querySelectorAll('[data-aba]').forEach(x => x.classList.toggle('sel', x === a)); ['conf', 'acomp', 'robo', 'busca'].forEach(k => $('#aba-' + k).hidden = k !== a.dataset.aba); }
 });
 // ---------- achados do robô ----------
@@ -167,8 +179,12 @@ $('#f-busca').addEventListener('submit', async e => { e.preventDefault(); const 
     const { data: cs } = await sb.rpc('peca_clientes');
     $('#cli').innerHTML = '<option value="">Escolher um cliente do CRM…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join('');
     if (eu.papel === 'admin') { const { data: advs } = await sb.rpc('lista_advogados'); $('#a-adv').hidden = false; $('#a-adv').innerHTML = '<option value="">Para mim (admin)</option>' + (advs || []).map(x => x.lista_advogados ?? x).sort().map(x => `<option>${esc(x)}</option>`).join(''); }
-    document.body.hidden = false; carregarAcomp(); carregarRobo();
+    document.body.hidden = false; await carregarAcomp(); carregarRobo();
     if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); }
+    // veio do CRM pedindo um processo: abre direto o histórico dele (e passa a acompanhar, se ainda não acompanha)
+    if (so(qs.get('proc')).length === 20) { const n = so(qs.get('proc')); document.querySelector('[data-aba=acomp]').click();
+      if (!SEG.has(n)) { await sb.rpc('acomp_seguir', { p_numero: n, p_rotulo: qs.get('rot') || null, p_advogado: null }); await carregarAcomp(); }
+      $('#q-acomp').value = n; desenharAcomp(); const d = document.querySelector('#l-acomp details'); if (d) { d.open = true; if (!ACOMP.find(a => a.numero === n).pubs) { const cx = d.querySelector('.ev'); try { const pubs = await aoVivo(n); cx.outerHTML = '<div class="ev">' + (pubs.length ? resumo(pubs) + pubsHtml(pubs) : '<div class="sub">Nada publicado no Diário Nacional com esse número até agora.</div>') + '</div>'; d.dataset.ok = 1; } catch (e) {} } } }
   } catch (e) { location.replace('./'); }
 })();
 </script>
