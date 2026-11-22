@@ -41,14 +41,11 @@ select{color-scheme:dark}select option{background:#061230;color:#eaf3ff}
 
 <section id="aba-conf">
   <div class="bloco">
-    <h2 id="h-conf">O cliente já tem processo contra o banco?</h2>
-    <div class="sub" id="s-conf">O sistema procura no texto das publicações o <b>CPF</b> e o <b>número de cada contrato</b> do cliente, e depois o nome no tribunal do estado dele. CPF e contrato não têm homônimo.</div>
+    <h2 id="h-conf">Este CPF já tem processo contra banco?</h2>
+    <div class="sub" id="s-conf">Digite só o <b>CPF</b>. O sistema procura esse CPF no texto das publicações do Diário de Justiça e mostra se já existe processo contra algum banco de consignado. Faça isto <b>antes</b> de lançar o cliente no CRM.</div>
     <form id="f-conf" style="margin-top:10px">
-      <div class="linha"><select id="cli" style="flex:1;min-width:230px"><option value="">Escolher um cliente do CRM…</option></select><input id="c-cpf" placeholder="ou CPF" inputmode="numeric" style="width:170px"></div>
-      <details style="margin-top:8px"><summary class="sub" style="cursor:pointer">Lead que ainda não está no CRM: informar os dados à mão</summary>
-        <div class="linha" style="margin-top:8px"><input id="c-nome" placeholder="Nome completo" style="flex:1;min-width:220px"><input id="c-uf" placeholder="UF" maxlength="2" style="width:70px;text-transform:uppercase"></div>
-        <div class="linha" style="margin-top:8px"><input id="c-ctr" placeholder="Números dos contratos (do extrato do INSS), separados por vírgula" style="flex:2;min-width:240px"><input id="c-banco" placeholder="Bancos (ex.: Facta, Pan)" style="flex:1;min-width:160px"></div></details>
-      <div class="linha" style="margin-top:8px"><button class="ok" id="b-conf">Conferir</button><span class="sub" id="m-conf"></span></div>
+      <div class="linha"><input id="c-cpf" placeholder="CPF do cliente" inputmode="numeric" autocomplete="off" style="flex:1;min-width:200px;max-width:320px;font-size:17px"><button class="ok" id="b-conf">Conferir</button><span class="sub" id="m-conf"></span></div>
+      <select id="cli" hidden></select><details hidden><input id="c-nome"><input id="c-uf"><input id="c-ctr"><input id="c-banco"></details>
     </form>
   </div>
   <div id="r-conf"></div>
@@ -104,28 +101,24 @@ function cartao(a, cliente) {
 }
 // ---------- conferir antes de indicar ----------
 async function conferir() {
-  const b = $('#b-conf'), cpf = so($('#c-cpf').value || $('#cli').value); let p = null;
-  b.disabled = true; $('#r-conf').innerHTML = ''; $('#m-conf').textContent = 'buscando o cliente…';
-  if (cpf.length === 11) { const { data } = await sb.rpc('litis_dados', { p_cpf: cpf }); if (data && data.nome) p = data; }
-  if (!p) { const nome = $('#c-nome').value.trim(), bs = $('#c-banco').value.split(/[,;]/).map(x => x.trim()).filter(Boolean), ns = $('#c-ctr').value.split(/[,;\s]+/).map(so).filter(n => n.length >= 7);
-    if (cpf.length !== 11 && nome.split(/\s+/).length < 2) { b.disabled = false; $('#m-conf').textContent = 'Escolha um cliente, digite o CPF ou preencha o nome completo do lead.'; return; }
-    p = { cpf, nome, uf: $('#c-uf').value.trim().toUpperCase(), contratos: ns.map(n => ({ n, banco: bs.join(' ') })).concat(ns.length ? [] : bs.map(x => ({ n: '', banco: x }))), fora: true }; }
-  const r = await LT.verificar(p, { aviso: t => $('#m-conf').textContent = 'conferindo: ' + t + '…' });
-  b.disabled = false; $('#m-conf').textContent = `${r.consultas} consulta(s) ao Diário` + (r.erros.length ? ' · ' + r.erros.length + ' falharam' : '');
-  const A = r.achados, de = n => A.filter(a => a.nivel === n), fortes = A.filter(a => a.nivel === 'contrato' || a.nivel === 'cpf_banco'), medios = A.filter(a => a.nivel === 'contrato_num' || a.nivel === 'nome_uf_banco' || a.nivel === 'nome_banco');
-  const oque = [p.cpf && so(p.cpf).length === 11 ? 'CPF' : null, r.contratosConferidos ? r.contratosConferidos + (r.contratosTotal > r.contratosConferidos ? ' de ' + r.contratosTotal : '') + ' número(s) de contrato' + (r.contratosTotal > r.contratosConferidos ? ' (os analisados e os ativos primeiro)' : '') : null, p.nome ? 'nome' + (r.uf ? ' nos tribunais de ' + r.uf : ' no Brasil todo (sem UF, mais homônimos)') : null].filter(Boolean).join(', ');
-  const falha = r.erros.length ? `<div class="sub" style="margin-top:6px;color:#fde68a"><b>Atenção:</b> ${r.erros.length} consulta(s) não responderam (${esc(r.erros.slice(0, 3).join('; '))}). Repita em um minuto antes de confiar no resultado.</div>` : '';
-  const quem = `<b>${esc(p.nome || 'CPF ' + p.cpf)}</b>` + (p.fora ? ' <span class="sub">(dados informados à mão)</span>' : '');
+  const b = $('#b-conf'), cpf = so($('#c-cpf').value), R = $('#r-conf');
+  if (cpf.length !== 11) { $('#m-conf').textContent = 'Digite o CPF completo (11 números).'; return; }
+  b.disabled = true; R.innerHTML = ''; $('#m-conf').textContent = 'procurando o CPF no Diário…';
+  let r; try { r = await LT.verificar({ cpf, nome: '', contratos: [] }, { aviso: () => {} }); } catch (e) { r = { achados: [], erros: [String(e.message || e)], consultas: 0 }; }
+  b.disabled = false; $('#m-conf').textContent = '';
+  const fmtC = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  const A = r.achados.filter(a => (a.provas || []).includes('cpf')), comBanco = A.filter(a => (a.bancos || []).length), sem = A.filter(a => !(a.bancos || []).length);
+  const bancos = [...new Set(comBanco.flatMap(a => a.bancos))];
+  const falha = r.erros.length ? `<div class="sub" style="margin-top:6px;color:#fde68a"><b>Atenção:</b> ${r.erros.length} consulta(s) ao Diário não responderam. Repita em um minuto antes de confiar no resultado.</div>` : '';
   let topo;
-  if (ADV && A.length) topo = `<div class="bloco" style="border-color:${fortes.length ? 'rgba(239,68,68,.6)' : 'rgba(251,191,36,.6)'}"><b>${A.length} processo(s) no Diário ligados a ${quem}.</b> ${fortes.length ? '<span style="color:#fca5a5">' + fortes.length + ' confirmado(s) pelo CPF ou pelo número de um contrato analisado' + ([...new Set(fortes.flatMap(a => a.conflito))].length ? ' (' + esc([...new Set(fortes.flatMap(a => a.conflito))].join(', ')) + ')' : '') + ': antes de ajuizar, veja se é a mesma causa (litispendência ou coisa julgada, CPC, art. 337, §§ 1º a 4º).</span> ' : ''}${A.length - fortes.length ? (A.length - fortes.length) + ' achado(s) só pelo nome: pode ser homônimo, compare as partes.' : ''}<div class="sub" style="margin-top:6px">Cada processo abaixo traz o resumo da situação, montado pelas publicações. Toque em "Acompanhar este processo" para ser avisado da sentença.</div>${falha}</div>`;
-  else if (fortes.length) topo = `<div class="bloco" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.10)"><b style="color:#fca5a5">⚠ NÃO INDICAR SEM CONFERIR.</b> ${quem} já tem ${fortes.length} processo(s) ${de('contrato').length && de('cpf_banco').length ? '(' + de('contrato').length + ' cita(m) o número de contrato analisado e ' + de('cpf_banco').length + ' tem(têm) o CPF dele contra banco dos contratos)' : de('contrato').length ? 'que cita(m) o número de contrato analisado' : 'com o CPF dele contra banco dos contratos analisados'}${[...new Set(fortes.flatMap(a => a.conflito))].length ? ' (' + esc([...new Set(fortes.flatMap(a => a.conflito))].join(', ')) + ')' : ''}.<div class="sub" style="margin-top:6px">Contrato citado = mesma causa: nova ação seria litispendência e, se a sentença já transitou em julgado, coisa julgada (CPC, art. 337, §§ 1º a 4º). CPF contra o mesmo banco: abra e veja se é o mesmo contrato; se for outro contrato, não há impedimento.</div>${falha}</div>`;
-  else if (medios.length) topo = `<div class="bloco" style="border-color:rgba(251,191,36,.6)"><b style="color:#fde68a">Conferir à mão.</b> Há ${medios.length} processo(s) que podem ser de ${quem}: ${de('contrato_num').length ? de('contrato_num').length + ' cita(m) um número igual ao de um contrato dele, mas sem nome nem banco que confirme; ' : ''}${medios.length - de('contrato_num').length ? (medios.length - de('contrato_num').length) + ' com o mesmo nome contra banco dos contratos, sem CPF no texto (pode ser homônimo). ' : ''}Abra as publicações e compare.${falha}</div>`;
-  else topo = `<div class="bloco" style="border-color:rgba(34,197,94,.5)"><b style="color:#86efac">Nada encontrado</b> para ${quem}${r.bancos.length ? ' contra ' + esc(r.bancos.join(', ')) : ''}.<div class="sub" style="margin-top:6px">Conferido: ${esc(oque)}. Leia o aviso no fim da página: isso reduz muito o risco, mas não é garantia.</div>${falha}</div>`;
-  if (!p.fora && !r.contratosConferidos) topo += '<div class="bloco sub">O sistema ainda não leu números de contrato na pasta deste cliente (falta o extrato do INSS ou o robô não passou). A conferência usou só CPF e nome.</div>';
-  $('#r-conf').innerHTML = topo + A.map(a => cartao(a, p.nome)).join('');
+  if (comBanco.length) topo = `<div class="bloco" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.10)"><b style="color:#fca5a5">⚠ JÁ TEM PROCESSO CONTRA BANCO.</b> O CPF ${fmtC} aparece em ${comBanco.length} processo(s) contra ${esc(bancos.join(', '))}.<div class="sub" style="margin-top:6px">Não lance sem conferir: se for o mesmo banco e o mesmo contrato, é litispendência. Veja abaixo de qual banco é cada processo.</div>${falha}</div>`;
+  else if (sem.length) topo = `<div class="bloco" style="border-color:rgba(251,191,36,.6)"><b style="color:#fde68a">Tem processo, mas não contra banco de consignado.</b> O CPF ${fmtC} aparece em ${sem.length} processo(s) em que o sistema não reconheceu nenhum dos bancos com que trabalhamos. Abra para ver do que se trata.${falha}</div>`;
+  else if (r.erros.length) topo = `<div class="bloco" style="border-color:rgba(251,191,36,.6)"><b style="color:#fde68a">Não deu para conferir agora.</b> O Diário não respondeu. Tente de novo em um minuto.${falha}</div>`;
+  else topo = `<div class="bloco" style="border-color:rgba(34,197,94,.5)"><b style="color:#86efac">Nada encontrado.</b> O CPF ${fmtC} não aparece em nenhuma publicação do Diário de Justiça.<div class="sub" style="margin-top:6px">Pode lançar. Vale lembrar: o Diário só mostra o que foi publicado com o CPF escrito no texto; processo muito novo ou sem CPF na publicação não aparece.</div></div>`;
+  R.innerHTML = topo + comBanco.concat(sem).map(a => cartao(a, '')).join('');
 }
 $('#f-conf').addEventListener('submit', e => { e.preventDefault(); conferir(); });
-$('#cli').addEventListener('change', e => { if (e.target.value) { $('#c-cpf').value = ''; conferir(); } });
+
 // ---------- acompanhados ----------
 function desenharAcomp() {
   const q = $('#q-acomp').value.trim().toLowerCase(), f = desenharAcomp.f || '';
@@ -221,8 +214,8 @@ $('#f-busca').addEventListener('submit', async e => { e.preventDefault(); const 
     LIT = LITIS;
     if (eu.papel !== 'admin' || qs.get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
     // atendente: só a conferência antes de indicar (CPF de cliente dela ou dados do lead à mão); o resto é de advogado e admin
-    if (eu.papel === 'atendente') { document.querySelector('.abas').hidden = true; $('#cli').hidden = true; $('#c-cpf').style.flex = '1'; $('#c-cpf').placeholder = 'CPF do cliente (se já está lançado no CRM)'; document.querySelector('#f-conf details').open = true; document.body.hidden = false; if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); } return; }
-    ADV = true; if (LITIS) { $('#b-conf-aba').textContent = 'Processos do cliente'; $('#h-conf').textContent = 'Processos do seu cliente no Diário'; $('#s-conf').innerHTML = 'Escolha o cliente: o sistema procura o <b>CPF</b>, o <b>número de cada contrato</b> e o nome dele nas publicações e mostra cada processo com o resumo da situação atual.'; }
+    if (eu.papel === 'atendente') { document.querySelector('.abas').hidden = true; $('#cli').hidden = true; document.body.hidden = false; if (qs.get('cpf')) { $('#c-cpf').value = qs.get('cpf'); conferir(); } return; }
+    ADV = true; if (LITIS) { $('#b-conf-aba').textContent = 'Conferir CPF (litispendência)'; }
     if (LITIS) { const { data: cs } = await sb.rpc('peca_clientes');
       $('#cli').innerHTML = '<option value="">Escolher um cliente do CRM…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}">${esc(c.nome)}</option>`).join(''); }
     if (eu.papel === 'admin') { const { data: advs } = await sb.rpc('lista_advogados'); $('#a-adv').hidden = false; $('#a-adv').innerHTML = '<option value="">Para mim (admin)</option>' + (advs || []).map(x => x.lista_advogados ?? x).sort().map(x => `<option>${esc(x)}</option>`).join(''); }
