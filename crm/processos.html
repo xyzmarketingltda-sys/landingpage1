@@ -57,7 +57,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
   <div class="bloco"><h2>Acompanhar um processo</h2>
     <form class="linha" id="f-acomp"><input id="a-num" placeholder="Número do processo (20 dígitos)" style="flex:1;min-width:230px" required><input id="a-rot" placeholder="Apelido (ex.: Maria × Facta)" style="flex:1;min-width:180px"><select id="a-adv" hidden></select><button class="ok">Acompanhar</button></form>
     <div class="sub" id="m-acomp" style="margin-top:6px">O robô confere uma vez por dia e avisa quando sai sentença ou acórdão.</div></div>
-  <div class="kpis" id="k-acomp"></div><div class="linha" style="margin-bottom:10px"><select id="f-adv-acomp" hidden style="flex:1;min-width:150px"></select><input id="q-acomp" placeholder="Filtrar por número, apelido, parte ou vara…" style="flex:2;min-width:180px"></div><div id="l-acomp"></div>
+  <div class="kpis" id="k-acomp"></div><div class="linha" style="margin-bottom:10px"><select id="f-adv-acomp" hidden style="flex:1;min-width:150px"></select><input id="q-acomp" placeholder="Filtrar por número, apelido, parte ou vara…" style="flex:2;min-width:180px"><button id="b-xlsx" title="Baixa em Excel os processos que estão na lista, com o filtro escolhido">⬇ Exportar Excel</button></div><div id="l-acomp"></div>
 </section>
 
 <section id="aba-robo" hidden><div class="bloco" id="robo-res"></div><div id="l-robo"></div></section>
@@ -132,6 +132,7 @@ function desenharAcomp() {
   const passa = { '': () => true, fav: FAV, imp: a => a.resultado === 'improcedente', ext: a => a.resultado === 'extinto' || (a.sentenca_em && !a.resultado), and: a => !a.sentenca_em, pago: a => PAGOS.has(a.numero) };
   const vis = BASE.filter(a => (passa[f] || passa[''])(a) && (!q || [a.numero, fmtProc(a.numero), a.rotulo, a.cliente, a.partes, a.orgao, a.advogado].join(' ').toLowerCase().includes(q)));
   $('#k-acomp').innerHTML = [['', 'Todos', BASE.length], ['fav', 'Favoráveis', BASE.filter(passa.fav).length], ['imp', 'Improcedentes', BASE.filter(passa.imp).length], ['ext', 'Extintos / outros', BASE.filter(passa.ext).length], ['and', 'Sem sentença', BASE.filter(passa.and).length], ['pago', 'Banco pagou (alvará)', BASE.filter(passa.pago).length]].map(([k, t, v]) => `<div class="kpi${f === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('');
+  desenharAcomp.vis = vis;
   $('#l-acomp').innerHTML = vis.slice(0, 300).map(a => `<div class="it ${a.sentenca_em ? 'hoje' : a.pubs ? 'semana' : ''}"><div class="topo"><h3>${esc(a.rotulo || fmtProc(a.numero))}</h3>${a.sentenca_em ? `<span class="tag a">sentença em ${dBR(a.sentenca_em)}${a.resultado ? ': ' + RES[a.resultado] : ''}</span>` : a.lido_em ? `<span class="tag">${a.pubs ? 'em andamento' : 'nada no Diário'}</span>` : '<span class="tag">aguardando 1ª leitura</span>'}</div>
     <p><b style="color:var(--texto)">${esc(fmtProc(a.numero))}</b>${a.tribunal ? ' · ' + esc(a.tribunal) + ' · ' + esc(a.orgao || '') : ''}${a.partes ? '<br>' + esc(a.partes) : ''}${a.ultima_pub ? `<br>Última publicação: ${dBR(a.ultima_pub)} · ${esc(a.ultimo_tipo || '')}` : ''}${a.erro ? '<br><span style="color:#fde68a">última leitura falhou: ' + esc(a.erro) + '</span>' : ''}</p>
     <details data-ev="${esc(a.numero)}"><summary>Ver as ${a.pubs} publicação(ões)</summary><div class="ev sub">carregando…</div></details>${PAGOS.has(a.numero) ? '<p><span class="tag g">alvará ou levantamento publicado</span></p>' : ''}</div>`).join('') || '<div class="bloco sub">Nenhum processo acompanhado ainda.</div>';
@@ -139,6 +140,24 @@ function desenharAcomp() {
 async function carregarAcomp() { const [{ data }, { data: pg }] = await Promise.all([sb.rpc('acomp_lista'), sb.rpc('acomp_pagos')]); ACOMP = data || []; PAGOS = new Set(pg || []);
   if (EU && EU.papel === 'admin') { const s = $('#f-adv-acomp'), at = s.value, advs = [...new Set(ACOMP.map(advDe))].sort(); s.hidden = false; s.innerHTML = '<option value="">Todos os advogados</option>' + advs.map(x => `<option${x === at ? ' selected' : ''}>${esc(x)}</option>`).join(''); } SEG = new Set(ACOMP.map(a => a.numero)); $('#n-acomp').textContent = ACOMP.length ? '(' + ACOMP.length + ')' : ''; desenharAcomp(); }
 $('#k-acomp').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { desenharAcomp.f = k.dataset.f; desenharAcomp(); } });
+// planilha do que está na lista (respeita advogado, botão e busca), com CPF e o resumo de cada processo
+$('#b-xlsx').addEventListener('click', async e => { const b = e.currentTarget, rot = b.textContent; b.disabled = true; b.textContent = 'preparando…';
+  try {
+    if (!window.XLSX) await new Promise((ok, er) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; s.onload = ok; s.onerror = () => er(new Error('não consegui carregar o gerador de planilha')); document.head.appendChild(s); });
+    const { data, error } = await sb.rpc('acomp_exportar'); if (error) throw new Error(error.message);
+    const D = new Map((data || []).map(x => [x.numero, x])), cpfF = v => so(v).length === 11 ? so(v).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : (v || '');
+    const linhas = (desenharAcomp.vis || ACOMP).map(a => { const x = D.get(a.numero) || {}, s = LT.situacao(x.pubs || []) || {}, partes = String(a.rotulo || '').split(' · ');
+      return { 'Advogado': advDe(a), 'Cliente': x.cliente || a.cliente || partes[0] || '', 'CPF': cpfF(x.cpf), 'Processo': fmtProc(a.numero), 'Tribunal': a.tribunal || '', 'Vara': a.orgao || '', 'Partes': a.partes || '',
+        'Situação atual': s.fase || (a.lido_em ? 'Nada publicado no Diário' : 'Aguardando a primeira leitura'), 'Desde': s.desde ? dBR(s.desde) : '', 'O que costuma vir agora': s.proximo || '',
+        'Sentença em': a.sentenca_em ? dBR(a.sentenca_em) : '', 'Resultado': a.resultado ? RES[a.resultado] : '', 'Alvará ou levantamento publicado': PAGOS.has(a.numero) ? 'sim' : '',
+        'Última publicação': a.ultima_pub ? dBR(a.ultima_pub) : '', 'Tipo da última': a.ultimo_tipo || '', 'Publicações': a.pubs || 0, 'Caminho até aqui': (s.marcos || []).map(m => dBR(m.dia) + ' ' + m.rot).join(' → ') }; });
+    if (!linhas.length) throw new Error('nenhum processo na lista');
+    const ws = XLSX.utils.json_to_sheet(linhas); ws['!cols'] = [12, 30, 15, 27, 9, 30, 46, 26, 11, 46, 11, 22, 12, 12, 16, 9, 60].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Processos');
+    XLSX.writeFile(wb, 'processos-' + ($('#f-adv-acomp').value || (EU.papel === 'admin' ? 'todos' : 'meus')).toLowerCase().replace(/\s+/g, '-') + '-' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    b.textContent = rot;
+  } catch (err) { b.textContent = 'Não exportou: ' + err.message; setTimeout(() => { b.textContent = rot; }, 5000); }
+  b.disabled = false; });
 $('#q-acomp').addEventListener('input', desenharAcomp); $('#f-adv-acomp').addEventListener('change', desenharAcomp);
 $('#l-acomp').addEventListener('toggle', async e => { const d = e.target; if (!d.open || !d.dataset.ev || d.dataset.ok) return; d.dataset.ok = 1; const { data } = await sb.rpc('acomp_eventos', { p_numero: d.dataset.ev }); d.querySelector('.ev').outerHTML = `<div class="ev">` + ((data || []).length ? resumo(data) + `<div class="acoes" style="margin:0 0 8px"><button data-reler="${esc(d.dataset.ev)}">Reler o Diário agora e refazer o resumo</button></div>` + pubsHtml(data) : `<div class="sub">Nada publicado no Diário Nacional com esse número até agora.</div><div class="acoes" style="margin-top:8px"><button data-reler="${esc(d.dataset.ev)}">Reler o Diário agora</button></div>`) + '</div>'; }, true);
 $('#f-acomp').addEventListener('submit', async e => { e.preventDefault(); const { error } = await sb.rpc('acomp_seguir', { p_numero: $('#a-num').value, p_rotulo: $('#a-rot').value, p_advogado: EU.papel === 'admin' ? $('#a-adv').value : null });
