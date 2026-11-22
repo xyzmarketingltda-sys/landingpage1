@@ -16,7 +16,7 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
 .sub{color:var(--suave);font-size:13px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
 .kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
-.filtros{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.filtros input,.filtros select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:14px}.filtros input{flex:1;min-width:180px}
+.filtros{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.filtros input,.filtros select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:14px}.filtros input{flex:1;min-width:180px}.filtros select{max-width:100%;min-width:0}
 .cli{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);margin-bottom:10px;overflow:hidden}
 .cli>summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.cli>summary::-webkit-details-marker{display:none}
 .cli .nome{font-weight:700;flex:1;min-width:200px}.tag{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap}
@@ -40,7 +40,7 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
 </div>
 <div id="lista"><div class="vazio">carregando…</div></div>
 <details class="cli" id="triagem" hidden style="margin-top:22px"><summary><span class="tag info">TRIAGEM</span><span class="nome">Contratos sem seguro guardados pela busca em lote<br><small class="sub" id="tri-sub">carregando…</small></span></summary><div class="corpo" id="tri-lista"></div></details>
-<p class="nota">O robô lê o texto de cada contrato da pasta do cliente e aponta o que encontrou; é triagem, não parecer. Sempre abra o PDF para confirmar antes de usar. Contratos escaneados (só imagem) não são lidos e aparecem como "não lido". As regras usadas: representante legal — IN INSS 100/2018, 136/2022 e 190/2025, decisão do TRF3 de jun/2025 e Código Civil arts. 1.691, 1.748 e 1.781; analfabeto — CC art. 595 e STJ; tarifa de cadastro — IN 28/2008 art. 13, II, e IN 138/2022; juros — teto do CNPS na data do contrato.</p>
+<p class="nota">O robô lê o texto de cada contrato da pasta do cliente e aponta o que encontrou; é triagem, não parecer. Sempre abra o PDF para confirmar antes de usar. Contratos escaneados (só imagem) não são lidos e aparecem como "não lido". As regras usadas: representante legal — IN INSS 100/2018, 136/2022 e 190/2025, decisão do TRF3 de jun/2025 e Código Civil arts. 1.691, 1.748 e 1.781; analfabeto — CC art. 595 e STJ (REsp 2.016.029/MG; Tema 1.116 pendente); tarifa de cadastro — IN 138/2022, art. 12, III (antes, IN 28/2008, art. 13); juros — teto do CNPS na data do contrato.</p>
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
