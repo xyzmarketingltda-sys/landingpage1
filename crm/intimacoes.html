@@ -30,6 +30,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
 .it p{font-size:13px;color:var(--suave);margin-top:6px;line-height:1.5}.it details{margin-top:6px}.it summary{cursor:pointer;font-size:13px;color:#8cc8ff}.it .txt{white-space:pre-wrap;font-size:13px;line-height:1.55;margin-top:6px;color:var(--texto)}
 .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .nota{font-size:12.5px;color:var(--suave);line-height:1.6;margin-top:14px}
+select{color-scheme:dark}select option{background:#061230;color:#eaf3ff}
 </style>
 </head>
 <body hidden>
@@ -80,6 +81,7 @@ function desenhar() {
   const A = ABERTAS.filter(i => !adv || i.advogado === adv), n = f => A.filter(f).length;
   $('#kpis').innerHTML = [['abertas', 'Abertas', A.length], ['atrasadas', 'Atrasadas', n(i => dias(i.vence) != null && dias(i.vence) < 0)], ['semana', 'Vencem em 7 dias', n(i => dias(i.vence) != null && dias(i.vence) >= 0 && dias(i.vence) <= 7)], ['semprazo', 'Sem prazo identificado', n(i => dias(i.vence) == null)], ['feitas', 'Feitas', FEITAS.filter(i => !adv || i.advogado === adv).length]]
     .map(([k, t, v]) => `<div class="kpi${FILTRO === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('');
+  if (adv === '?') { $('#lista').innerHTML = '<div class="bloco sub">Escolha um advogado na caixa acima para ver as intimações dele. São ' + ABERTAS.length + ' em aberto no total.</div>'; return; }
   $('#lista').innerHTML = vis.length ? vis.slice(0, 300).map(i => `<div class="it ${classe(i)}"><div class="topo"><h3>${esc(i.tipo_prazo || i.tipo_doc || i.tipo_com || 'Intimação')}${i.prazo_dias ? ' <small style="color:var(--suave);font-weight:400">· ' + i.prazo_dias + ' dias úteis</small>' : ''}</h3>${quando(i)}</div>
       <p><b style="color:var(--texto)">${esc(i.processo || 'processo não informado')}</b> · ${esc(i.tribunal || '')} · ${esc(i.orgao || '')}<br>${i.cliente ? '<b style="color:#86efac">Cliente no CRM: ' + esc(i.cliente) + '</b><br>' : ''}${esc(i.partes || '')}<br>Disponibilizada em ${dBR(i.dia)} · OAB ${esc(i.oab)}${EU.papel === 'admin' ? ' · ' + esc(i.advogado) : ''}${avisoCalendario(i)}</p>
       <details><summary>Ver o texto</summary><div class="txt">${esc(i.resumo || '')}${(i.resumo || '').length >= 900 ? '…' : ''}</div></details>
@@ -93,7 +95,7 @@ async function carregar() {
   const O = o.data || [];
   $('#oabs').innerHTML = O.length ? O.map(x => `<span class="oab">${EU.papel === 'admin' ? '<b>' + esc(x.advogado) + '</b> · ' : ''}OAB ${esc(x.numero)}/${esc(x.uf)}<small style="color:var(--suave)">${x.erro ? '⚠ ' + esc(x.erro) : x.ultima_leitura ? 'lida ' + new Date(x.ultima_leitura).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'aguardando 1ª leitura'}</small><button data-r="${x.id}" title="Parar de acompanhar">✕</button></span>`).join('') : '<span class="sub">Nenhuma OAB cadastrada ainda.</span>';
   $('#sub').textContent = `${ABERTAS.length} aberta(s) · ${O.length} OAB(s) acompanhada(s)`;
-  if (EU.papel === 'admin') { const advs = [...new Set([...ABERTAS, ...FEITAS].map(i => i.advogado))].sort(), at = $('#f-adv').value; $('#f-adv').hidden = false; $('#f-adv').innerHTML = '<option value="">Todos os advogados</option>' + advs.map(x => `<option>${esc(x)}</option>`).join(''); $('#f-adv').value = at; }
+  if (EU.papel === 'admin') { const advs = [...new Set([...ABERTAS, ...FEITAS].map(i => i.advogado))].sort(), at = $('#f-adv').value; $('#f-adv').hidden = false; const qt = x => ABERTAS.filter(i => i.advogado === x).length; $('#f-adv').innerHTML = '<option value="?">Escolha o advogado…</option>' + advs.map(x => `<option value="${esc(x)}">${esc(x)} (${qt(x)})</option>`).join('') + `<option value="">Todos os advogados (${ABERTAS.length})</option>`; $('#f-adv').value = at || '?'; if ($('#f-adv').selectedIndex < 0) $('#f-adv').value = '?'; }
   desenhar();
 }
 $('#kpis').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { FILTRO = k.dataset.f; desenhar(); } });
