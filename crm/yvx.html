@@ -82,8 +82,8 @@ const GRUPOS = [
   ['pagamento', '💳', 'Onde recebe', /banco|agencia|conta|pagador|meio_pag|orgao/],
   ['beneficio', '📄', 'Benefício', /^nb$|_nb$|^nb_|benef|especie|dib|ddb|dcb|situac|aps|valor|renda|salario|^mr$|competencia|concess/],
   ['pessoa', '🧑', 'Identificação', /nome|cpf|nasc|idade|sexo|mae|pai|rg|identidade|estado_civil|obito|falec/]];
-const grupoDe = k => { for (const g of GRUPOS) if (g[3].test(k)) return g[0]; return 'outros'; };
-const ehDinheiro = k => /valor|vl_|_vl|margem|parcela|saldo|renda|salario|^mr$|emprestado|liberado|rmc|rcc/.test(k) && !/qtd|quant|data|dt_|prazo|numero|contrato/.test(k);
+const grupoDe = k => { if (/^bloqueado|^possui_|^pensao/.test(k)) return 'beneficio'; for (const g of GRUPOS) if (g[3].test(k)) return g[0]; return 'outros'; };
+const ehDinheiro = k => /valor|vl_|_vl|margem|parcela|saldo|renda|salario|^mr$|emprestado|liberado|rmc|rcc/.test(k) && !/qtd|quant|data|dt_|prazo|numero|contrato|parcelas_/.test(k);
 const ehData = k => /data|^dt_|_dt$|nasc|dib|ddb|dcb|competencia/.test(k);
 const ROT = { beneficio: 'Número do benefício', situacao_beneficio: 'Situação do benefício', consignavel: 'Consignável', uf_beneficio: 'Estado do benefício', valor_beneficio: 'Valor do benefício', valor_consignavel: 'Valor consignável', valor_margem: 'Valor da margem', valor_rcc: 'Valor RCC', valor_rmc: 'Valor RMC', especie_codigo: 'Código da espécie',
   banco_pagamento_codigo: 'Código do banco de pagamento', banco_pagamento_agencia: 'Agência de pagamento', banco_pagamento_conta: 'Conta de pagamento', banco_pagamento_tipo_conta: 'Tipo de conta', dib: 'Início do benefício (DIB)', nome_representante: 'Nome do representante', cpf_representante: 'CPF do representante',
