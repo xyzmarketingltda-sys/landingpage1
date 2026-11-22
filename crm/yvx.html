@@ -192,7 +192,7 @@ function analisar(L, cols) {
     if (dias == null) ver.push('Sem data do contrato na base: confira o tempo mínimo de contrato.');
     else if (Q.ampliada[banco] && dias < 360) nao.push(Q.ampliada[banco] + ' pede 360 dias de contrato; tem ' + dias + ' (faltam ' + (360 - dias) + ').');
     else if (dias < 30) nao.push('Contrato com ' + dias + ' dia(s); o mínimo é 30.');
-    if (inval) ver.push('Invalidez: o resumo traz portabilidade com refin como atendida (pág. 3) e como suspensa (alteração de 29/10). Confirme com a mesa.');
+    if (inval) nao.push('Benefício por invalidez: portabilidade com refinanciamento está suspensa na Quali (só empréstimo novo).');
     const o = { prazo: prazoPort };
     if (parc != null && saldo != null && prazoPort > 0) { o.pv = Math.min(150000, parc * fatorPV(i, prazoPort)); o.troco = o.pv - saldo;
       const pct = rest >= 72 ? 2 : rest >= 57 ? 3 : 5; o.trocoMin = Math.max(100, saldo * pct / 100); o.pct = isNaN(rest) ? null : pct;
