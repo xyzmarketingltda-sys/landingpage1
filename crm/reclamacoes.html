@@ -127,12 +127,12 @@ function canais() {
   const cx = $('#canais'), c = canalDe($('#r-banco').value); if (!cx) return;
   if (!$('#r-banco').value.trim()) { cx.hidden = true; return; } cx.hidden = false;
   if (!c) { cx.innerHTML = '<b style="color:#fde68a">Central deste banco ainda não cadastrada.</b> <span class="sub">Avise a XYZ para incluirmos.</span>'; return; }
-  const t = textoRecl(c), para = c.email_ouvidoria || c.email_sac || '';
+  const t = textoRecl(c), para = c.email_ouvidoria || c.email_sac || c.email_outro || '';
   const mailto = 'mailto:' + encodeURIComponent(para) + '?subject=' + encodeURIComponent(t.assunto) + '&body=' + encodeURIComponent(t.corpo);
   const end = [c.endereco, c.cidade_uf, c.cep ? 'CEP ' + c.cep : ''].filter(Boolean).join(' · ');
   const tels = [c.tel_ouvidoria ? 'Ouvidoria ' + c.tel_ouvidoria : '', c.tel_sac ? 'SAC ' + c.tel_sac : ''].filter(Boolean).join(' · ');
   cx.innerHTML = `<b style="color:#fde68a">Central do banco: ${esc(c.razao || c.nome)}</b>` + (para
-    ? `<div class="sub" style="margin:6px 0 10px;line-height:1.6">E-mail ${c.email_ouvidoria ? 'da Ouvidoria' : 'do SAC'}: <b style="color:var(--texto)">${esc(para)}</b>${tels ? '<br>' + esc(tels) : ''}</div>
+    ? `<div class="sub" style="margin:6px 0 10px;line-height:1.6">E-mail ${c.email_ouvidoria ? 'da Ouvidoria' : c.email_sac ? 'do SAC' : esc(c.email_outro_tipo || '')}: <b style="color:var(--texto)">${esc(para)}</b>${tels ? '<br>' + esc(tels) : ''}</div>
        <div class="linha"><a class="btn" id="c-mail" href="${esc(mailto)}">Enviar e-mail ao banco</a><button type="button" class="btn sec" id="c-pdf">Baixar o e-mail em PDF</button></div>
        <div class="sub" style="margin-top:8px">O e-mail abre no seu programa de e-mail com o modelo pronto: anexe a procuração e envie. O PDF traz o mesmo texto, com remetente, destinatário, data e hora, para juntar ao processo. Depois clique em Registrar para contar o prazo.</div>`
     : `<div class="sub" style="margin:6px 0 10px;line-height:1.6"><b style="color:#fca5a5">Este banco não divulga e-mail de Ouvidoria.</b> Ele só recebe reclamação por telefone, formulário no site ou carta.${tels ? '<br>' + esc(tels) : ''}${end ? '<br>Carta: <b style="color:var(--texto)">' + esc(end) + '</b>' : ''}</div>
@@ -167,7 +167,7 @@ $('#f').addEventListener('submit', async e => { e.preventDefault(); const b = $(
     if (!eu || !eu.ativo || !['admin', 'advogado'].includes(eu.papel)) throw 0;      // atendentes não entram
     EU = eu; if (eu.papel !== 'admin' || new URLSearchParams(location.search).get('de') === 'controle') { $('#voltar').href = '../controle/'; $('#voltar').textContent = '← Controle'; }
     $('#r-data').value = hoje(); carta();
-    fetch('bancos-canais.json?v=20261122').then(r => r.json()).then(j => { CANAIS = j.bancos || []; canais(); }).catch(() => {});
+    fetch('bancos-canais.json?v=20261122b').then(r => r.json()).then(j => { CANAIS = j.bancos || []; canais(); }).catch(() => {});
     const { data: cs } = await sb.rpc('peca_clientes');
     $('#r-cli').innerHTML = '<option value="">Escolher cliente (ou digite o nome abaixo)…</option>' + (cs || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(c => `<option value="${esc(c.cpf)}" data-nome="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
     document.body.hidden = false; carregar();
