@@ -17,7 +17,7 @@ a.btn,button{background:#0f2552;color:var(--texto);border:1px solid var(--borda)
 button.ok{background:#0d3b24;border-color:rgba(34,197,94,.5)}button:disabled{opacity:.5}
 .sub{color:var(--suave);font-size:13px}
 .bloco{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:14px;margin-bottom:12px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}@media(max-width:600px){.kpis{grid-template-columns:repeat(3,1fr);gap:6px}.kpi{padding:9px 6px!important;text-align:center}.kpi b{font-size:19px!important}.kpi span{font-size:9.5px!important;letter-spacing:0!important}}
 .kpi{background:var(--painel);border:1px solid var(--borda);border-radius:var(--raio);padding:12px;cursor:pointer}.kpi.sel{border-color:#8cc8ff}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
 input,select{background:#061230;color:var(--texto);border:1px solid var(--borda);border-radius:10px;padding:9px 10px;font:inherit;font-size:16px}
 .linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -57,7 +57,7 @@ input,select{background:#061230;color:var(--texto);border:1px solid var(--borda)
   <div class="bloco"><h2>Acompanhar um processo</h2>
     <form class="linha" id="f-acomp"><input id="a-num" placeholder="Número do processo (20 dígitos)" style="flex:1;min-width:230px" required><input id="a-rot" placeholder="Apelido (ex.: Maria × Facta)" style="flex:1;min-width:180px"><select id="a-adv" hidden></select><button class="ok">Acompanhar</button></form>
     <div class="sub" id="m-acomp" style="margin-top:6px">O robô confere uma vez por dia e avisa quando sai sentença ou acórdão.</div></div>
-  <div class="kpis" id="k-acomp"></div><div class="linha" style="margin-bottom:10px"><input id="q-acomp" placeholder="Filtrar por número, apelido, parte ou vara…" style="flex:1"></div><div id="l-acomp"></div>
+  <div class="kpis" id="k-acomp"></div><div class="linha" style="margin-bottom:10px"><select id="f-adv-acomp" hidden style="flex:1;min-width:150px"></select><input id="q-acomp" placeholder="Filtrar por número, apelido, parte ou vara…" style="flex:2;min-width:180px"></div><div id="l-acomp"></div>
 </section>
 
 <section id="aba-robo" hidden><div class="bloco" id="robo-res"></div><div id="l-robo"></div></section>
@@ -80,7 +80,8 @@ const dBR = s => s ? String(s).slice(0, 10).split('-').reverse().join('/') : '�
 const fmtProc = n => so(n).length === 20 ? so(n).replace(/(\d{7})(\d{2})(\d{4})(\d)(\d{2})(\d{4})/, '$1-$2.$3.$4.$5.$6') : n;
 const RES = { procedente: 'procedente', parcial: 'parcialmente procedente', improcedente: 'improcedente', acordo: 'acordo', extinto: 'extinto' };
 const COR = { contrato: 'v', cpf_banco: 'v', contrato_num: 'a', nome_uf_banco: 'a', nome_banco: 'a', cpf: '', nome: '' };
-let EU = null, ACOMP = [], SEG = new Set(), ADV = false, LIT = false;   // ADV: advogado ou admin, que vê a consulta como "processos do cliente", com o resumo aberto
+let EU = null, ACOMP = [], SEG = new Set(), ADV = false, LIT = false, PAGOS = new Set();
+const FAV = a => ['procedente', 'parcial', 'acordo'].includes(a.resultado), advDe = a => a.advogado || (String(a.rotulo || '').includes(' · ') ? String(a.rotulo).split(' · ').pop().trim() : '') || 'sem advogado';   // ADV: advogado ou admin, que vê a consulta como "processos do cliente", com o resumo aberto
 // resumo da situação do processo, montado pelas publicações
 function resumo(pubs) {
   const s = LT.situacao(pubs); if (!s) return '';
@@ -127,15 +128,18 @@ $('#cli').addEventListener('change', e => { if (e.target.value) { $('#c-cpf').va
 // ---------- acompanhados ----------
 function desenharAcomp() {
   const q = $('#q-acomp').value.trim().toLowerCase(), f = desenharAcomp.f || '';
-  const vis = ACOMP.filter(a => (!f || (f === 'sent' ? a.sentenca_em : f === 'nada' ? !a.pubs : !a.sentenca_em && a.pubs)) && (!q || [a.numero, fmtProc(a.numero), a.rotulo, a.cliente, a.partes, a.orgao, a.advogado].join(' ').toLowerCase().includes(q)));
-  $('#k-acomp').innerHTML = [['', 'Acompanhados', ACOMP.length], ['sent', 'Com sentença', ACOMP.filter(a => a.sentenca_em).length], ['and', 'Em andamento', ACOMP.filter(a => !a.sentenca_em && a.pubs).length], ['nada', 'Sem publicação no Diário', ACOMP.filter(a => !a.pubs).length]].map(([k, t, v]) => `<div class="kpi${f === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('');
+  const adv = $('#f-adv-acomp').value, BASE = adv ? ACOMP.filter(a => advDe(a) === adv) : ACOMP;
+  const passa = { '': () => true, fav: FAV, imp: a => a.resultado === 'improcedente', ext: a => a.resultado === 'extinto' || (a.sentenca_em && !a.resultado), and: a => !a.sentenca_em, pago: a => PAGOS.has(a.numero) };
+  const vis = BASE.filter(a => (passa[f] || passa[''])(a) && (!q || [a.numero, fmtProc(a.numero), a.rotulo, a.cliente, a.partes, a.orgao, a.advogado].join(' ').toLowerCase().includes(q)));
+  $('#k-acomp').innerHTML = [['', 'Todos', BASE.length], ['fav', 'Favoráveis', BASE.filter(passa.fav).length], ['imp', 'Improcedentes', BASE.filter(passa.imp).length], ['ext', 'Extintos / outros', BASE.filter(passa.ext).length], ['and', 'Sem sentença', BASE.filter(passa.and).length], ['pago', 'Banco pagou (alvará)', BASE.filter(passa.pago).length]].map(([k, t, v]) => `<div class="kpi${f === k ? ' sel' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></div>`).join('');
   $('#l-acomp').innerHTML = vis.slice(0, 300).map(a => `<div class="it ${a.sentenca_em ? 'hoje' : a.pubs ? 'semana' : ''}"><div class="topo"><h3>${esc(a.rotulo || fmtProc(a.numero))}</h3>${a.sentenca_em ? `<span class="tag a">sentença em ${dBR(a.sentenca_em)}${a.resultado ? ': ' + RES[a.resultado] : ''}</span>` : a.lido_em ? `<span class="tag">${a.pubs ? 'em andamento' : 'nada no Diário'}</span>` : '<span class="tag">aguardando 1ª leitura</span>'}</div>
     <p><b style="color:var(--texto)">${esc(fmtProc(a.numero))}</b>${a.tribunal ? ' · ' + esc(a.tribunal) + ' · ' + esc(a.orgao || '') : ''}${a.partes ? '<br>' + esc(a.partes) : ''}${a.ultima_pub ? `<br>Última publicação: ${dBR(a.ultima_pub)} · ${esc(a.ultimo_tipo || '')}` : ''}${a.erro ? '<br><span style="color:#fde68a">última leitura falhou: ' + esc(a.erro) + '</span>' : ''}</p>
-    <details data-ev="${esc(a.numero)}"><summary>Ver as ${a.pubs} publicação(ões)</summary><div class="ev sub">carregando…</div></details><div class="acoes"><button data-parar="${a.id}">Parar de acompanhar</button></div></div>`).join('') || '<div class="bloco sub">Nenhum processo acompanhado ainda.</div>';
+    <details data-ev="${esc(a.numero)}"><summary>Ver as ${a.pubs} publicação(ões)</summary><div class="ev sub">carregando…</div></details>${PAGOS.has(a.numero) ? '<p><span class="tag g">alvará ou levantamento publicado</span></p>' : ''}</div>`).join('') || '<div class="bloco sub">Nenhum processo acompanhado ainda.</div>';
 }
-async function carregarAcomp() { const { data } = await sb.rpc('acomp_lista'); ACOMP = data || []; SEG = new Set(ACOMP.map(a => a.numero)); $('#n-acomp').textContent = ACOMP.length ? '(' + ACOMP.length + ')' : ''; desenharAcomp(); }
+async function carregarAcomp() { const [{ data }, { data: pg }] = await Promise.all([sb.rpc('acomp_lista'), sb.rpc('acomp_pagos')]); ACOMP = data || []; PAGOS = new Set(pg || []);
+  if (EU && EU.papel === 'admin') { const s = $('#f-adv-acomp'), at = s.value, advs = [...new Set(ACOMP.map(advDe))].sort(); s.hidden = false; s.innerHTML = '<option value="">Todos os advogados</option>' + advs.map(x => `<option${x === at ? ' selected' : ''}>${esc(x)}</option>`).join(''); } SEG = new Set(ACOMP.map(a => a.numero)); $('#n-acomp').textContent = ACOMP.length ? '(' + ACOMP.length + ')' : ''; desenharAcomp(); }
 $('#k-acomp').addEventListener('click', e => { const k = e.target.closest('[data-f]'); if (k) { desenharAcomp.f = k.dataset.f; desenharAcomp(); } });
-$('#q-acomp').addEventListener('input', desenharAcomp);
+$('#q-acomp').addEventListener('input', desenharAcomp); $('#f-adv-acomp').addEventListener('change', desenharAcomp);
 $('#l-acomp').addEventListener('toggle', async e => { const d = e.target; if (!d.open || !d.dataset.ev || d.dataset.ok) return; d.dataset.ok = 1; const { data } = await sb.rpc('acomp_eventos', { p_numero: d.dataset.ev }); d.querySelector('.ev').outerHTML = `<div class="ev">` + ((data || []).length ? resumo(data) + `<div class="acoes" style="margin:0 0 8px"><button data-reler="${esc(d.dataset.ev)}">Reler o Diário agora e refazer o resumo</button></div>` + pubsHtml(data) : `<div class="sub">Nada publicado no Diário Nacional com esse número até agora.</div><div class="acoes" style="margin-top:8px"><button data-reler="${esc(d.dataset.ev)}">Reler o Diário agora</button></div>`) + '</div>'; }, true);
 $('#f-acomp').addEventListener('submit', async e => { e.preventDefault(); const { error } = await sb.rpc('acomp_seguir', { p_numero: $('#a-num').value, p_rotulo: $('#a-rot').value, p_advogado: EU.papel === 'admin' ? $('#a-adv').value : null });
   $('#m-acomp').textContent = error ? 'Não salvou: ' + error.message : 'Pronto. A primeira leitura sai em até 10 minutos.'; if (!error) { $('#a-num').value = ''; $('#a-rot').value = ''; carregarAcomp(); } });
