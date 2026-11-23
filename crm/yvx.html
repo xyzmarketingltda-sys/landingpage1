@@ -150,6 +150,10 @@ const TAXA_MAX_ORIGEM = 1.80, TAXA_MIN_ENTRADA = 0.60, AJUSTE_SALDO = 1.0052;
 function taxaEntrada(pv, pmt, n) { if (!(pv > 0 && pmt > 0 && n > 0)) return null; if (pmt * n <= pv) return 0; let lo = 0, hi = 1;
   for (let k = 0; k < 80; k++) { const r = (lo + hi) / 2, q = Math.pow(1 + r, n), v = pmt * (q - 1) / (r * q) / Math.pow(1 + r, 1.45); if (v > pv) lo = r; else hi = r; }   /* 1,45 mês até a 1ª parcela: calibrado na tela da Quali (424,20 -> 1,81% · 422,00 -> 1,79%) */ return (lo + hi) / 2 * 100; }
 const anosMeses = m => Math.floor(m / 12) + 'a ' + (m % 12) + 'm';
+// tabelas de portabilidade 108x por faixa de saldo (começa na taxa máxima 1,85; pode descer pra enquadrar)
+const TAB_PORT = {
+  baixa: { faixa: 'saldo R$ 2 mil a 5.999,99', tabs: [['1,85%', '000655'], ['1,83%', '000656'], ['1,80%', '000657']] },
+  alta: { faixa: 'saldo R$ 6 mil ou mais', tabs: [['1,85%', '000633'], ['1,83%', '000634'], ['1,80%', '000635']] } };
 function analisar(L, cols) {
   const K = {}; cols.forEach(c => { K[c.k] = c.n; });
   const g = (r, k) => K[k] ? String(r[K[k]] ?? '').trim() : '';
@@ -233,7 +237,8 @@ function analisar(L, cols) {
     else if (txO != null && txO > TAXA_MAX_ORIGEM) ver.push('Taxa de entrada de ' + txO.toFixed(2) + '%: o sistema da Quali só aceita até ' + TAXA_MAX_ORIGEM.toFixed(2) + '%. Na simulação, reduza a parcela informada até a taxa cair.');
     if (parc != null && saldo != null && prazoPort > 0) { o.pv = Math.min(150000, parc * fatorPV(i, prazoPort)); o.troco = o.pv - saldo * AJUSTE_SALDO;
       const pct = rest >= 72 ? 2 : rest >= 57 ? 3 : 5, agreg = Math.max(0, prazoPort - (isNaN(rest) ? 0 : rest)); o.endiv = agreg * parc; o.trocoMin = Math.max(100, o.endiv * pct / 100); o.pct = isNaN(rest) ? null : pct;
-      if (o.troco < o.trocoMin) ver.push('Troco estimado de ' + brl(o.troco) + ' fica abaixo do mínimo de ' + brl(o.trocoMin) + ' na taxa usada. Simule na calculadora da Quali.'); }
+      if (o.troco < o.trocoMin) ver.push('Troco estimado de ' + brl(o.troco) + ' fica abaixo do mínimo de ' + brl(o.trocoMin) + ' na taxa usada. Simule na calculadora da Quali.');
+      o.tab = saldo >= 6000 ? TAB_PORT.alta : saldo >= 2000 ? TAB_PORT.baixa : null; }
     if (nao.length) return Object.assign(o, { st: 'nao', tit: 'Não porta agora', txt: nao });
     if (ver.length) return Object.assign(o, { st: 'ver', tit: o.troco != null && o.troco < o.trocoMin ? 'Atende as regras, mas o troco não fecha na taxa usada' : 'Atende as regras, mas confira', txt: ver });
     return Object.assign(o, { st: 'ok', tit: 'Porta com refinanciamento', txt: [] });
@@ -249,7 +254,9 @@ function aumentoHTML(A) { const a = A.aum; if (!a) return '';
     <div class="sub" style="margin-top:8px">${a.noPiso ? 'Recebe o piso: vai para o novo salário mínimo.' : a.cota ? 'Recebe 1/' + a.cota + ' do piso (benefício dividido): sobe na mesma proporção do salário mínimo.' : a.vb < PISO_AT ? 'Abaixo do piso: corrigido só pelo INPC.' : 'Acima do piso: corrigido só pelo INPC, limitado ao teto.'} Piso projetado: R$ <input id="q-piso" inputmode="decimal" value="${String(a.P.piso).replace('.', ',')}"> · INPC projetado: <input id="q-inpc" inputmode="decimal" value="${String(a.P.inpc).replace('.', ',')}"> %. Estimativa conservadora (piso +7% e INPC 4,5%); o Orçamento de 2027 prevê R$ 1.741 e 4,93%. Em 2026 o piso subiu 6,79% e os demais 3,90%.</div></div>`; }
 const ICO = { ok: '✅', nao: '⛔', ver: '⚠️', na: '➖' };
 function vereditoHTML(c) { const est = c.troco != null && c.st !== 'nao' ? `Troco estimado: <b style="display:inline;color:#fde68a">${brl(c.troco)}</b> em ${c.prazo}x (mínimo ${brl(c.trocoMin)}${c.pct ? ', ' + c.pct + '% do endividamento' : ''}).` : '';
-  return `<div class="vd ${c.st}"><b>${ICO[c.st]} ${esc(c.tit)}</b>${c.txt.map(esc).join('<br>')}${est ? (c.txt.length ? '<br>' : '') + est : ''}</div>`; }
+  const fecha = c.tab && c.troco != null && c.troco >= c.trocoMin && c.st !== 'nao';
+  const tab = fecha ? `<br><span style="color:#86efac">📋 Tabela p/ digitar (108x): <b>${c.tab.tabs[0][1]}</b> · PORT + REFIN ${c.tab.tabs[0][0]} · ${c.tab.faixa}.</span><br><span class="sub">Se não enquadrar, desça a taxa: ${c.tab.tabs.slice(1).map(t => t[0] + ' → ' + t[1]).join(' · ')}.</span>` : '';
+  return `<div class="vd ${c.st}"><b>${ICO[c.st]} ${esc(c.tit)}</b>${c.txt.map(esc).join('<br>')}${est ? (c.txt.length ? '<br>' : '') + est : ''}${tab}</div>`; }
 function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'), ver = A.contratos.filter(c => c.st === 'ver'), nao = A.contratos.filter(c => c.st === 'nao');
   const soma = ok.concat(ver).reduce((t, c) => t + (c.troco > 0 ? c.troco : 0), 0), li = (a, cor) => a.map(t => `<li style="color:${cor}">${esc(t)}</li>`).join('');
   return `<div class="cart op" style="margin-top:14px;border-color:rgba(251,191,36,.45)"><h3><i>🎯</i>Oportunidades pelas regras da Quali <span class="sub" style="font-weight:400;margin-left:auto">resumo de ${Q.versao}</span></h3>
