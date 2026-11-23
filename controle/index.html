@@ -262,7 +262,8 @@ async function iniciar() {
   // senha provisória (ou troca pedida pela XYZ): só entra depois de criar a própria senha
   $('#login').hidden = true; try { await XYZSenha.exigir(sb, p); } catch (e) { console.warn('senha', e); }
   eu = p; $('#login').hidden = true; $('#app').hidden = false;
-  $('#eu-nome').textContent = p.papel === 'advogado' ? (['Carina','Cibele','Danyelle','Junny','Rita'].includes(p.nome) ? 'Dra. ' : 'Dr. ') + (p.nome === 'Luiz' ? 'Luís' : p.nome) : p.nome + ' (admin)';
+  if (p.restrito) document.querySelectorAll('a[href="pagamento.html"]').forEach(x => x.remove());
+  $('#eu-nome').textContent = p.restrito ? p.nome + ' · equipe ' + (p.advogado_chave || '').charAt(0) + (p.advogado_chave || '').slice(1).toLowerCase() : p.papel === 'advogado' ? (['Carina','Cibele','Danyelle','Junny','Rita'].includes(p.nome) ? 'Dra. ' : 'Dr. ') + (p.nome === 'Luiz' ? 'Luís' : p.nome) : p.nome + ' (admin)';
   try { XYZPresenca.entrar(sb, eu, {}); } catch (e) {}
   carregar(); avisoDesafio(); setInterval(avisoDesafio, 120000); avisosPush();
 }

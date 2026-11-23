@@ -168,6 +168,7 @@ async function iniciar() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { $('#login').hidden = false; $('#app').hidden = true; return; }
   const { data: p } = await sb.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
+  if (p && p.restrito) { location.replace('./'); return; }
   if (!p || !p.ativo || p.papel === 'atendente') { $('#login').hidden = false; $('#l-erro').textContent = 'Esta página é dos advogados parceiros.'; await sb.auth.signOut(); return; }
   eu = p; $('#login').hidden = true; $('#app').hidden = false;
   const fem = ['Carina','Cibele','Danyelle','Junny','Rita'];
