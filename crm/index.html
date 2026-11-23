@@ -889,6 +889,7 @@ async function iniciar() {
     return mostrarLogin('Seu acesso não está liberado. Fale com o administrador.');
   }
   if (perfil.papel === 'advogado') return location.href = '../controle/';
+  if (perfil.papel === 'yvx') return location.href = 'yvx.html';   // usuário que só consulta o YVX
   // senha provisória (ou troca pedida pelo admin): só entra depois de criar a própria senha
   $('#login').hidden = true; try { await XYZSenha.exigir(sb, perfil); } catch (e) { console.warn('senha', e); }
   eu = perfil;

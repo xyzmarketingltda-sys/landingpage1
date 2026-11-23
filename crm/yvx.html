@@ -54,7 +54,7 @@ button:disabled{opacity:.5}
 <body hidden>
 <main>
 <header><div><div class="logo">YVX</div><div class="sub">Consulta por CPF na base do INSS</div></div>
-  <div class="linha" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="status" id="st"><i></i><span id="st-t">verificando o servidor…</span></span><a class="btn" href="./">← CRM</a></div></header>
+  <div class="linha" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="status" id="st"><i></i><span id="st-t">verificando o servidor…</span></span><a class="btn" id="b-crm" href="./">← CRM</a><button type="button" id="b-sair" hidden>Sair</button></div></header>
 
 <form class="busca" id="f"><input id="cpf" placeholder="Digite o CPF" inputmode="numeric" autocomplete="off" maxlength="14" autofocus><button id="b">Consultar</button></form>
 <div style="margin-top:12px"><button type="button" id="b-meus" style="border-color:rgba(251,191,36,.5)">🎯 Oportunidades dos meus clientes</button></div>
@@ -351,7 +351,8 @@ $('#f').addEventListener('submit', async e => {
   try {
     const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
     const { data: eu } = await sb.from('perfis').select('papel,ativo,sem_quali').eq('id', session.user.id).single();
-    if (!eu || !eu.ativo || !['admin', 'atendente'].includes(eu.papel)) throw 0;
+    if (!eu || !eu.ativo || !['admin', 'atendente', 'yvx'].includes(eu.papel)) throw 0;
+    if (eu.papel === 'yvx') { eu.sem_quali = true; $('#b-crm').hidden = true; $('#b-crm').style.display = 'none'; $('#b-sair').hidden = false; $('#b-sair').onclick = async () => { await sb.auth.signOut(); location.replace('./'); }; }
     EU = eu; if (eu.sem_quali) { OPON = false; $('#b-meus').parentElement.hidden = true; } document.body.hidden = false; servidor(); setInterval(servidor, 90000);
     const q = new URLSearchParams(location.search).get('cpf'); if (q && so(q).length === 11) { $('#cpf').value = fmtCPF(q); $('#f').requestSubmit(); }
     if (eu.papel === 'admin') { const { data } = await sb.rpc('yvx_historico'); $('#hist-box').hidden = false;
