@@ -95,7 +95,10 @@ const UFS = { AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahi
 const LOGOS = new Set('001 003 004 021 029 033 037 041 047 070 077 079 082 104 212 213 237 246 318 336 341 386 389 394 422 604 611 623 626 637 643 655 707 748 752 756 903 925'.split(' '));
 // selo com as iniciais do banco, para os que não têm logo na pasta bancos/
 const SIGLAS = { '254': 'PR', '935': 'FA', '121': 'AGI', '934': 'AGI', '012': 'INB', '329': 'QI', '081': 'BS', '243': 'MAS', '954': 'DIG', '465': 'CC', '069': 'CRE', '753': 'NBC', '359': 'ZE', '330': 'BARI', '402': 'COB', '276': 'SE', '174': 'PEF', '905': 'ALFA' };
-function seloBanco(cod, nome) { if (LOGOS.has(cod)) return `<img src="bancos/${cod}.svg" alt="" loading="lazy" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex:none">`;
+// bancos sem arquivo de logo: usa o ícone oficial do site do banco (favicon); se não carregar, cai no selo com iniciais
+const SITES = { '254': 'paranabanco.com.br', '935': 'facta.com.br', '121': 'agibank.com.br', '934': 'agibank.com.br', '012': 'bancoinbursa.com', '329': 'qitech.com.br', '081': 'bancoseguro.com.br', '243': 'bancomaster.com.br', '954': 'digio.com.br', '465': 'capitalconsig.com.br', '069': 'crefisa.com.br', '753': 'nbcbank.com.br', '359': 'zema.com', '330': 'bancobari.com.br', '402': 'cobuccio.com.br', '276': 'senff.com.br', '174': 'pefisa.com.br', '905': 'alfanet.com.br' };
+function seloBanco(cod, nome, semSite) { if (!semSite && !LOGOS.has(cod) && SITES[cod]) return `<img data-fav="${cod}" data-nome="${esc(nome || '')}" src="https://www.google.com/s2/favicons?domain=${SITES[cod]}&sz=128" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex:none">`;
+  if (LOGOS.has(cod)) return `<img src="bancos/${cod}.svg" alt="" loading="lazy" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex:none">`;
   const lim = String(nome || '').replace(/\b(BANCO|BCO|S\.?A\.?|S\/A|FINANCEIRA|SOCIEDADE|DE|DO|DA|CR[EÉ]DITO|DIRETO|CFI|SCD)\b/gi, ' ').trim().split(/\s+/).filter(Boolean);
   const sig = SIGLAS[cod] || (lim.length > 1 ? lim.slice(0, 2).map(x => x[0]).join('') : (lim[0] || '?').slice(0, 2)).toUpperCase(), h = (parseInt(cod, 10) || 0) * 47 % 360;
   return `<span style="width:30px;height:30px;flex:none;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:${sig.length > 3 ? 8.5 : sig.length > 2 ? 10 : 12}px;font-weight:800;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,hsl(${h},65%,42%),hsl(${(h + 40) % 360},70%,30%));border:1px solid rgba(255,255,255,.25)">${esc(sig)}</span>`; }
@@ -280,6 +283,8 @@ function desenhar() {
   }
   $('#saida').innerHTML = h;
 }
+$('#saida').addEventListener('error', e => { const im = e.target; if (im && im.dataset && im.dataset.fav) im.outerHTML = seloBanco(im.dataset.fav, im.dataset.nome, true); }, true);
+$('#saida').addEventListener('load', e => { const im = e.target; if (im && im.dataset && im.dataset.fav && im.naturalWidth && im.naturalWidth < 32) im.outerHTML = seloBanco(im.dataset.fav, im.dataset.nome, true); }, true);
 $('#saida').addEventListener('change', e => { const lim = { 'q-taxa': ['yvx_taxa', 0, 5], 'q-piso': ['yvx_piso', PISO_AT, 3000], 'q-inpc': ['yvx_inpc', 0, 20] }[e.target.id]; if (!lim) return;
   const v = parseFloat(String(e.target.value).replace(/\./g, m => /,/.test(e.target.value) ? '' : m).replace(',', '.')); if (v > lim[1] && v < lim[2]) { try { localStorage.setItem(lim[0], v); } catch (x) {} desenhar(); } else toast('Valor inválido'); });
 $('#saida').addEventListener('click', e => { const mf = e.target.closest('[data-mf]'), ma = e.target.closest('[data-ma]'), mc = e.target.closest('[data-cpf]');
