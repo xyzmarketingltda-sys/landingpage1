@@ -345,7 +345,7 @@ $('#saida').addEventListener('click', e => { const mf = e.target.closest('[data-
   const b = e.target.closest('.campo b:not(.vazio)'); if (b && navigator.clipboard) navigator.clipboard.writeText(b.textContent).then(() => toast('Copiado: ' + b.textContent)); });
 
 /* ---------- oportunidades dos clientes do atendente (calculadas em lote) ---------- */
-let MEUS = null, MF = 'port', MA = '';
+let MEUS = null, MF = 'port', MA = '', QLINK = '';
 function meusHTML() {
   const base = MEUS.filter(x => !MA || x.atendente === MA), F = { port: x => x.fecha > 0, novo: x => x.novo > 0, aum: x => x.aum_valor > 0 }, val = { port: x => +x.troco, novo: x => +x.novo, aum: x => +x.aum_valor };
   const L = base.filter(F[MF]).sort((a, b) => val[MF](b) - val[MF](a)), nomes = { port: 'Portabilidade', novo: 'Empréstimo novo', aum: 'Aumento de margem' };
@@ -354,10 +354,17 @@ function meusHTML() {
     <div class="abas" style="margin-top:0">${Object.keys(nomes).map(k => `<button type="button" data-mf="${k}" class="${k === MF ? 'sel' : ''}">${nomes[k]} (${base.filter(F[k]).length})</button>`).join('')}</div>
     ${EU.papel === 'admin' && ats.length > 1 ? `<div class="abas" style="margin-top:6px"><button type="button" data-ma="" class="${!MA ? 'sel' : ''}">Todos</button>${ats.map(a => `<button type="button" data-ma="${esc(a)}" class="${a === MA ? 'sel' : ''}">${esc(a)}</button>`).join('')}</div>` : ''}
     <div class="sub" style="margin:8px 0">${L.length} cliente(s) · total estimado ${brl(L.reduce((t, x) => t + val[MF](x), 0))}. Toque no cliente para abrir a consulta. Dados da base de agosto/2026: confirme no extrato antes de ofertar.</div>`;
-  h += L.length ? L.map(x => `<button type="button" data-cpf="${x.cpf}" style="display:flex;width:100%;gap:10px;align-items:center;flex-wrap:wrap;text-align:left;margin-top:6px"><b style="flex:1;min-width:150px">${esc(x.nome || fmtCPF(x.cpf))}</b>${EU.papel === 'admin' && x.atendente ? `<span class="sub">${esc(x.atendente)}</span>` : ''}<span class="sub">${MF === 'port' ? x.fecha + ' contrato(s)' : MF === 'novo' ? 'margem livre ' + brl(+x.margem || 0) : 'margem +' + brl(+x.aum_margem)}</span><span style="color:#fde68a;font-weight:700">${brl(val[MF](x))}</span></button>`).join('') : '<div class="sub">Nenhum cliente nesta lista.</div>';
+  const OPS = { port: [3, 4], novo: [1], aum: [6] }[MF], QF = { finalizado: ['✅ finalizado', '#86efac'], assinado: ['✍️ proposta assinada', '#86efac'], aguardando_assinatura: ['📲 aguardando o cliente assinar', '#fde68a'], andamento: ['⏳ em andamento', '#7dd3fc'], cancelado: ['✖ cancelada', '#fca5a5'], erro: ['⚠️ com erro', '#fca5a5'] };
+  const qLinha = x => { const q = (x.quali || []).find(q => OPS.includes(q.operacao_cod)); if (!q) return '';
+    const f = QF[q.fase] || QF.andamento, tel = String(x.telefone || '').replace(/\D/g, ''), pn = String(x.nome || '').trim().split(/\s+/)[0] || '';
+    const nomeP = pn.charAt(0).toUpperCase() + pn.slice(1).toLowerCase(), prod = MF === 'aum' ? 'aumento de margem' : MF === 'port' ? 'portabilidade' : 'empréstimo';
+    const msg = `Olá, ${nomeP}! Aqui é da XYZ. Sua proposta de ${prod} na Quali está pronta para assinatura.` + (q.parcela ? ` Parcela de ${brl(+q.parcela)} em ${q.prazo}x` + (MF !== 'port' && +q.liquido > 0 ? `, valor liberado de ${brl(+q.liquido)}` : '') + '.' : '') + ` Para conferir e assinar, acesse: ${QLINK}`;
+    const zap = q.fase === 'aguardando_assinatura' && QLINK && tel.length >= 10 ? `<a href="https://wa.me/${tel.length <= 11 ? '55' + tel : tel}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="margin-left:auto;padding:5px 12px;border-radius:999px;background:#16a34a;color:#fff;font-weight:700;text-decoration:none;font-size:12px">📲 Enviar link no WhatsApp</a>` : '';
+    return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 4px 10px;font-size:12px"><span style="color:${f[1]};font-weight:700">Quali: ${f[0]}</span><span class="sub">${esc(q.status || '')}${q.status_em ? ' · ' + new Date(q.status_em).toLocaleDateString('pt-BR') : ''}</span>${zap}</div>`; };
+  h += L.length ? L.map(x => `<button type="button" data-cpf="${x.cpf}" style="display:flex;width:100%;gap:10px;align-items:center;flex-wrap:wrap;text-align:left;margin-top:6px"><b style="flex:1;min-width:150px">${esc(x.nome || fmtCPF(x.cpf))}</b>${EU.papel === 'admin' && x.atendente ? `<span class="sub">${esc(x.atendente)}</span>` : ''}<span class="sub">${MF === 'port' ? x.fecha + ' contrato(s)' : MF === 'novo' ? 'margem livre ' + brl(+x.margem || 0) : 'margem +' + brl(+x.aum_margem)}</span><span style="color:#fde68a;font-weight:700">${brl(val[MF](x))}</span></button>${qLinha(x)}`).join('') : '<div class="sub">Nenhum cliente nesta lista.</div>';
   return h + '</div>'; }
 $('#b-meus').addEventListener('click', async () => { const b = $('#b-meus'); b.disabled = true;
-  try { if (!MEUS) { const { data, error } = await sb.rpc('yvx_minhas_oportunidades'); if (error) { toast('Não consegui carregar'); return; } MEUS = data || []; }
+  try { if (!MEUS) { const { data, error } = await sb.rpc('yvx_minhas_oportunidades'); if (error) { toast('Não consegui carregar'); return; } MEUS = data || []; try { QLINK = (await sb.rpc('quali_link')).data || ''; } catch (e) {} }
     $('#saida').innerHTML = meusHTML(); } finally { b.disabled = false; } });
 
 /* ---------- servidor do escritório ---------- */
