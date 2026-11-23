@@ -284,6 +284,44 @@ async function buscarEndereco(cpf, token) { ENDE = null;
   try { const r = await fetch(SRV.url + '/endereco/' + cpf, { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' }); ENDE = r.ok ? await r.json() : (r.status === 404 ? { disponivel: false, enderecos: [] } : { erro: true }); } catch (e) { ENDE = { erro: true }; }
   if (RES && RES.cpf === cpf) desenhar(); }
 
+/* ---------- digitar o aumento de margem na Quali pela API (teste, só admin) ---------- */
+let DIG = null, DIGSIM = '';
+function digitarHTML() { const a = DIG.A.aum, tel = (MEUS || []).find(x => x.cpf === RES.cpf)?.telefone || '';
+  return `<div class="cart" style="margin-top:12px;border-color:rgba(34,197,94,.5)"><h3><i>🧪</i>Digitar aumento de margem na Quali <span class="sub" style="font-weight:400;margin-left:auto">teste pela API · só você vê</span></h3>
+    <div class="sub">Cria proposta <b>de verdade</b> na Quali (não existe ambiente de teste). O termo de autorização quem assina é o cliente.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:end">
+      <label class="sub">Tabela<br><select id="dg-tab"><option value="000617">000617 Novo Aumento 108x 1,85%</option><option value="000618">000618 Novo Aumento CAR 90D 108x 1,85%</option></select></label>
+      <label class="sub">Parcela (R$)<br><input id="dg-par" value="${(Math.floor(a.util * 100) / 100).toFixed(2).replace('.', ',')}" style="width:110px"></label>
+      <label class="sub">Telefone do cliente<br><input id="dg-tel" value="${esc(tel)}" style="width:150px" placeholder="DDD + número"></label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" data-dg="calc">1 · Calcular (não cria nada)</button><button type="button" data-dg="simular">2 · Criar simulação</button><button type="button" data-dg="termo">3 · Ver termo</button><button type="button" data-dg="criar">4 · Virar proposta</button><button type="button" data-dg="contratos">5 · Ver contratos</button></div>
+    <pre id="dg-out" style="margin-top:10px;max-height:340px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.35);padding:10px;border-radius:10px" hidden></pre></div>`; }
+function digPayload() { const { l, cols, A } = DIG, v = re => { const c = cols.find(c => re.test(c.k) && String(l[c.n] ?? '').trim()); return c ? String(l[c.n]).trim() : ''; };
+  const iso = x => { const m = dataBR(x || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; }, e = (ENDE && ENDE.enderecos && ENDE.enderecos[0]) || {};
+  const par = num($('#dg-par').value) || 0, i = A.taxa / 100, valor = Math.round(par * fatorPV(i, 108) * 100) / 100, conta = so(v(/banco_pagamento_conta|conta/));
+  const sx = (v(/sexo/) || e.SEXO || '').toUpperCase()[0], uf = (v(/^uf_beneficio$/) || v(/endereco_uf|^uf$/) || e.UF || '').toUpperCase();
+  const item = { hasInsurance: false, installmentValue: par, loanValue: valor, rate: A.taxa, term: 108, referenceCode: null };
+  return { calculo: item, simulacao: {
+    borrower: { name: v(/^nome$|nome_benef|^nome/) || 'vazio', identity: RES.cpf, benefit: so(v(/^beneficio$|^nb$|numero_beneficio/)), benefitState: uf, benefitStartDate: iso(v(/^dib$/)), benefitPaymentMethod: 1,
+      benefitType: parseInt(v(/especie_codigo|especie/), 10) || null, birthDate: iso(v(/nasc/)), motherName: v(/mae/) || e.NOME_MAE || 'vazio', maritalStatus: 'vazio', sex: sx === 'M' ? 'Masculino' : sx === 'F' ? 'Feminino' : 'vazio',
+      income: num(v(/valor_beneficio/)) || 0, phone: so($('#dg-tel').value), email: null,
+      address: { street: [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' ') || 'vazio', number: String(e.NUMERO || '0'), complement: e.COMPLEMENTO || null, district: e.BAIRRO || 'vazio', city: e.CIDADE || v(/endereco_cidade|cidade/) || 'vazio', state: (e.UF || uf || '').toUpperCase(), zipCode: so(e.CEP || '') || '00000000' },
+      document: { type: { code: 'RG', name: 'Registro Geral' }, number: '00000000', issuingDate: null, issuingEntity: 'vazio', issuingState: uf } },
+    items: [item],
+    creditBankAccount: { bank: cod3(v(/banco_pagamento_codigo/)), branch: so(v(/banco_pagamento_agencia/)), number: conta.slice(0, -1), digit: conta.slice(-1) },
+    step: { code: 0 }, files: [], note: null, brokerId: null, accessId: null } }; }
+document.addEventListener('click', async ev => { const b = ev.target.closest('[data-dg]'); if (!b || !DIG) return; const acao = b.dataset.dg, o = $('#dg-out');
+  if ((acao === 'termo' || acao === 'criar' || acao === 'contratos') && !DIGSIM) { DIGSIM = (prompt('ID da simulação (aparece na resposta do passo 2):') || '').trim(); if (!DIGSIM) return; }
+  const P = digPayload();
+  if (acao === 'simular' && !confirm(`Criar simulação REAL na Quali para ${P.simulacao.borrower.name} (CPF ${fmtCPF(RES.cpf)})?\nParcela ${brl(P.calculo.installmentValue)} em 108x, valor ${brl(P.calculo.loanValue)}.`)) return;
+  if (acao === 'criar' && !confirm('Transformar a simulação em PROPOSTA na Quali? Só faça depois de o cliente assinar o termo.')) return;
+  b.disabled = true; o.hidden = false; o.textContent = 'Enviando…';
+  try { const { data, error } = await sb.functions.invoke('quali-digitar', { body: { acao, cpf: RES.cpf, tabela: $('#dg-tab').value, simulacao_id: DIGSIM, calculo: P.calculo, simulacao: P.simulacao } });
+    if (error) { let t = error.message; try { t = JSON.stringify(await error.context.json(), null, 2); } catch (x) {} o.textContent = 'ERRO: ' + t; return; }
+    if (acao === 'simular' && data.simulacao_id) DIGSIM = data.simulacao_id;
+    o.textContent = `${acao} → HTTP ${data.http}${data.simulacao_id ? ' · simulação ' + data.simulacao_id : ''}\n\nRESPOSTA:\n${JSON.stringify(data.resposta, null, 2)}\n\nENVIADO:\n${JSON.stringify(data.envio, null, 2)}`;
+  } catch (x) { o.textContent = 'ERRO: ' + x.message; } finally { b.disabled = false; } });
+
 /* ---------- desenhar ---------- */
 let RES = null, SEL = 0;
 const INFO = Object.fromEntries(GRUPOS.map(g => [g[0], g])); INFO.outros = ['outros', '🗂️', 'Outros dados'];
@@ -310,6 +348,7 @@ function desenhar() {
     <div style="position:relative;z-index:1;margin-top:14px"${EU && EU.sem_quali ? ' hidden' : ''}><button type="button" id="b-op" style="${OPON ? 'background:linear-gradient(135deg,#b45309,#fbbf24);color:#1a1205;border:0;font-weight:700' : ''}">🎯 ${OPON ? 'Ocultar oportunidades' : 'Ver oportunidades (regras da Quali)'}</button></div></div>`;
   const A = OPON && !(EU && EU.sem_quali) ? analisar(L, cols) : null;
   if (A) h += oportunidadesHTML(A);
+  DIG = { l, cols, A }; if (A && A.aum && A.aum.util >= 20 && EU && EU.papel === 'admin') h += digitarHTML();
   const por = {}; cols.forEach(c => { (por[grupoDe(c.k)] = por[grupoDe(c.k)] || []).push(c); });
   // dados do cliente/benefício (iguais em todos os contratos): tira o grupo "emprestimo", que é por contrato
   const ordemCli = ['pessoa', 'beneficio', 'margem', 'pagamento', 'contato', 'outros'];   // o endereço (cidade/UF da base) saiu: fica só o quadro Endereço completo
