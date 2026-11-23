@@ -255,6 +255,22 @@ function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'
     <ul>${li(A.cli.bloq, '#fca5a5')}${li(A.cli.avisos, '#fde68a')}${li(A.cli.infos, 'var(--suave)')}</ul>
     <div class="sub" style="margin-top:10px">Taxa usada na estimativa: <input id="q-taxa" inputmode="decimal" value="${String(A.taxa).replace('.', ',')}"> % ao mês. Ajuste para a tabela da Quali. Estimativa com a mesma parcela no prazo máximo, com o fator calibrado no simulador da Quali; o valor final sai na simulação.</div></div>`; }
 
+/* ---------- endereço para digitação (base Credilink no computador do escritório, só do CPF consultado) ---------- */
+let ENDE = null;   // null = buscando · {disponivel, enderecos} · {erro}
+function enderecoHTML() {
+  const cab = '<div class="cart" style="margin-top:12px"><h3><i>🏠</i>Endereço para digitação <span class="sub" style="font-weight:400;margin-left:auto">Credilink 2023</span></h3>';
+  if (!ENDE) return cab + '<div class="sub">Buscando o endereço…</div></div>';
+  if (ENDE.erro) return cab + '<div class="sub">Não consegui buscar o endereço agora.</div></div>';
+  if (!ENDE.disponivel) return '';
+  if (!ENDE.enderecos.length) return cab + '<div class="sub">Este CPF não tem endereço na Credilink. Peça o comprovante ao cliente.</div></div>';
+  const linha = (r, v) => `<div class="campo"><span>${r}</span><b class="${v ? '' : 'vazio'}" ${v ? 'title="Toque para copiar"' : ''}>${esc(v || '—')}</b></div>`;
+  return cab + ENDE.enderecos.map((e, n) => (ENDE.enderecos.length > 1 ? `<div class="sub" style="margin:${n ? 10 : 0}px 0 2px">Endereço ${n + 1}</div>` : '') +
+    linha('CEP', so(e.CEP).length === 8 ? so(e.CEP).replace(/(\d{5})(\d{3})/, '$1-$2') : e.CEP) + linha('Logradouro', [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' ')) + linha('Número', e.NUMERO) + linha('Complemento', e.COMPLEMENTO) + linha('Bairro', e.BAIRRO) + linha('Cidade', e.CIDADE) + linha('Estado', UFS[String(e.UF).toUpperCase()] ? UFS[e.UF.toUpperCase()] + ' (' + e.UF.toUpperCase() + ')' : e.UF)).join('') +
+    '<div class="sub" style="margin-top:8px">Endereço de 2023: confirme com o cliente antes de digitar.</div></div>'; }
+async function buscarEndereco(cpf, token) { ENDE = null;
+  try { const r = await fetch(SRV.url + '/endereco/' + cpf, { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' }); ENDE = r.ok ? await r.json() : (r.status === 404 ? { disponivel: false, enderecos: [] } : { erro: true }); } catch (e) { ENDE = { erro: true }; }
+  if (RES && RES.cpf === cpf) { const el = document.getElementById('end-cred'); if (el) el.innerHTML = enderecoHTML(); } }
+
 /* ---------- desenhar ---------- */
 let RES = null, SEL = 0;
 const INFO = Object.fromEntries(GRUPOS.map(g => [g[0], g])); INFO.outros = ['outros', '🗂️', 'Outros dados'];
@@ -284,6 +300,7 @@ function desenhar() {
   // dados do cliente/benefício (iguais em todos os contratos): tira o grupo "emprestimo", que é por contrato
   const ordemCli = ['pessoa', 'beneficio', 'margem', 'pagamento', 'contato', 'endereco', 'outros'];
   h += '<div class="grade">' + ordemCli.filter(g => por[g]).map(g => `<div class="cart"><h3><i>${INFO[g][1]}</i>${INFO[g][2]}</h3>` + por[g].map(c => campoHTML(c, l)).join('') + '</div>').join('') + '</div>';
+  h += `<div id="end-cred">${enderecoHTML()}</div>`;
   // contratos: um card por linha da base, com o banco no título
   const ce = por['emprestimo'] || [];
   if (ce.length) {
@@ -354,7 +371,7 @@ $('#f').addEventListener('submit', async e => {
     // bancos que a base traz sem nome ("código 908 não encontrado")
     const NOMES = { '908': 'PARATI - CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.', '902': 'BANCO CREFISA S.A.' }, cN = j.colunas.find(c => chave(c) === 'contrato_banco_nome'), cC = j.colunas.find(c => chave(c) === 'contrato_banco_codigo');
     if (cN && cC) j.linhas.forEach(r => { const nm = NOMES[cod3(r[cC])]; if (nm && (!String(r[cN] || '').trim() || /n[aã]o encontrado/i.test(r[cN]))) r[cN] = nm; });
-    RES = Object.assign(j, { cpf }); SEL = -1; desenhar();
+    RES = Object.assign(j, { cpf }); SEL = -1; ENDE = null; desenhar(); buscarEndereco(cpf, session.access_token);
   } finally { b.disabled = false; b.textContent = 'Consultar'; }
 });
 (async () => {
