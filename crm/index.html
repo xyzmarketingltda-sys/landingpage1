@@ -391,6 +391,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
   </header>
   <nav>
     <button data-aba="clientes" class="ativa">Clientes</button>
+    <button data-aba="financeira" id="nav-fin" hidden>📈 Aumento de margem</button>
     <button data-aba="ranking">Ranking</button>
     <button data-aba="remarketing" id="nav-rmk">📣 Remarketing <span id="rmk-qt" hidden style="margin-left:4px;padding:1px 7px;border-radius:99px;background:#f97316;color:#fff;font-size:11px;font-weight:800"></span></button>
     <a class="nav-link" href="hiscon.html" style="margin-left:auto">🔎 HISCON, contratos e seguro</a>
@@ -900,7 +901,7 @@ async function iniciar() {
   $('#eu-nome').textContent = eu.nome;
   $('#eu-foto').innerHTML = eu.foto_url ? `<img src="${esc(eu.foto_url)}" alt="">` : '';
   const admin = eu.papel === 'admin';
-  $('#nav-atendentes').hidden = !admin;
+  $('#nav-atendentes').hidden = !admin; $('#nav-fin').hidden = !admin;
   $('#nav-painel').hidden = !admin;    // painel do dono (celular): só admin
   $('#nav-irreg').hidden = !admin;     // irregularidades dos contratos: só admin e advogados (pelo /controle)
   $('#nav-prev').hidden = !admin;      // triagem previdenciária: por enquanto só admin e advogados
@@ -1138,7 +1139,7 @@ async function fechadosHoje() {
     sb.from('clientes').select('id,nome,cpf,banco,advogado,valor,produto,pasta_url,seguro_det_em,atendente_id,data_contato,criado_em,fora_comissao').or(`data_contato.eq.${hoje},and(data_contato.is.null,criado_em.gte."${ini}")`).limit(2000),
     sb.from('assinaturas_zap').select('doc_token,cliente,assinado_em').eq('conta', true).gte('assinado_em', ini).limit(2000)]);
   const porAt = {}, vistos = new Set();
-  (cli || []).forEach(c => { const k = (c.atendente_id || '') + '|' + (so(c.cpf || '') || (c.nome || '').toUpperCase().trim()); if (vistos.has(k)) return; vistos.add(k); porAt[c.atendente_id] = (porAt[c.atendente_id] || 0) + 1; });
+  (cli || []).filter(c => !ehFin(c.produto)).forEach(c => { const k = (c.atendente_id || '') + '|' + (so(c.cpf || '') || (c.nome || '').toUpperCase().trim()); if (vistos.has(k)) return; vistos.add(k); porAt[c.atendente_id] = (porAt[c.atendente_id] || 0) + 1; });
   const nome = id => ((equipe.find(p => p.id === id) || {}).nome || 'sem atendente').split(' ')[0];
   const lista = Object.entries(porAt).sort((x, y) => y[1] - x[1]).map(([id, n]) => nome(id) + ' ' + n).join(' · ');
   const assinadas = new Set((ass || []).map(a => (a.cliente || a.doc_token || '').toLowerCase())).size;
@@ -1551,8 +1552,9 @@ function pintarResultado() {
 }
 
 /* ---------- abas ---------- */
-$$('nav button, .rodape button').forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
-document.addEventListener('DOMContentLoaded', () => { const m = document.getElementById('marca-home'); if (m) m.onclick = () => { abrirAba('clientes'); scrollTo({ top: 0, behavior: 'smooth' }); }; });
+let FIN_ABA = false;
+$$('nav button, .rodape button').forEach(b => b.onclick = () => { if (b.dataset.aba === 'financeira' || b.dataset.aba === 'clientes') { const era = FIN_ABA; FIN_ABA = b.dataset.aba === 'financeira'; abrirAba('clientes'); $$('nav button').forEach(x => x.classList.toggle('ativa', x.dataset.aba === (FIN_ABA ? 'financeira' : 'clientes'))); if (era !== FIN_ABA) carregarClientes(); return; } abrirAba(b.dataset.aba); });
+document.addEventListener('DOMContentLoaded', () => { const m = document.getElementById('marca-home'); if (m) m.onclick = () => { FIN_ABA = false; abrirAba('clientes'); scrollTo({ top: 0, behavior: 'smooth' }); }; });
 function abrirAba(aba) {
   $$('nav button, .rodape button').forEach(b => b.classList.toggle('ativa', b.dataset.aba === aba));
   ['clientes', 'ranking', 'remarketing', 'atendentes', 'conta'].forEach(a => $('#aba-' + a).hidden = a !== aba);
@@ -1573,7 +1575,7 @@ $('#f-mes').onchange = e => { const m = e.target.value; if (m) { const [a, me] =
 
 async function carregarClientes() {
   const admin = eu.papel === 'admin';
-  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,pasta_url,status_adv,obs_adv,status_adv_em,kit,kit_em,kit_ok_em,criado_em,fora_comissao,perfis(nome)')
+  let q = sb.from('clientes').select('id,nome,cpf,telefone,data_contato,valor,banco,advogado,observacoes,atendente_id,tem_senha_inss,pasta_url,status_adv,obs_adv,status_adv_em,kit,kit_em,kit_ok_em,criado_em,fora_comissao,produto,perfis(nome)')
     .order('data_contato', { ascending: false }).order('id', { ascending: false }).limit(1000);
   const termo = $('#f-busca').value.replace(/[,()*%\\"]/g, ' ').trim();
   if (termo) {
@@ -1588,6 +1590,8 @@ async function carregarClientes() {
   if ($('#f-de').value) q = q.gte('data_contato', $('#f-de').value);
   if ($('#f-ate').value) q = q.lte('data_contato', $('#f-ate').value);
   if (admin && $('#f-at').value) q = q.eq('atendente_id', $('#f-at').value);
+  // admin: lançamentos da financeira (aumento/portabilidade) ficam só na aba própria, fora da lista de clientes
+  if (admin) q = FIN_ABA ? q.in('produto', ['margem', 'portabilidade']) : q.or('produto.is.null,produto.in.(seguro,revisional)');
   const { data, error } = await q;
   if (error) return toast(traduz(error), true);
   clientesAtuais = data;
@@ -1602,7 +1606,7 @@ async function carregarClientes() {
       <td data-r="CPF">${esc(fmtCPF(c.cpf))}</td>
       <td data-r="Telefone">${esc(fmtTel(c.telefone))}</td>
       <td data-r="Banco">${esc(c.banco)}</td>
-      <td data-r="Advogado">${esc(c.advogado || '—')}</td>
+      <td data-r="Advogado">${esc(ehFin(c.produto) ? (c.produto === 'margem' ? '📈 aumento' : '🔁 portabilidade') : (c.advogado || '—'))}</td>
       <td data-r="Fechamento">${fmtData(c.data_contato)}</td>
       <td>${kitChips(c)}</td>
       <td><span class="cadeado ${c.tem_senha_inss ? '' : 'nao'}">${c.tem_senha_inss ? '🔒 Senha salva' : 'Sem senha'}</span></td>
