@@ -393,6 +393,7 @@
     r.nome = ((T.match(/(?:Nome(?: completo)?|Emitente|Cliente|Tomador|Contratante|Mutu[áa]rio)\s*[:\-]?\s*([A-ZÀ-Ú][A-ZÀ-Ú ]{6,60}?)(?=\s+(?:CPF|RG|Data|Nacionalidade|Estado|Endere|Sexo|N[ºo°]|\d))/) || [])[1] || '').trim();
     const bm = T.match(/(BANCO [A-ZÀ-Ú0-9 .&]{2,30}?(?:S\.?\/?A\.?|LTDA))|(FACTA|C6|AGIBANK|PAN|BMG|MERCANTIL|PARAN[ÁA] BANCO|QI SOCIEDADE|BANRISUL|DAYCOVAL|SAFRA|INBURSA|PICPAY|PRESEN[ÇC]A|BRB|CREFISA|OL[ÉE]|ITA[ÚU]|BRADESCO|SANTANDER|CAIXA|BANCO DO BRASIL|PINE|SEGUE|FINANTO|QUALI)/i);
     r.banco = bm ? (bm[1] || bm[2]).toUpperCase().replace(/\s+/g, ' ') : '';
+    if (r.banco && /\bSEGUE\b|QUALI|QI SOCIEDADE/.test(r.banco)) r.banco = 'QI Sociedade de Crédito';   // Segue / Quali / QI = mesma instituição: QI Sociedade de Crédito
     const vistos = new Set(), uniq = a => a.filter(x => { const k = x.v.toFixed(2); if (vistos.has(k)) return false; vistos.add(k); return true; });
     r.seguro = uniq(acharValores(T, ROT_SEGURO));
     // quadro "Seguro Prestamista ( )SIM (X)NÃO" (Paraná Banco e parecidos): o seguro NÃO foi contratado e o número que vem
