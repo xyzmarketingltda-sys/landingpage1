@@ -199,7 +199,7 @@ let ultMexeu = performance.now(), ultQuadroEsc = 0;
 ['pointermove', 'keydown', 'wheel', 'pointerdown'].forEach(ev => addEventListener(ev, () => { ultMexeu = performance.now(); }, { passive: true }));
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
 const scene = new THREE.Scene();
-const VIPX = 1;                     // largura do hall dos advogados (à direita)
+const VIPX = 2;                     // largura do hall dos advogados (à direita)
 const centro = new THREE.Vector3((GX + VIPX * .5) * U / 2, 0, GY * U / 2);
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -500, 1000);
 camera.position.set(centro.x + 100, 92, centro.z + 100); camera.lookAt(centro.x, 8, centro.z);
@@ -592,11 +592,10 @@ async function montarMoveis() {
 }
 
 /* ---------- HALL dos advogados (pequeno, ao lado do portal) ---------- */
-const VIP_SEATS = [[7.55, .75, -90], [7.55, 1.5, -90], [7.55, 2.25, -90]];
+const VIP_SEATS = [[7.55, .75, -90], [7.55, 1.5, -90], [7.55, 2.25, -90], [8.55, .75, -90], [8.55, 1.5, -90], [8.55, 2.25, -90]];
 async function montarSalaVip() {
   const X0 = GX * U, X1 = (GX + VIPX) * U, Z1 = 3 * U;
-  for (let z = 0; z < 3; z++) por('floorFull', GX + .5, z + .5, 0, { cor: '#46505f' });
-  por('wall', GX + .5, -.025, 0, { cor: '#1c1530' });
+  for (let x = 0; x < VIPX; x++) { for (let z = 0; z < 3; z++) por('floorFull', GX + x + .5, z + .5, 0, { cor: '#46505f' }); por('wall', GX + x + .5, -.025, 0, { cor: '#1c1530' }); }
   const vidro = { color: '#fde68a', transparent: true, opacity: .16, roughness: .05, metalness: .3, depthWrite: false }, ouro = { color: '#b8860b', metalness: .9, roughness: .25 };
   const h = 10.5;
   caixa3(.2, h, Z1 - 8, '#fde68a', X0, 0, (Z1 - 8) / 2, vidro);                 // divisória com passagem perto do corredor
@@ -606,7 +605,7 @@ async function montarSalaVip() {
   const placa = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.6), new THREE.MeshBasicMaterial({ map: texturaTexto('HALL', 384, 124, '800 84px Inter, sans-serif', '#fff3c4', '#f59e0b'), transparent: true }));
   placa.position.set((X0 + X1) / 2, 9.4, .6); scene.add(placa);
   VIP_SEATS.forEach(([x, z, r]) => montarSofaXYZ(x + .05, z, r, 5.2, .8));
-  por('pottedPlant', 7.75, 2.75);
+  por('pottedPlant', GX + VIPX - .25, 2.75);
 }
 
 /* ---------- bonecos voxel 3D (arte própria XYZ) ---------- */
@@ -735,7 +734,7 @@ function telaDe(x, y, z) { const v = new THREE.Vector3(x, y, z).project(camera);
 const PADRAO = { cab: '#2b2018', est: 'curto', rou: '#1e3a8a', pele: '#e9b996' }; // todo mundo com o mesmo visual padrão
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(' ')[0];
 const MULHERES = ['barbara', 'julia', 'rina', 'naira', 'andressa'];
-const ehMulher = p => MULHERES.includes(norm(p.nome)) || (p.papel === 'advogado' && DRAS.includes(norm(p.nome)));
+const ehMulher = p => MULHERES.includes(norm(p.nome)) || (p.papel === 'advogado' && (p.restrito || DRAS.includes(norm(p.nome))));
 function visualDe(p) {
   if (p.papel === 'admin' && ['administrador', 'lucas'].includes(norm(p.nome))) return { ...PADRAO, rou: '#0d0d10', polo: true };
   if (p.papel === 'admin') return ehMulher(p) ? { ...PADRAO, rou: '#0b5ed7', est: 'longo' } : { ...PADRAO, rou: '#0b5ed7', gravata: true };
@@ -823,7 +822,7 @@ const atores = new Map();
 const hm = t => { if (!t) return null; const [h, m] = t.split(':'); return +h * 60 + +m; };
 function agoraMin() { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).split(':'); return +h * 60 + +m; }
 const DRAS = ['carina', 'cibele', 'danyelle', 'junny', 'rita'];
-const titulo = p => p.papel !== 'advogado' ? '' : (DRAS.includes(norm(p.nome).split(' ')[0]) ? 'Dra. ' : 'Dr. ');
+const titulo = p => p.papel !== 'advogado' || p.restrito ? '' : (DRAS.includes(norm(p.nome).split(' ')[0]) ? 'Dra. ' : 'Dr. ');
 const nomeExib = p => titulo(p) + (p.papel === 'advogado' && /^luiz$/i.test(p.nome) ? 'Luís' : p.nome.split(' ')[0]);
 function estadoDe(p) {
   if (p.papel === 'advogado') return online.has(p.id) ? 'mesa' : 'fora';
@@ -833,7 +832,7 @@ function estadoDe(p) {
   return online.has(p.id) ? 'mesa' : 'fora';   // logado no sistema = aparece, em qualquer horário
 }
 function assentoDe(p, i) {
-  if (p.papel === 'advogado') { let k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); k = Math.max(0, k); if (k < VIP_SEATS.length) return [VIP_SEATS[k][0] - .05, VIP_SEATS[k][1]]; return [7.15 + (k % 2) * .35, .55 + (k - 3) * .45]; }
+  if (p.papel === 'advogado') { let k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); k = Math.max(0, k); if (k < VIP_SEATS.length) return [VIP_SEATS[k][0] - .05, VIP_SEATS[k][1]]; const j = (k - VIP_SEATS.length) % 10; return [7.2 + (j % 2) * 1.0, .5 + (j >> 1) * .5]; }
   if (p.papel === 'admin') {
     const k = Math.max(0, equipe.filter(q => q.papel === 'admin' && online.has(q.id)).sort((m, n) => (/^lucas/i.test(n.nome) ? 1 : 0) - (/^lucas/i.test(m.nome) ? 1 : 0)).indexOf(p));   // só online contam; Lucas fica com a cadeira do chefe
     mesaDe[p.id] = DESKS.length - 1;
@@ -1009,7 +1008,7 @@ function desenharLista() {
     const e = estadoDe(p), cls = e === 'mesa' ? 'on' : e === 'almoco' ? 'alm' : '';
     const txt = p.papel === 'advogado' ? 'no hall' : e === 'mesa' ? 'na mesa' : e === 'almoco' ? 'almoçando' : 'fora';
     const c = CONQ[p.id], extra = c ? (c.sequencia >= 2 ? ` <span title="${c.sequencia} dias seguidos cumprindo a missão">🔥${c.sequencia}</span>` : '') + (c.desafios ? ` <span title="${c.desafios} desafio(s) vencido(s)">⚡${c.desafios}</span>` : '') : '';
-    return `<div class="pessoa"><i class="${cls}"></i>${esc(p.papel === 'advogado' ? nomeExib(p) : p.nome)}${p.id === liderId ? ' <span title="1º lugar no ranking do mês">👑</span>' : p.papel === 'advogado' ? ' ⭐' : ''}${extra}<small>${txt}</small></div>`;
+    return `<div class="pessoa"><i class="${cls}"></i>${esc(p.papel === 'advogado' ? nomeExib(p) : p.nome)}${p.id === liderId ? ' <span title="1º lugar no ranking do mês">👑</span>' : p.papel === 'advogado' && !p.restrito ? ' ⭐' : ''}${extra}<small>${txt}</small></div>`;
   }).join('');
 }
 setInterval(() => { $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); atualizarAtores(); }, 15000);
@@ -1144,7 +1143,7 @@ gl.addEventListener('mousemove', e => {
   if (!alvo || !alvo.p.foto_url) { card.hidden = true; gl.style.cursor = alvo ? 'pointer' : ''; return; }
   const [X, Y] = cabecaDe(alvo);
   card.querySelector('img').src = alvo.p.foto_url; card.querySelector('b').textContent = alvo.p.papel === 'advogado' ? nomeExib(alvo.p) : alvo.p.nome;
-  card.querySelector('small').textContent = alvo.p.papel === 'advogado' ? 'advogado parceiro · no hall' : alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? 'diretoria' : 'na mesa';
+  card.querySelector('small').textContent = alvo.p.restrito ? 'equipe do escritório parceiro · no hall' : alvo.p.papel === 'advogado' ? 'advogado parceiro · no hall' : alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? 'diretoria' : 'na mesa';
   card.style.left = (r.left + X) + 'px'; card.style.top = (r.top + Y - 30) + 'px'; card.hidden = false; gl.style.cursor = 'pointer';
 });
 gl.addEventListener('mouseleave', () => $('#foto-hover').hidden = true);
