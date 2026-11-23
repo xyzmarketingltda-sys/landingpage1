@@ -227,8 +227,8 @@ const dBR = s => s ? s.slice(0, 10).split('-').reverse().join('/') : '—';
 const fmtCPF = c => { const d = so(c); return d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : (c || '—'); };
 const fmtTel = t => { const d = so(t); return d.length === 11 ? d.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : d.length === 10 ? d.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3') : (t || '—'); };
 const toast = m => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.append(t); setTimeout(() => t.remove(), 3500); };
-const STATUS = ['Documentação recebida', 'Em análise', 'Aguardando documentos', 'Ação protocolada', 'Liminar/decisão favorável', 'Acordo', 'Sentença procedente', 'Pago', 'Improcedente', 'Desistência'];
-const clsSt = s => !s ? '' : /pago|acordo|procedente|favor/i.test(s) ? 's4' : /improced|desist/i.test(s) ? 's5' : /protocol/i.test(s) ? 's3' : /aguard/i.test(s) ? 's2' : 's1';
+const STATUS = ['Documentação recebida', 'Em análise', 'Litispendência', 'Aguardando documentos', 'Ação protocolada', 'Liminar/decisão favorável', 'Acordo', 'Sentença procedente', 'Pago', 'Improcedente', 'Desistência'];
+const clsSt = s => !s ? '' : /pago|acordo|procedente|favor/i.test(s) ? 's4' : /improced|desist|litispend/i.test(s) ? 's5' : /protocol/i.test(s) ? 's3' : /aguard/i.test(s) ? 's2' : 's1';
 $('#f-status').innerHTML = '<option value="">Todos</option><option value="-">Sem status</option>' + STATUS.map(s => `<option>${s}</option>`).join('');
 let eu = null, todos = [];
 
