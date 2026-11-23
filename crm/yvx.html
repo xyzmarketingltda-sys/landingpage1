@@ -251,13 +251,20 @@ const INFO = Object.fromEntries(GRUPOS.map(g => [g[0], g])); INFO.outros = ['out
 // desenha uma linha "rótulo: valor" de um campo de uma linha da base
 function campoHTML(c, linha) { const m = mostra(c.k, linha[c.n]); return `<div class="campo"><span>${esc(rotulo(c.n))}</span><b class="${m.vazio ? 'vazio' : m.din ? 'din' : ''}" ${m.vazio ? '' : 'title="Toque para copiar"'}>${esc(m.t)}</b></div>`; }
 function desenhar() {
-  const L = RES.linhas, cols = RES.colunas.map(c => ({ n: c, k: chave(c) })), l = L[0] || {};
+  const cols = RES.colunas.map(c => ({ n: c, k: chave(c) }));
+  // um cliente pode ter mais de um benefício: cada benefício tem margem, espécie e contratos próprios, então a tela mostra um por vez
+  const cBen = cols.find(c => c.k === 'beneficio') || cols.find(c => /^nb$|numero_beneficio|num_beneficio/.test(c.k)), G = [];
+  RES.linhas.forEach(r => { const v = cBen ? String(r[cBen.n] || '') : ''; let g = G.find(x => x.v === v); if (!g) G.push(g = { v, L: [] }); g.L.push(r); });
+  if (SEL < 0 || SEL >= G.length) { SEL = 0; if (G.length > 1) { let melhor = -1; G.forEach((g, n) => { const a = analisar(g.L, cols), p = a.contratos.filter(c => (c.st === 'ok' || c.st === 'ver') && c.troco != null && c.troco >= c.trocoMin).length * 1e9 + a.contratos.filter(c => c.st === 'ok' || c.st === 'ver').length * 1e6 + (a.novo.ok ? a.novo.valor : 0); g.pt = p; if (p > melhor) { melhor = p; SEL = n; } }); } }
+  const L = G[SEL].L, l = L[0] || {};
   const acha = re => cols.find(c => re.test(c.k) && String(l[c.n] || '').trim());
   const cNome = cols.find(c => /nome/.test(c.k) && !/mae|pai|banco|municipio|cidade|orgao|aps|social|represent/.test(c.k)), cNasc = acha(/nasc/), cUF = acha(/^uf$|_uf$|^uf_|estado$/), cCid = acha(/cidade|municipio/), cEsp = acha(/especie/);
   const id = cNasc ? idade(l[cNasc.n]) : null;
   // destaques: até 4 valores em dinheiro do benefício/margem (não os do contrato), com margem e valor do benefício na frente
   const dins = cols.filter(c => grupoDe(c.k) !== 'emprestimo' && ehDinheiro(c.k) && num(l[c.n]) != null).sort((a, b) => (/margem|livre|disponivel/.test(b.k) - /margem|livre|disponivel/.test(a.k)) || (/benef|renda|^mr$|salario/.test(b.k) - /benef|renda|^mr$|salario/.test(a.k))).slice(0, 4);
-  let h = `<div class="heroi"><h2>${esc(cNome ? l[cNome.n] || 'Sem nome na base' : 'Registro encontrado')}</h2><div class="sub">CPF ${fmtCPF(RES.cpf)} · ${L.length} contrato(s) na base${RES.mais ? ' (mostrando os primeiros ' + L.length + ')' : ''}</div>
+  const cEspB = cols.find(c => /especie/.test(c.k));
+  let h = G.length > 1 ? '<div class="abas">' + G.map((g, n) => `<button type="button" data-i="${n}" class="${n === SEL ? 'sel' : ''}">${g.pt > 0 ? '🎯 ' : ''}Benefício ${esc(g.v || n + 1)}${cEspB && g.L[0][cEspB.n] ? ' · espécie ' + esc(g.L[0][cEspB.n]) : ''} · ${g.L.length} contrato(s)</button>`).join('') + '</div>' : '';
+  h += `<div class="heroi"><h2>${esc(cNome ? l[cNome.n] || 'Sem nome na base' : 'Registro encontrado')}</h2><div class="sub">CPF ${fmtCPF(RES.cpf)} · ${L.length} contrato(s) ${G.length > 1 ? 'neste benefício · ' + G.length + ' benefícios' : 'na base'}${RES.mais ? ' (mostrando os primeiros ' + L.length + ')' : ''}</div>
     <div class="chips">${id != null ? `<span class="chip o">${id} anos</span>` : ''}${cNasc ? `<span class="chip">nasc. ${esc(dataBR(l[cNasc.n]))}</span>` : ''}${cCid || cUF ? `<span class="chip">📍 ${esc([cCid && l[cCid.n], cUF && l[cUF.n]].filter(Boolean).join(' / '))}</span>` : ''}${cEsp ? `<span class="chip g">espécie ${esc(l[cEsp.n])}</span>` : ''}</div>
     ${dins.length ? '<div class="dest">' + dins.map(c => `<div><span>${esc(rotulo(c.n))}</span><b>${brl(num(l[c.n]))}</b></div>`).join('') + '</div>' : ''}
     <div style="position:relative;z-index:1;margin-top:14px"><button type="button" id="b-op" style="${OPON ? 'background:linear-gradient(135deg,#b45309,#fbbf24);color:#1a1205;border:0;font-weight:700' : ''}">🎯 ${OPON ? 'Ocultar oportunidades' : 'Ver oportunidades (regras da Quali)'}</button></div></div>`;
@@ -334,7 +341,7 @@ $('#f').addEventListener('submit', async e => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { $('#saida').innerHTML = `<div class="aviso"><b style="color:#fca5a5">Não consegui consultar.</b> ${esc(j.erro || 'erro ' + r.status)}</div>`; return; }
     if (!j.linhas || !j.linhas.length) { $('#saida').innerHTML = `<div class="aviso"><b style="color:#fde68a">CPF ${fmtCPF(cpf)} não está na base.</b><br><span class="sub">Confira se digitou certo. A base tem os benefícios do INSS da data em que foi gerada; quem se aposentou depois não aparece.</span></div>`; return; }
-    RES = Object.assign(j, { cpf }); SEL = 0; desenhar();
+    RES = Object.assign(j, { cpf }); SEL = -1; desenhar();
   } finally { b.disabled = false; b.textContent = 'Consultar'; }
 });
 (async () => {
