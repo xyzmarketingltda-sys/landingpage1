@@ -217,6 +217,7 @@ function analisar(L, cols) {
     if (/cart|rmc|rcc/i.test(tipo)) return { st: 'na', tit: 'Cartão (RMC/RCC)', txt: ['As regras de portabilidade do resumo valem para empréstimo; cartão não entra nesta análise.'] };
     if (!g(r, 'numero_contrato') && parc == null) return { st: 'na', tit: 'Sem contrato nesta linha', txt: [] };
     if (!livre) nao.push('Cliente fora das regras (veja o quadro de oportunidades acima).');
+    if (margem != null && margem < 0) nao.push('Margem negativa: a XYZ não faz portabilidade com margem negativa.');
     if (banco && Q.naoPortados.includes(banco)) nao.push('Banco ' + banco + ' está na lista de bancos não portados.');
     if (parc != null && parc < 50) nao.push('Parcela de ' + brl(parc) + ': o mínimo para portar é R$ 50,00.');
     if (saldo == null) ver.push('Sem saldo devedor na base: peça o saldo para calcular o troco.');
