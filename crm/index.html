@@ -218,6 +218,13 @@ tbody tr:last-child td{border-bottom:0}
 .g-lanca input,.g-lanca select,.g-linha input,.g-linha select{padding:8px 10px}
 .g-abas{display:flex;gap:6px;flex-wrap:wrap}.g-abas .sel{border-color:var(--ciano);color:var(--ciano)}
 .g-painel{margin-top:12px}
+.gf-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}.gf-chips span{flex:none;border:1px solid var(--borda);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;color:var(--suave)}.gf-chips span.sel{border-color:var(--ciano);color:var(--ciano)}
+.gf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gf-card{background:var(--painel2);border:1px solid var(--borda);border-radius:12px;padding:14px}.gf-card.larga{grid-column:1/-1}.gf-card h4{margin:0 0 10px;font-size:14px}
+.gf-b{display:grid;grid-template-columns:54px 1fr;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}.gf-b div{height:30px;border-radius:8px;background:rgba(148,163,184,.12);position:relative;overflow:hidden}.gf-b i{position:absolute;inset:0 auto 0 0;border-radius:8px}.gf-b b{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;text-shadow:0 1px 3px #000}
+.gf-liq{margin-top:12px;padding:12px;border-radius:10px;border:1px solid;display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}.gf-liq b{font-size:24px}.gf-liq small{color:var(--suave);font-size:12px}
+.gf-pz{display:flex;gap:14px;align-items:center}.gf-pz svg{width:130px;height:130px;flex:none}.gf-leg{flex:1;min-width:0;font-size:13px;display:grid;gap:6px}.gf-leg div{display:grid;grid-template-columns:12px 1fr auto;gap:7px;align-items:center}.gf-leg i{width:12px;height:12px;border-radius:3px}.gf-leg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gf-leg em{font-style:normal;color:var(--suave);font-size:11px;grid-column:2/-1;margin-top:-4px}
+.gf-his{width:100%;height:auto;display:block}.gf-his g{cursor:pointer}
+@media(max-width:720px){.gf-grid{grid-template-columns:1fr}.gf-pz svg{width:110px;height:110px}}
 .g-linha{display:flex;gap:8px;margin-bottom:10px}.g-linha input{flex:1}
 .g-tab{max-height:420px;overflow:auto;border:1px solid var(--borda);border-radius:10px}
 .g-tab table{width:100%;border-collapse:collapse;font-size:13px}
@@ -434,6 +441,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
           <button class="btn peq">Lançar no mês</button>
         </form>
         <div class="g-abas">
+          <button class="btn sec peq" data-g="fluxo">📊 Entrou × Saiu</button>
           <button class="btn sec peq" data-g="proc">⚖️ Processos</button>
           <button class="btn sec peq" data-g="desp">💸 Despesas do mês</button>
           <button class="btn sec peq" data-g="com">💰 Comissões</button>
@@ -506,6 +514,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
           </form>
           <div class="g-tab"><table><thead><tr><th>Desafio</th><th>Prazo</th><th>Objetivos</th><th style="text-align:right">Prêmio</th><th>Quem cumpriu</th><th></th></tr></thead><tbody id="gdz-lista"></tbody></table></div>
         </div>
+        <div class="g-painel" id="gp-fluxo" hidden><div id="gf"></div></div>
         <div class="g-painel" id="gp-hist" hidden>
           <div class="g-tab"><table><thead><tr><th>Mês</th><th style="text-align:right">Comissões</th><th style="text-align:right">Despesas</th><th style="text-align:right">Resultado</th><th style="width:40%"></th></tr></thead><tbody id="gh-lista"></tbody></table></div>
         </div>
@@ -1055,7 +1064,10 @@ function pillSit(s) {
   return `<span class="pill ${cls}" title="${esc(s)}">${esc(s.length > 34 ? s.slice(0, 32) + '…' : s)}</span>`;
 }
 function iniciarGestao() {
-  if (!G.mes) { const h = new Date(); G.mes = mesIso(new Date(h.getFullYear(), h.getMonth(), 1)); }
+  if (!G.mes) { const h = new Date(); G.mes = mesIso(new Date(h.getFullYear(), h.getMonth(), 1));
+    // a partir do dia 5, o fechamento do mês passado abre sozinho (uma vez por mês)
+    try { if (h.getDate() >= 5 && localStorage.getItem('gf-visto') !== G.mes) { localStorage.setItem('gf-visto', G.mes); G.aba = 'fluxo'; $('.g-abas [data-g="fluxo"]').classList.add('sel'); $('#gp-fluxo').hidden = false; } } catch (e) {}
+  }
   carregarGestao();
 }
 function mudaMes(n) { const [a, m] = G.mes.split('-').map(Number); G.mes = mesIso(new Date(a, m - 1 + n, 1)); carregarGestao(); }
@@ -1064,7 +1076,7 @@ $('#g-prox').onclick = () => mudaMes(1);
 $$('.g-abas button').forEach(b => b.onclick = () => {
   G.aba = G.aba === b.dataset.g ? null : b.dataset.g;
   $$('.g-abas button').forEach(x => x.classList.toggle('sel', x.dataset.g === G.aba));
-  ['proc', 'desp', 'com', 'hist', 'mis', 'adv'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
+  ['fluxo', 'proc', 'desp', 'com', 'hist', 'mis', 'adv'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
   carregarPainel();
 });
 async function carregarGestao() {
@@ -1074,7 +1086,7 @@ async function carregarGestao() {
     sb.from('processos').select('id', { count: 'exact', head: true }),
     sb.from('processos').select('id', { count: 'exact', head: true }).eq('status', 'Em andamento')
   ]);
-  G.resumo = r || [];
+  G.resumo = r || []; F.d = null;
   const x = G.resumo.find(l => l.mes === G.mes) || { comissoes: 0, despesas: 0, qtd_com: 0, qtd_desp: 0 };
   const res = Number(x.comissoes) - Number(x.despesas);
   $('#g-com').textContent = brl(x.comissoes); $('#g-com-q').textContent = x.qtd_com + ' lançamentos';
@@ -1085,6 +1097,7 @@ async function carregarGestao() {
   calcularPrevisoes();
 }
 function carregarPainel() {
+  if (G.aba === 'fluxo') desenharFluxo();
   if (G.aba === 'proc') carregarProcessos();
   if (G.aba === 'desp') carregarDespesas();
   if (G.aba === 'com') carregarComissoes();
@@ -1503,6 +1516,48 @@ async function carregarComissoes() {
     <td>${esc(fmtCPF(c.cpf))}</td><td>${esc(c.vendedor || '–')}</td><td>${esc(c.tipo || '')}</td><td>${esc(c.banco || '')}</td><td>${esc(c.advogado || '')}</td>
     <td class="num">${c.valor != null ? brl(c.valor) : ''}</td><td class="num">${c.comissao != null ? brl(c.comissao) : ''}</td><td>${pillSit(c.situacao)}</td></tr>`).join('')
     || '<tr><td colspan="9" style="color:var(--suave)">Nada encontrado.</td></tr>';
+}
+/* Entrou × Saiu: barras do mês, líquido, pizza das saídas por categoria e das entradas por advogado, e os últimos meses */
+const F = { mes: null, d: null };
+const GF_CORES = ['#38bdf8', '#f59e0b', '#a78bfa', '#34d399', '#f472b6', '#facc15', '#94a3b8'];
+function gfPizza(itens, ant, total) {
+  let l = itens.slice().sort((a, b) => b.v - a.v);
+  if (l.length > 7) { const r = l.slice(6); l = l.slice(0, 6).concat({ nome: 'Outros (' + r.length + ')', v: r.reduce((x, i) => x + i.v, 0), resto: 1 }); }
+  if (!total) return '<p style="color:var(--suave);font-size:13px;margin:0">Nada lançado neste mês.</p>';
+  let ac = 0;
+  const arcos = l.map((i, k) => { const p = i.v / total * 100, o = `<circle cx="21" cy="21" r="15.915" fill="none" stroke="${GF_CORES[k]}" stroke-width="7" stroke-dasharray="${Math.max(p - .6, .2)} ${100 - Math.max(p - .6, .2)}" stroke-dashoffset="${25 - ac}"/>`; ac += p; return o; }).join('');
+  const leg = l.map((i, k) => { const a = i.resto ? null : (ant.find(x => x.nome === i.nome)?.v || 0), d = a == null ? 0 : i.v - a;
+    return `<div><i style="background:${GF_CORES[k]}"></i><span>${esc(i.nome)}</span><b>${brl(i.v)}</b><em>${Math.round(i.v / total * 100)}%${a != null && Math.abs(d) >= 1 ? ' · ' + (d > 0 ? '▲ ' : '▼ ') + brl(Math.abs(d)) + ' vs mês anterior' : ''}</em></div>`; }).join('');
+  return `<div class="gf-pz"><svg viewBox="0 0 42 42" role="img">${arcos}</svg><div class="gf-leg">${leg}</div></div>`;
+}
+async function desenharFluxo() {
+  if (!F.d) { const { data, error } = await sb.rpc('gestao_fluxo'); if (error) { $('#gf').innerHTML = '<p>' + esc(traduz(error)) + '</p>'; return; } F.d = data || { ent: [], sai: [] }; }
+  const num = l => l.map(x => ({ ...x, v: Number(x.v) }));
+  const E = num(F.d.ent), S = num(F.d.sai), meses = [...new Set([...E, ...S].map(x => x.mes))].sort();
+  if (!meses.length) { $('#gf').innerHTML = '<p style="color:var(--suave)">Ainda não há comissões nem despesas lançadas.</p>'; return; }
+  const hoje = new Date(), atual = mesIso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+  if (!F.mes || !meses.includes(F.mes)) F.mes = meses.includes(mesAnt(atual)) ? mesAnt(atual) : meses[meses.length - 1];
+  const tot = (l, m) => l.filter(x => x.mes === m).reduce((a, x) => a + x.v, 0);
+  const m = F.mes, ent = tot(E, m), sai = tot(S, m), liq = ent - sai, mx = Math.max(ent, sai, 1), pos = liq >= 0;
+  const ult = meses.slice(-6), mh = Math.max(1, ...ult.map(k => Math.max(tot(E, k), tot(S, k))));
+  const W = 60, his = ult.map((k, i) => { const e = tot(E, k), s = tot(S, k), x = i * W, he = e / mh * 90, hs = s / mh * 90, r = e - s;
+    return `<g data-fm="${k}"><rect x="${x}" y="0" width="${W}" height="140" rx="6" fill="${k === m ? 'rgba(56,189,248,.12)' : 'transparent'}"/>
+      <rect x="${x + 10}" y="${100 - he}" width="18" height="${he}" rx="3" fill="var(--ciano)"/><rect x="${x + 32}" y="${100 - hs}" width="18" height="${hs}" rx="3" fill="var(--vermelho)"/>
+      <text x="${x + W / 2}" y="115" text-anchor="middle" font-size="10" fill="${k === m ? '#e2e8f0' : '#94a3b8'}">${mesCurto(k)}</text>
+      <text x="${x + W / 2}" y="130" text-anchor="middle" font-size="9" font-weight="700" fill="${r >= 0 ? '#86efac' : '#fbbf24'}">${(r >= 0 ? '+' : '−') + (Math.abs(r) >= 1000 ? (Math.abs(r) / 1000).toFixed(1).replace('.', ',') + ' mil' : Math.round(Math.abs(r)))}</text></g>`; }).join('');
+  $('#gf').innerHTML = `<div class="gf-chips">${meses.slice().reverse().map(k => `<span data-fm="${k}" class="${k === m ? 'sel' : ''}">${mesCurto(k)}</span>`).join('')}</div>
+    <div class="gf-grid">
+      <div class="gf-card larga"><h4>${mesNome(m)}${m === atual ? ' <small style="color:#fbbf24;font-weight:400">· mês em andamento, ainda entram comissões e despesas</small>' : ''}</h4>
+        <div class="gf-b"><span>Entrou</span><div><i style="width:${ent / mx * 100}%;background:var(--ciano);opacity:.75"></i><b>${brl(ent)}</b></div></div>
+        <div class="gf-b"><span>Saiu</span><div><i style="width:${sai / mx * 100}%;background:var(--vermelho);opacity:.75"></i><b>${brl(sai)}</b></div></div>
+        <div class="gf-liq" style="border-color:${pos ? 'rgba(34,197,94,.5)' : 'rgba(251,191,36,.5)'}"><span>${pos ? '💰 Sobrou (líquido)' : '⚠️ Faltou'}</span><b style="color:${pos ? '#86efac' : '#fbbf24'}">${brl(Math.abs(liq))}</b>
+          <small style="flex-basis:100%">${ent ? (pos ? 'de cada R$ 100 que entraram, sobraram R$ ' + Math.round(liq / ent * 100) : 'as saídas passaram das entradas') + ' · as saídas comeram ' + Math.round(sai / ent * 100) + '% do que entrou' : 'sem comissões lançadas neste mês'}</small></div></div>
+      <div class="gf-card"><h4>Para onde saiu · ${brl(sai)}</h4>${gfPizza(S.filter(x => x.mes === m), S.filter(x => x.mes === mesAnt(m)), sai)}</div>
+      <div class="gf-card"><h4>De onde entrou (advogado) · ${brl(ent)}</h4>${gfPizza(E.filter(x => x.mes === m), E.filter(x => x.mes === mesAnt(m)), ent)}</div>
+      <div class="gf-card larga"><h4>Mês a mês <small style="color:var(--suave);font-weight:400">· <span style="color:var(--ciano)">■</span> entrou <span style="color:var(--vermelho)">■</span> saiu · embaixo, o líquido · toque no mês</small></h4>
+        <svg class="gf-his" viewBox="0 0 ${ult.length * W} 140" style="max-width:${ult.length * 110}px">${his}</svg></div>
+    </div>`;
+  $$('#gf [data-fm]').forEach(b => b.onclick = () => { F.mes = b.dataset.fm; desenharFluxo(); });
 }
 function desenharHistorico() {
   const max = Math.max(1, ...G.resumo.map(r => Math.max(Number(r.comissoes), Number(r.despesas))));
