@@ -429,7 +429,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
         <form class="g-lanca" id="g-form-desp">
           <b>Lançar despesa</b>
           <input id="gd-desc" placeholder="Descrição (ex.: Aluguel, Tráfego, Rina)" required>
-          <select id="gd-cat"><option>Salários</option><option>Aluguel</option><option>Contas</option><option>Tráfego/Marketing</option><option>Sistemas</option><option>Equipamentos</option><option>Outros</option></select>
+          <select id="gd-cat"><option>Salários</option><option>Aluguel</option><option>Contas</option><option>Impostos</option><option>Tráfego/Marketing</option><option>Sistemas</option><option>Equipamentos</option><option>Outros</option></select>
           <input id="gd-valor" placeholder="Valor R$" inputmode="decimal" required>
           <button class="btn peq">Lançar no mês</button>
         </form>
@@ -1391,15 +1391,17 @@ async function carregarDespesas() {
   $('#gd-meses').innerHTML = meses.map(m => { const l = G.resumo.find(x => x.mes === m); return `<span data-dmes="${m}" style="cursor:pointer;${m === G.mes ? 'border-color:var(--ciano);color:var(--ciano)' : ''}">${mesCurto(m)}: <b>${brl(l ? l.despesas : 0)}</b></span>`; }).join('');
   $$('#gd-meses [data-dmes]').forEach(b => b.onclick = () => { G.mes = b.dataset.dmes; carregarGestao(); });
   const { data } = await sb.from('despesas').select('*').eq('mes_ref', G.mes).order('valor', { ascending: false });
+  let CP = {}; try { CP = (await sb.rpc('despesas_comprovantes_do_mes', { p_mes: G.mes })).data || {}; } catch (e) {}
+  const notaAuto = d => { if (!d.auto) return ''; const l = CP[d.id] || []; return `<small style="display:block;color:#86efac;font-size:11px;margin-top:2px">🤖 lido dos comprovantes do BTG${d.previsto != null ? ' · previsto ' + brl(d.previsto) : ''}${l.length ? ' · ' + l.map(c => c.data.split('-').reverse().slice(0, 2).join('/') + ' ' + brl(c.valor)).join(' + ') : ' · ainda sem pagamento no mês'}</small>`; };
   const cats = {};
   (data || []).forEach(d => cats[d.categoria || 'Outros'] = (cats[d.categoria || 'Outros'] || 0) + Number(d.valor));
   $('#gd-cats').innerHTML = Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<span>${esc(c)}: <b>${brl(v)}</b></span>`).join('');
   const temFixa = (data || []).some(d => FIXAS.includes(d.categoria) || REF_ANT.includes(d.categoria));
-  const catOpts = c => [...new Set([...FIXAS, ...REF_ANT, 'Equipamentos', 'Outros', c || 'Outros'])].map(x => `<option ${x === (c || 'Outros') ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const catOpts = c => [...new Set([...FIXAS, 'Impostos', ...REF_ANT, 'Equipamentos', 'Outros', c || 'Outros'])].map(x => `<option ${x === (c || 'Outros') ? 'selected' : ''}>${esc(x)}</option>`).join('');
   $('#gd-lista').innerHTML = (temFixa ? '' : `<tr><td colspan="4"><button class="btn sec peq" id="gd-copiar">📋 Trazer as despesas fixas do mês anterior (salários, aluguel, contas, sistemas, tráfego) para editar</button></td></tr>`) +
-    ((data || []).map(d => `<tr data-id="${d.id}"><td><input class="gd-ed" data-campo="descricao" value="${esc(d.descricao)}" style="width:100%;min-width:140px"></td>
+    ((data || []).map(d => `<tr data-id="${d.id}"><td><input class="gd-ed" data-campo="descricao" value="${esc(d.descricao)}" style="width:100%;min-width:140px">${notaAuto(d)}</td>
       <td><select class="gd-ed" data-campo="categoria">${catOpts(d.categoria)}</select></td>
-      <td class="num"><input class="gd-ed" data-campo="valor" inputmode="decimal" value="${Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}" style="width:110px;text-align:right"></td>
+      <td class="num"><input class="gd-ed" data-campo="valor" inputmode="decimal" value="${Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}" style="width:110px;text-align:right" ${d.auto ? 'readonly title="Valor somado dos comprovantes do BTG"' : ''}></td>
       <td><button class="x" title="Apagar" data-del="${d.id}">✕</button></td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--suave)">Nenhuma despesa lançada neste mês.</td></tr>');
   $$('#gd-lista .gd-ed').forEach(el => el.onchange = async () => {
     const id = el.closest('tr').dataset.id, campo = el.dataset.campo;
@@ -1410,7 +1412,9 @@ async function carregarDespesas() {
     toast('Despesa atualizada.'); carregarGestao();
   });
   const bc = $('#gd-copiar'); if (bc) bc.onclick = async () => {
-    const { data: ant } = await sb.from('despesas').select('categoria,descricao,valor').eq('mes_ref', mesAnt(G.mes)).in('categoria', [...FIXAS, ...REF_ANT]);
+    const { data: ant0 } = await sb.from('despesas').select('categoria,descricao,valor,previsto,auto').eq('mes_ref', mesAnt(G.mes)).in('categoria', [...FIXAS, 'Impostos', ...REF_ANT]);
+    // despesa acompanhada pelo robô entra zerada (só conta quando o comprovante aparecer), levando o valor previsto
+    const ant = (ant0 || []).map(d => d.auto ? { categoria: d.categoria, descricao: d.descricao, valor: 0, previsto: d.previsto != null ? d.previsto : d.valor, auto: d.auto } : { categoria: d.categoria, descricao: d.descricao, valor: d.valor });
     if (!ant || !ant.length) return alert('O mês anterior não tem despesas fixas lançadas.');
     const { error } = await sb.from('despesas').insert(ant.map(d => ({ ...d, mes_ref: G.mes })));
     if (error) return alert(traduz(error));
