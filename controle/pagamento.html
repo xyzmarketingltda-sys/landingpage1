@@ -126,7 +126,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
     </div>
     <div id="aviso" class="aviso" hidden></div>
     <div class="tabela vidro">
-      <table><thead><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th class="num">Processos</th><th>Base</th><th class="num">Valor</th></tr></thead>
+      <table><thead id="thead"><tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th class="num">Processos</th><th>Base</th><th class="num">Valor</th></tr></thead>
       <tbody id="lista"></tbody></table>
     </div>
   </div>
@@ -149,7 +149,7 @@ const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','ag
 const mesNome = m => { const [a, n] = m.split('-').map(Number); return MESES[n - 1] + ' de ' + a; };
 const hojeMes = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
 const Q = new URLSearchParams(location.search);
-let eu = null, chave = null, mes = /^\d{4}-\d{2}$/.test(Q.get('mes') || '') ? Q.get('mes') : hojeMes(), itens = [], total = 0, cob = null;
+let eu = null, chave = null, mes = /^\d{4}-\d{2}$/.test(Q.get('mes') || '') ? Q.get('mes') : hojeMes(), itens = [], total = 0, cob = null, RAW = {};
 
 const slug = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^dra?\.?\s*/, '').trim().split(/\s+/)[0];
 $('#f-login').onsubmit = async e => {
@@ -191,12 +191,13 @@ async function iniciar() {
 
 async function carregar() {
   const ini = mes + '-01', fim = C.vencimento(mes).toLocaleDateString('en-CA');
-  let q = sb.from('clientes').select('nome,cpf,banco,valor,produto,data_contato,advogado,fora_comissao').gte('data_contato', ini).lte('data_contato', fim);
+  let q = sb.from('clientes').select('id,nome,cpf,banco,valor,produto,data_contato,advogado,fora_comissao,status_adv').gte('data_contato', ini).lte('data_contato', fim);
   q = q.ilike('advogado', chave);
   const [{ data: cli }, { data: regra }, { data: cb }] = await Promise.all([q, sb.from('regras_adv').select('regra,obs').eq('advogado', chave).maybeSingle(), sb.from('cobrancas').select('*').eq('advogado', chave).eq('mes', ini).maybeSingle()]);
   cob = cb || null;
   itens = C.aplicarRegra(regra && regra.regra, cli || []).sort((a, b) => a.cliente.localeCompare(b.cliente));
   total = itens.reduce((x, i) => x + i.v, 0);
+  RAW = {}; (cli || []).forEach(c => RAW[so(c.cpf)] = c); const DANY = chave === 'DANYELLE';
   const venc = C.vencimento(mes), atrasado = !cob || cob.status !== 'pago' ? new Date() > new Date(venc.getFullYear(), venc.getMonth(), venc.getDate(), 23, 59) : false;
   $('#c-mes').textContent = 'Comissão de ' + mesNome(mes);
   $('#c-total').textContent = brl(total);
@@ -208,7 +209,22 @@ async function carregar() {
   const semV = itens.filter(i => i.semValor).length, perc = regra && regra.regra && regra.regra.tipo === 'percentual';
   $('#aviso').hidden = !(semV || perc);
   $('#aviso').innerHTML = perc ? 'Sua parceria é por percentual no êxito: os valores entram conforme os processos são pagos. A lista abaixo mostra os clientes indicados no mês.' : semV + ' cliente(s) ainda sem o valor do seguro conferido pela XYZ — eles entram no valor assim que conferirmos o contrato.';
-  $('#lista').innerHTML = itens.map(i => `<tr style="cursor:default${i.fora ? ';opacity:.6' : ''}"><td><b>${esc(i.cliente)}</b></td><td>${fmtCPF(i.cpf)}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num"><b>${i.v ? brl(i.v) : '—'}</b></td></tr>`).join('') || '<tr><td colspan="6" class="vazio">Nenhum cliente indicado neste mês.</td></tr>';
+  if (DANY) {
+    $('#thead').innerHTML = '<tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th class="num">Comissão</th><th>Situação</th></tr>';
+    const fora = i => (RAW[so(i.cpf)] || {}).fora_comissao === true;
+    const rowD = i => { const r = RAW[so(i.cpf)] || {}, litis = r.status_adv === 'Litispendência';
+      const act = litis ? '<span class="sub" title="Em litispendência — fora da comissão">🔒 Litispendência</span>'
+        : fora(i) ? `<button type="button" class="btn peq" data-aprova="${r.id}">✔ Aprovar</button>`
+                  : `<button type="button" class="btn sec peq" data-nega="${r.id}">✖ Negar</button>`;
+      return `<tr style="${fora(i) ? 'opacity:.55;' : ''}"><td><b>${esc(i.cliente)}</b></td><td>${fmtCPF(i.cpf)}</td><td>${esc(i.bancos)}</td><td class="num">${i.v ? brl(i.v) : '—'}</td><td>${act}</td></tr>`; };
+    const aprov = itens.filter(i => !fora(i)), negs = itens.filter(fora);
+    const sec = (t, n, cor) => `<tr><td colspan="5" style="padding:14px 0 4px;font-weight:700;color:${cor}">${t} (${n})</td></tr>`;
+    $('#lista').innerHTML = itens.length ? (sec('✔ Aprovados — entram no seu total', aprov.length, '#86efac') + (aprov.map(rowD).join('') || '<tr><td colspan="5" class="vazio">—</td></tr>')
+      + sec('✖ Negados — abatidos do total', negs.length, '#fca5a5') + (negs.map(rowD).join('') || '<tr><td colspan="5" class="vazio">—</td></tr>')) : '<tr><td colspan="5" class="vazio">Nenhum cliente indicado neste mês.</td></tr>';
+  } else {
+    $('#thead').innerHTML = '<tr><th>Cliente</th><th>CPF</th><th>Bancos</th><th class="num">Processos</th><th>Base</th><th class="num">Valor</th></tr>';
+    $('#lista').innerHTML = itens.map(i => `<tr style="cursor:default${i.fora ? ';opacity:.6' : ''}"><td><b>${esc(i.cliente)}</b></td><td>${fmtCPF(i.cpf)}</td><td>${esc(i.bancos)}</td><td class="num">${i.processos}</td><td style="${i.semValor ? 'color:#fbbf24' : ''}">${esc(i.obs)}</td><td class="num"><b>${i.v ? brl(i.v) : '—'}</b></td></tr>`).join('') || '<tr><td colspan="6" class="vazio">Nenhum cliente indicado neste mês.</td></tr>';
+  }
   // Pix com valor
   const payload = C.pixPayload(total, 'XYZ' + chave + mes.replace('-', ''));
   window.__pix = payload;
@@ -233,8 +249,19 @@ $('#b-paguei').onclick = async () => {
   if (error) return alert('Não consegui registrar: ' + error.message);
   toast('Obrigado! A XYZ vai conferir o Pix.'); carregar();
 };
+$('#lista').addEventListener('click', async e => {
+  const el = e.target.closest('[data-aprova],[data-nega]'); if (!el) return;
+  el.disabled = true;
+  const aprovar = el.hasAttribute('data-aprova');
+  const id = Number(el.getAttribute('data-aprova') || el.getAttribute('data-nega'));
+  const { error } = await sb.rpc('adv_aprovar', { p_cliente: id, p_aprovado: aprovar });
+  if (error) { el.disabled = false; return alert('Não consegui: ' + error.message); }
+  carregar();
+});
 $('#b-xlsx').onclick = () => {
-  const linhas = itens.map(i => ({ Cliente: i.cliente, CPF: fmtCPF(i.cpf), Bancos: i.bancos, Processos: i.processos, 'Valor do seguro': i.valor || '', Base: i.obs, 'Comissão (R$)': i.v }));
+  const linhas = itens.map(i => { const r = RAW[so(i.cpf)] || {}, o = { Cliente: i.cliente, CPF: fmtCPF(i.cpf), Bancos: i.bancos, Processos: i.processos, 'Valor do seguro': i.valor || '', Base: i.obs, 'Comissão (R$)': i.v };
+    if (chave === 'DANYELLE') o['Situação'] = r.status_adv === 'Litispendência' ? 'Negado (litispendência)' : r.fora_comissao ? 'Negado' : 'Aprovado';
+    return o; });
   linhas.push({ Cliente: 'TOTAL', 'Comissão (R$)': total });
   const ws = XLSX.utils.json_to_sheet(linhas); ws['!cols'] = [{ wch: 38 }, { wch: 16 }, { wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 34 }, { wch: 14 }];
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Comissão ' + mes);
