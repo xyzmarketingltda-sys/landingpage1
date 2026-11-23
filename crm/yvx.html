@@ -125,13 +125,15 @@ const Q = { versao: '03/11/2026',
   pagNao: { '213': 'Arbi', '218': 'BSB', '077': 'Inter', '323': 'Mercado Pago', '290': 'PagSeguro', '422': 'Safra', '637': 'Sofisa', '197': 'Stone', '070': 'BRB', '364': 'Efí' },
   agNao: { '104': ['3880'], '237': ['3728', '3737', '3738', '3750', '3925', '3929', '6176', '7160', '7320', '7526', '7615', '7802'], '341': ['500'], '655': ['655'] } };
 let OPON = false; try { OPON = localStorage.getItem('yvx_op') === '1'; } catch (e) {}
-function taxaQ() { let t = 1.85; try { const v = parseFloat(localStorage.getItem('yvx_taxa')); if (v > 0 && v < 5) t = v; } catch (e) {} return t; }
+function taxaQ() { let t = 1.75; try { const v = parseFloat(localStorage.getItem('yvx_taxa')); if (v > 0 && v < 5) t = v; } catch (e) {} return t; }
 const PISO_AT = 1621, TETO_AT = 8475.55;   // piso e teto do INSS em 2026
 function projQ() { let piso = 1741, inpc = 4.93; try { const a = parseFloat(localStorage.getItem('yvx_piso')), b = parseFloat(localStorage.getItem('yvx_inpc')); if (a > PISO_AT && a < 3000) piso = a; if (b > 0 && b < 20) inpc = b; } catch (e) {} return { piso, inpc }; }
 const cod3 = v => { const d = so(v); return d ? String(parseInt(d, 10)).padStart(3, '0') : ''; };
 function paraData(v) { const m = dataBR(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
 function mesesDesde(d) { const h = new Date(); let m = (h.getFullYear() - d.getFullYear()) * 12 + h.getMonth() - d.getMonth(); if (h.getDate() < d.getDate()) m--; return m; }
-const fatorPV = (i, n) => (1 - Math.pow(1 + i, -n)) / i;
+// fator calibrado no simulador da Quali (tabela 1,75% 96x: parcela 424,20 -> contrato 19.158,13)
+const fatorPV = (i, n) => (1 - Math.pow(1 + i, -n)) / i / Math.pow(1 + i, 1.48);
+const TAXA_MAX_ORIGEM = 1.80, AJUSTE_SALDO = 1.0052;
 const anosMeses = m => Math.floor(m / 12) + 'a ' + (m % 12) + 'm';
 function analisar(L, cols) {
   const K = {}; cols.forEach(c => { K[c.k] = c.n; });
@@ -202,8 +204,9 @@ function analisar(L, cols) {
     else if (dias < 30) nao.push('Contrato com ' + dias + ' dia(s); o mínimo é 30.');
     if (inval) nao.push('Benefício por invalidez: portabilidade com refinanciamento está suspensa na Quali (só empréstimo novo).');
     const o = { prazo: prazoPort };
-    if (parc != null && saldo != null && prazoPort > 0) { o.pv = Math.min(150000, parc * fatorPV(i, prazoPort)); o.troco = o.pv - saldo;
-      const pct = rest >= 72 ? 2 : rest >= 57 ? 3 : 5; o.trocoMin = Math.max(100, saldo * pct / 100); o.pct = isNaN(rest) ? null : pct;
+    const txO = num(g(r, 'taxa')); if (txO != null && txO > TAXA_MAX_ORIGEM) ver.push('Taxa do contrato de origem ' + txO.toFixed(2) + '%: o sistema da Quali só aceita até ' + TAXA_MAX_ORIGEM.toFixed(2) + '%. Na simulação, reduza a parcela informada até a taxa da portabilidade cair.');
+    if (parc != null && saldo != null && prazoPort > 0) { o.pv = Math.min(150000, parc * fatorPV(i, prazoPort)); o.troco = o.pv - saldo * AJUSTE_SALDO;
+      const pct = rest >= 72 ? 2 : rest >= 57 ? 3 : 5, agreg = Math.max(0, prazoPort - (isNaN(rest) ? 0 : rest)); o.endiv = agreg * parc; o.trocoMin = Math.max(100, o.endiv * pct / 100); o.pct = isNaN(rest) ? null : pct;
       if (o.troco < o.trocoMin) ver.push('Troco estimado de ' + brl(o.troco) + ' fica abaixo do mínimo de ' + brl(o.trocoMin) + ' na taxa usada. Simule na calculadora da Quali.'); }
     if (nao.length) return Object.assign(o, { st: 'nao', tit: 'Não porta agora', txt: nao });
     if (ver.length) return Object.assign(o, { st: 'ver', tit: o.troco != null && o.troco < o.trocoMin ? 'Atende as regras, mas o troco não fecha na taxa usada' : 'Atende as regras, mas confira', txt: ver });
@@ -219,7 +222,7 @@ function aumentoHTML(A) { const a = A.aum; if (!a) return '';
     <div class="sub" style="margin-top:8px;color:var(--texto)">${obs}</div>${a.prop ? '<div class="sub" style="margin-top:4px;color:#fde68a">Benefício iniciado em 2026: o reajuste acima do piso é proporcional ao mês de início, então o aumento real será menor.</div>' : ''}
     <div class="sub" style="margin-top:8px">${a.noPiso ? 'Recebe o piso: vai para o novo salário mínimo.' : 'Acima do piso: corrigido só pelo INPC, limitado ao teto.'} Piso projetado: R$ <input id="q-piso" inputmode="decimal" value="${String(a.P.piso).replace('.', ',')}"> · INPC projetado: <input id="q-inpc" inputmode="decimal" value="${String(a.P.inpc).replace('.', ',')}"> %. Referência: em 2026 o piso subiu 6,79% e os demais 3,90%; o INPC foi 4,77% em 2025 e 3,71% em 2024.</div></div>`; }
 const ICO = { ok: '✅', nao: '⛔', ver: '⚠️', na: '➖' };
-function vereditoHTML(c) { const est = c.troco != null && c.st !== 'nao' ? `Troco estimado: <b style="display:inline;color:#fde68a">${brl(c.troco)}</b> em ${c.prazo}x (mínimo ${brl(c.trocoMin)}${c.pct ? ', ' + c.pct + '% do saldo' : ''}).` : '';
+function vereditoHTML(c) { const est = c.troco != null && c.st !== 'nao' ? `Troco estimado: <b style="display:inline;color:#fde68a">${brl(c.troco)}</b> em ${c.prazo}x (mínimo ${brl(c.trocoMin)}${c.pct ? ', ' + c.pct + '% do endividamento' : ''}).` : '';
   return `<div class="vd ${c.st}"><b>${ICO[c.st]} ${esc(c.tit)}</b>${c.txt.map(esc).join('<br>')}${est ? (c.txt.length ? '<br>' : '') + est : ''}</div>`; }
 function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'), ver = A.contratos.filter(c => c.st === 'ver'), nao = A.contratos.filter(c => c.st === 'nao');
   const soma = ok.concat(ver).reduce((t, c) => t + (c.troco > 0 ? c.troco : 0), 0), li = (a, cor) => a.map(t => `<li style="color:${cor}">${esc(t)}</li>`).join('');
@@ -230,7 +233,7 @@ function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'
     ${ok.concat(ver).length ? '<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">' + ok.concat(ver).map(c => `<button type="button" data-ir="${c.i}" style="text-align:left;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-color:${c.st === 'ok' ? 'rgba(34,197,94,.5)' : 'rgba(251,191,36,.5)'}">${ICO[c.st]} <b>${esc(c.banco)}</b>${c.num ? '<span class="sub">nº ' + esc(c.num) + '</span>' : ''}${c.troco != null ? '<span style="margin-left:auto;color:#fde68a">troco ' + brl(c.troco) + '</span>' : ''}<span class="sub">ver contrato ↓</span></button>`).join('') + '</div>' : ''}
     ${aumentoHTML(A)}
     <ul>${li(A.cli.bloq, '#fca5a5')}${li(A.cli.avisos, '#fde68a')}${li(A.cli.infos, 'var(--suave)')}</ul>
-    <div class="sub" style="margin-top:10px">Taxa usada na estimativa: <input id="q-taxa" inputmode="decimal" value="${String(A.taxa).replace('.', ',')}"> % ao mês. Ajuste para a tabela da Quali. Os valores são estimativa com a mesma parcela no prazo máximo; o valor final sai na calculadora da Quali.</div></div>`; }
+    <div class="sub" style="margin-top:10px">Taxa usada na estimativa: <input id="q-taxa" inputmode="decimal" value="${String(A.taxa).replace('.', ',')}"> % ao mês. Ajuste para a tabela da Quali. Estimativa com a mesma parcela no prazo máximo, calibrada no simulador da Quali (tabela 1,75%); o valor final sai na simulação.</div></div>`; }
 
 /* ---------- desenhar ---------- */
 let RES = null, SEL = 0;
