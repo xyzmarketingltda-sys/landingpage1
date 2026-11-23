@@ -417,6 +417,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
         </div>
         <div id="g-alerta-pix" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.6);background:rgba(251,191,36,.08);font-size:13px"></div>
         <div id="g-alerta-cpf" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,146,60,.6);background:rgba(251,146,60,.08);font-size:13px"></div>
+          <div id="g-fin" class="aviso" style="border-color:rgba(34,197,94,.45)" hidden></div>
         <div id="g-alerta-proc" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(239,68,68,.6);background:rgba(239,68,68,.1);font-size:13px"></div>
         <div class="g-kpis prev">
           <div class="g-kpi prev"><span>🧾 A receber dos advogados (previsto)</span><b id="gp-prev">–</b><small id="gp-prev-sub">pelas regras de cada advogado, clientes lançados no mês</small></div>
@@ -1107,6 +1108,13 @@ async function ajustarCrmProc(lista) {
   for (const c of lista) { if (!c.adv_procuracao) continue; const { error } = await sb.from('clientes').update({ advogado: c.adv_procuracao }).eq('id', c.id); if (error) { toast('Erro em ' + c.nome + ': ' + error.message); } else ok++; }
   toast(ok + ' cliente(s) ajustado(s) no CRM pela procuração'); $('#ga-det').innerHTML = ''; calcularPrevisoes();
 }
+/* Financeira (aumento de margem / portabilidade): contagem à parte, só o admin vê. Não entra em meta, missão, desafio nem ranking. */
+async function resumoFinanceira() {
+  const box = $('#g-fin'); if (!box || eu.papel !== 'admin') return;
+  const { data } = await sb.rpc('fin_resumo', { inicio: G.mes, fim: fimMes(G.mes) }); box.hidden = !(data || []).length; if (!data || !data.length) return;
+  const t = k => data.reduce((x, d) => x + Number(d[k] || 0), 0);
+  box.innerHTML = `<b style="color:#86efac">💼 Financeira no mês — só você vê</b> <small style="color:var(--suave)">aumento de margem e portabilidade não contam em meta, missão, desafio nem ranking</small><div class="g-tab" style="margin-top:8px"><table><thead><tr><th>Atendente</th><th>Aumento</th><th>Portabilidade</th><th>Assinadas na Quali</th><th>Finalizadas</th><th>Valor lançado</th></tr></thead><tbody>${data.map(d => `<tr><td>${esc(d.atendente)}</td><td>${d.aumento}</td><td>${d.portabilidade}</td><td>${d.assinadas}</td><td>${d.finalizadas}</td><td>${brl(d.valor)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td><b>${t('aumento')}</b></td><td><b>${t('portabilidade')}</b></td><td><b>${t('assinadas')}</b></td><td><b>${t('finalizadas')}</b></td><td><b>${brl(t('valor'))}</b></td></tr></tbody></table></div>`;
+}
 async function alertaCpfMulti() {
   const { data } = await sb.rpc('cpfs_multi_adv'); const box = $('#g-alerta-cpf'); if (!box) return;
   box.hidden = !(data || []).length; if (!data || !data.length) return;
@@ -1147,7 +1155,7 @@ async function fechadosHoje() {
   $('#gp-dia-sub').textContent = (lista || 'nenhum lançado ainda') + ' — ' + assinadas + ' procuraç' + (assinadas === 1 ? 'ão assinada' : 'ões assinadas') + ' hoje no ZapSign';
 }
 async function calcularPrevisoes() {
-  try { alertaProcuracao(); alertaCpfMulti(); fechadosHoje().catch(() => {}); } catch (e) {}
+  try { alertaProcuracao(); alertaCpfMulti(); resumoFinanceira().catch(() => {}); fechadosHoje().catch(() => {}); } catch (e) {}
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim); window.__cliMes = cli;
