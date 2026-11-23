@@ -839,6 +839,7 @@ function assentoDe(p, i) {
     mesaDe[p.id] = DESKS.length - 1;
     const [x, y] = DESKS[DESKS.length - 1]; return [x - .25 + k * .7, y - .5];
   }
+  if (p.papel === 'yvx') return [1.45, 1.9];   // consulta YVX (Lindomar): banqueta do balcão, não ocupa mesa de atendente
   const idx = i % (DESKS.length - 1);
   mesaDe[p.id] = idx;
   const [x, y] = DESKS[idx]; return [x, y - .45];
@@ -915,7 +916,7 @@ function rota(a, alvo) {
 function atualizarAtores() {
   let iAt = 0;
   equipe.forEach(p => {
-    const est = estadoDe(p), i = p.papel === 'admin' || p.papel === 'advogado' ? 0 : iAt++;
+    const est = estadoDe(p), i = p.papel === 'atendente' ? iAt++ : 0;   // só atendentes indexam mesa; yvx/admin/adv têm lugar próprio
     let a = atores.get(p.id);
     if (!a) {
       if (est === 'fora') return;
