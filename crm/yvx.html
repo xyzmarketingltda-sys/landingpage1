@@ -258,7 +258,7 @@ function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'
 /* ---------- endereço para digitação (base Credilink no computador do escritório, só do CPF consultado) ---------- */
 let ENDE = null;   // null = buscando · {disponivel, enderecos} · {erro}
 function enderecoHTML() {
-  const cab = '<div class="cart" style="margin-top:12px"><h3><i>🏠</i>Endereço e dados para digitação </h3>';
+  const cab = '<div class="cart" style="margin-top:12px"><h3><i>🏠</i>Endereço para digitação </h3>';
   if (!ENDE) return cab + '<div class="sub">Buscando o endereço…</div></div>';
   if (ENDE.erro) return cab + '<div class="sub">Não consegui buscar o endereço agora.</div></div>';
   if (!ENDE.disponivel) return '';
@@ -266,11 +266,11 @@ function enderecoHTML() {
   const linha = (r, v) => `<div class="campo"><span>${r}</span><b class="${v ? '' : 'vazio'}" ${v ? 'title="Toque para copiar"' : ''}>${esc(v || '—')}</b></div>`;
   return cab + ENDE.enderecos.map((e, n) => (ENDE.enderecos.length > 1 ? `<div class="sub" style="margin:${n ? 10 : 0}px 0 2px">Endereço ${n + 1}</div>` : '') +
     linha('CEP', so(e.CEP).length === 8 ? so(e.CEP).replace(/(\d{5})(\d{3})/, '$1-$2') : e.CEP) + linha('Logradouro', [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' ')) + linha('Número', e.NUMERO) + linha('Complemento', e.COMPLEMENTO) + linha('Bairro', e.BAIRRO) + linha('Cidade', e.CIDADE) + linha('Estado', UFS[String(e.UF).toUpperCase()] ? UFS[e.UF.toUpperCase()] + ' (' + e.UF.toUpperCase() + ')' : e.UF)).join('') +
-    (() => { const e = ENDE.enderecos[0], sx = /^m/i.test(e.SEXO || '') ? 'Masculino' : /^f/i.test(e.SEXO || '') ? 'Feminino' : (e.SEXO || ''); return '<div class="sub" style="margin:10px 0 2px">Dados pessoais</div>' + linha('Sexo', sx) + linha('Nome da mãe', e.NOME_MAE) + linha('Situação do CPF na Receita', e.STATUS_RECEITA_FEDERAL) + linha('Estado civil', ''); })() +
+    (() => { const e = ENDE.enderecos[0]; return '<div class="sub" style="margin:10px 0 2px">Dados pessoais</div>' + linha('Situação do CPF na Receita', e.STATUS_RECEITA_FEDERAL) + linha('Estado civil', ''); })() +
     '<div class="sub" style="margin-top:8px">Confirme com o cliente antes de digitar. Estado civil não existe nesta base: pergunte ao cliente.</div></div>'; }
 async function buscarEndereco(cpf, token) { ENDE = null;
   try { const r = await fetch(SRV.url + '/endereco/' + cpf, { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' }); ENDE = r.ok ? await r.json() : (r.status === 404 ? { disponivel: false, enderecos: [] } : { erro: true }); } catch (e) { ENDE = { erro: true }; }
-  if (RES && RES.cpf === cpf) { const el = document.getElementById('end-cred'); if (el) el.innerHTML = enderecoHTML(); } }
+  if (RES && RES.cpf === cpf) desenhar(); }
 
 /* ---------- desenhar ---------- */
 let RES = null, SEL = 0;
@@ -283,7 +283,8 @@ function desenhar() {
   const cBen = cols.find(c => c.k === 'beneficio') || cols.find(c => /^nb$|numero_beneficio|num_beneficio/.test(c.k)), G = [];
   RES.linhas.forEach(r => { const v = cBen ? String(r[cBen.n] || '') : ''; let g = G.find(x => x.v === v); if (!g) G.push(g = { v, L: [] }); g.L.push(r); });
   if (SEL < 0 || SEL >= G.length) { SEL = 0; if (G.length > 1 && !(EU && EU.sem_quali)) { let melhor = -1; G.forEach((g, n) => { const a = analisar(g.L, cols), p = a.contratos.filter(c => (c.st === 'ok' || c.st === 'ver') && c.troco != null && c.troco >= c.trocoMin).length * 1e9 + a.contratos.filter(c => c.st === 'ok' || c.st === 'ver').length * 1e6 + (a.novo.ok ? a.novo.valor : 0); g.pt = p; if (p > melhor) { melhor = p; SEL = n; } }); } }
-  const L = G[SEL].L, l = L[0] || {};
+  const L = G[SEL].L, l = Object.assign({}, L[0] || {}), ex = ENDE && ENDE.enderecos && ENDE.enderecos[0];
+  if (ex) cols.forEach(c => { if (String(l[c.n] || '').trim()) return; if (/sexo/.test(c.k) && ex.SEXO) l[c.n] = ex.SEXO; else if (/mae/.test(c.k) && ex.NOME_MAE) l[c.n] = ex.NOME_MAE; });
   const acha = re => cols.find(c => re.test(c.k) && String(l[c.n] || '').trim());
   const cNome = cols.find(c => /nome/.test(c.k) && !/mae|pai|banco|municipio|cidade|orgao|aps|social|represent/.test(c.k)), cNasc = acha(/nasc/), cUF = acha(/^uf$|_uf$|^uf_|estado$/), cCid = acha(/cidade|municipio/), cEsp = acha(/especie/);
   const id = cNasc ? idade(l[cNasc.n]) : null;
