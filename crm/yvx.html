@@ -173,12 +173,10 @@ function analisar(L, cols) {
       prazoPort = Math.min(108, 897 - idM); prazoNovo = prazoPort >= 108 ? 108 : 0; if (!prazoNovo) so108 = true;
     } else {
       if (Q.esp45.includes(esp) && idM < 540) cli.bloq.push('Esta espécie só é atendida a partir de 45 anos.');
-      prazoPort = idM <= 861 ? 108 : idM <= 873 ? 96 : Math.min(96, 969 - idM);
-      // empréstimo novo e aumento de margem: a XYZ só atua em 108x, que exige início até 71a 9m (para terminar até 80a 9m)
-      prazoNovo = idM <= 861 ? 108 : 0; if (!prazoNovo) so108 = true;
-      if (idM > 873) cli.avisos.push('Idade acima de 72a 9m: o prazo sai da tabela do resumo. Usei o prazo que termina aos 80a 9m; confirme com a mesa.');
+      // a XYZ só opera 108x em todos os produtos (portabilidade, novo e aumento): exige início até 71a 9m
+      prazoPort = idM <= 861 ? 108 : 0; prazoNovo = prazoPort; if (!prazoPort) so108 = true;
     }
-    if (prazoPort != null && prazoPort <= 0) cli.bloq.push('Idade acima do limite: o contrato precisa terminar até ' + (inval ? '74a 9m' : '80a 9m') + '.');
+    if (prazoPort != null && prazoPort <= 0) cli.bloq.push('Acima de 71a 9m: a XYZ só opera 108x e o contrato não fecha nesse prazo.');
   }
   if (/^true$/i.test(g(l, 'possui_representante')) || g(l, 'nome_representante') || so(g(l, 'cpf_representante'))) cli.bloq.push('Tem representante legal (a Quali não opera).');
   if (/^true$/i.test(g(l, 'possui_procurador'))) cli.avisos.push('Tem procurador cadastrado: confirme com a mesa.');
@@ -191,7 +189,7 @@ function analisar(L, cols) {
   if (['PB', 'AP', 'TO', 'RR'].includes(uf) && idM != null && idM >= 720) cli.infos.push('Cliente com 60 anos ou mais em ' + uf + ': além da formalização digital, precisa de CCB assinada e selfie segurando a CCB.');
   if (inval) cli.infos.push('Invalidez: o contrato deve terminar antes dos 75 anos.');
   cli.infos.push('A base não mostra: se é analfabeto, CPF regular na Receita e parcelas em atraso. Confira antes de digitar.');
-  if (so108) cli.infos.push('Idade acima do limite para 108x (início até 71a 9m' + (inval ? '; invalidez até 65a 9m' : '') + '): empréstimo novo e aumento de margem ficam fora.');
+
   const livre = !cli.bloq.length;
   // empréstimo novo pela margem
   const margem = num(g(l, 'valor_margem')), novo = { margem };
