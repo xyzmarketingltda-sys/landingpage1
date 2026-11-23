@@ -426,7 +426,7 @@ $('#saida').addEventListener('click', e => { const mf = e.target.closest('[data-
 /* ---------- oportunidades dos clientes do atendente (calculadas em lote) ---------- */
 let MEUS = null, MF = 'port', MA = '', QLINK = '';
 function meusHTML() {
-  const base = MEUS.filter(x => !MA || x.atendente === MA), F = { port: x => x.fecha > 0, novo: x => x.novo > 0, aum: x => x.aum_valor > 0 }, val = { port: x => +x.troco, novo: x => +x.novo, aum: x => +x.aum_valor };
+  const base = MEUS.filter(x => !MA || x.atendente === MA), saiu = (x, ops) => (x.quali || []).some(q => ops.includes(q.operacao_cod) && (q.fase === 'assinado' || q.fase === 'finalizado')), F = { port: x => x.fecha > 0 && !saiu(x, [3, 4]), novo: x => x.novo > 0, aum: x => x.aum_valor > 0 && !saiu(x, [6]) }   /* proposta em 'aguardando averbação' ou finalizada: sai da lista de oportunidades */, val = { port: x => +x.troco, novo: x => +x.novo, aum: x => +x.aum_valor };
   const L = base.filter(F[MF]).sort((a, b) => val[MF](b) - val[MF](a)), nomes = { port: 'Portabilidade', novo: 'Empréstimo novo', aum: 'Aumento de margem' };
   const ats = [...new Set(MEUS.map(x => x.atendente).filter(Boolean))].sort(), quando = MEUS[0] ? new Date(MEUS[0].atualizado_em).toLocaleDateString('pt-BR') : '';
   let h = `<div class="cart op" style="margin-top:14px;border-color:rgba(251,191,36,.45)"><h3><i>🎯</i>Oportunidades dos ${EU.papel === 'admin' ? 'clientes' : 'meus clientes'}<span class="sub" style="font-weight:400;margin-left:auto">calculado em ${quando}</span></h3>
