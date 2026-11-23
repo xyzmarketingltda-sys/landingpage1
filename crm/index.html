@@ -441,7 +441,6 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
           <button class="btn peq">Lançar no mês</button>
         </form>
         <div class="g-abas">
-          <button class="btn sec peq" data-g="fluxo">📊 Entrou × Saiu</button>
           <button class="btn sec peq" data-g="proc">⚖️ Processos</button>
           <button class="btn sec peq" data-g="desp">💸 Despesas do mês</button>
           <button class="btn sec peq" data-g="com">💰 Comissões</button>
@@ -458,6 +457,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
         <div class="g-painel" id="gp-desp" hidden>
           <div class="g-cats" id="gd-meses" style="margin-bottom:6px"></div>
           <div class="g-cats" id="gd-cats"></div>
+          <div id="gf" style="margin:10px 0 14px"></div>
           <div class="g-tab"><table><thead><tr><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody id="gd-lista"></tbody></table></div>
         </div>
         <div class="g-painel" id="gp-com" hidden>
@@ -514,7 +514,6 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
           </form>
           <div class="g-tab"><table><thead><tr><th>Desafio</th><th>Prazo</th><th>Objetivos</th><th style="text-align:right">Prêmio</th><th>Quem cumpriu</th><th></th></tr></thead><tbody id="gdz-lista"></tbody></table></div>
         </div>
-        <div class="g-painel" id="gp-fluxo" hidden><div id="gf"></div></div>
         <div class="g-painel" id="gp-hist" hidden>
           <div class="g-tab"><table><thead><tr><th>Mês</th><th style="text-align:right">Comissões</th><th style="text-align:right">Despesas</th><th style="text-align:right">Resultado</th><th style="width:40%"></th></tr></thead><tbody id="gh-lista"></tbody></table></div>
         </div>
@@ -1066,7 +1065,7 @@ function pillSit(s) {
 function iniciarGestao() {
   if (!G.mes) { const h = new Date(); G.mes = mesIso(new Date(h.getFullYear(), h.getMonth(), 1));
     // a partir do dia 5, o fechamento do mês passado abre sozinho (uma vez por mês)
-    try { if (h.getDate() >= 5 && localStorage.getItem('gf-visto') !== G.mes) { localStorage.setItem('gf-visto', G.mes); G.aba = 'fluxo'; $('.g-abas [data-g="fluxo"]').classList.add('sel'); $('#gp-fluxo').hidden = false; } } catch (e) {}
+    try { if (h.getDate() >= 5 && localStorage.getItem('gf-visto') !== G.mes) { localStorage.setItem('gf-visto', G.mes); G.mes = mesAnt(G.mes); G.aba = 'desp'; $('.g-abas [data-g="desp"]').classList.add('sel'); $('#gp-desp').hidden = false; } } catch (e) {}
   }
   carregarGestao();
 }
@@ -1076,7 +1075,7 @@ $('#g-prox').onclick = () => mudaMes(1);
 $$('.g-abas button').forEach(b => b.onclick = () => {
   G.aba = G.aba === b.dataset.g ? null : b.dataset.g;
   $$('.g-abas button').forEach(x => x.classList.toggle('sel', x.dataset.g === G.aba));
-  ['fluxo', 'proc', 'desp', 'com', 'hist', 'mis', 'adv'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
+  ['proc', 'desp', 'com', 'hist', 'mis', 'adv'].forEach(k => $('#gp-' + k).hidden = k !== G.aba);
   carregarPainel();
 });
 async function carregarGestao() {
@@ -1097,9 +1096,8 @@ async function carregarGestao() {
   calcularPrevisoes();
 }
 function carregarPainel() {
-  if (G.aba === 'fluxo') desenharFluxo();
   if (G.aba === 'proc') carregarProcessos();
-  if (G.aba === 'desp') carregarDespesas();
+  if (G.aba === 'desp') { carregarDespesas(); desenharFluxo(); }
   if (G.aba === 'com') carregarComissoes();
   if (G.aba === 'hist') desenharHistorico();
   if (G.aba === 'mis') { carregarMissoesAdm(); carregarDesafiosAdm(); carregarZap(); }
@@ -1536,7 +1534,7 @@ async function desenharFluxo() {
   const E = num(F.d.ent), S = num(F.d.sai), meses = [...new Set([...E, ...S].map(x => x.mes))].sort();
   if (!meses.length) { $('#gf').innerHTML = '<p style="color:var(--suave)">Ainda não há comissões nem despesas lançadas.</p>'; return; }
   const hoje = new Date(), atual = mesIso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-  if (!F.mes || !meses.includes(F.mes)) F.mes = meses.includes(mesAnt(atual)) ? mesAnt(atual) : meses[meses.length - 1];
+  F.mes = G.mes;
   const tot = (l, m) => l.filter(x => x.mes === m).reduce((a, x) => a + x.v, 0);
   const m = F.mes, ent = tot(E, m), sai = tot(S, m), liq = ent - sai, mx = Math.max(ent, sai, 1), pos = liq >= 0;
   const ult = meses.slice(-6), mh = Math.max(1, ...ult.map(k => Math.max(tot(E, k), tot(S, k))));
@@ -1545,8 +1543,7 @@ async function desenharFluxo() {
       <rect x="${x + 10}" y="${100 - he}" width="18" height="${he}" rx="3" fill="var(--ciano)"/><rect x="${x + 32}" y="${100 - hs}" width="18" height="${hs}" rx="3" fill="var(--vermelho)"/>
       <text x="${x + W / 2}" y="115" text-anchor="middle" font-size="10" fill="${k === m ? '#e2e8f0' : '#94a3b8'}">${mesCurto(k)}</text>
       <text x="${x + W / 2}" y="130" text-anchor="middle" font-size="9" font-weight="700" fill="${r >= 0 ? '#86efac' : '#fbbf24'}">${(r >= 0 ? '+' : '−') + (Math.abs(r) >= 1000 ? (Math.abs(r) / 1000).toFixed(1).replace('.', ',') + ' mil' : Math.round(Math.abs(r)))}</text></g>`; }).join('');
-  $('#gf').innerHTML = `<div class="gf-chips">${meses.slice().reverse().map(k => `<span data-fm="${k}" class="${k === m ? 'sel' : ''}">${mesCurto(k)}</span>`).join('')}</div>
-    <div class="gf-grid">
+  $('#gf').innerHTML = `<div class="gf-grid">
       <div class="gf-card larga"><h4>${mesNome(m)}${m === atual ? ' <small style="color:#fbbf24;font-weight:400">· mês em andamento, ainda entram comissões e despesas</small>' : ''}</h4>
         <div class="gf-b"><span>Entrou</span><div><i style="width:${ent / mx * 100}%;background:var(--ciano);opacity:.75"></i><b>${brl(ent)}</b></div></div>
         <div class="gf-b"><span>Saiu</span><div><i style="width:${sai / mx * 100}%;background:var(--vermelho);opacity:.75"></i><b>${brl(sai)}</b></div></div>
@@ -1557,7 +1554,7 @@ async function desenharFluxo() {
       <div class="gf-card larga"><h4>Mês a mês <small style="color:var(--suave);font-weight:400">· <span style="color:var(--ciano)">■</span> entrou <span style="color:var(--vermelho)">■</span> saiu · embaixo, o líquido · toque no mês</small></h4>
         <svg class="gf-his" viewBox="0 0 ${ult.length * W} 140" style="max-width:${ult.length * 110}px">${his}</svg></div>
     </div>`;
-  $$('#gf [data-fm]').forEach(b => b.onclick = () => { F.mes = b.dataset.fm; desenharFluxo(); });
+  $$('#gf [data-fm]').forEach(b => b.onclick = () => { G.mes = b.dataset.fm; carregarGestao(); });
 }
 function desenharHistorico() {
   const max = Math.max(1, ...G.resumo.map(r => Math.max(Number(r.comissoes), Number(r.despesas))));
