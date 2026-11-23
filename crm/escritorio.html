@@ -40,6 +40,14 @@ header .esp{flex:1}
 #modal{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px}
 #modal .caixa{background:rgba(3,10,26,.97);border:1px solid var(--borda);border-radius:16px;padding:20px;width:100%;max-width:640px;max-height:90vh;overflow:auto}
 #modal h3{margin-bottom:4px}
+#modal-fer[hidden]{display:none!important}
+.fer-leg{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--suave);margin-bottom:10px}.fer-leg i,.fer-st i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.fer-meses{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.fer-mes{border:1px solid var(--borda);border-radius:10px;padding:8px}.fer-mes b{display:block;font-size:12px;margin-bottom:5px;text-transform:capitalize}
+.fer-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:10px;text-align:center}.fer-g span{padding:3px 0;border-radius:4px;color:#94a3b8}.fer-g .h{color:#64748b;font-weight:700}.fer-g .fds{color:#475569}
+.fer-g .f1{background:#dc2626;color:#fff;font-weight:700}.fer-g .f0{background:#16a34a;color:#fff;font-weight:700}.fer-g .fn{background:#d97706;color:#fff;font-weight:700}.fer-g .ff{background:#475569;color:#fff}.fer-g .hoje{outline:2px solid #38bdf8}
+.fer-l{display:grid;grid-template-columns:86px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid rgba(30,144,255,.14);font-size:13px}.fer-l small{color:var(--suave);display:block;font-size:11px}.fer-l.passou{opacity:.45}
+.fer-l select{font-size:12px;padding:4px 6px;background:#071430;color:#e2e8f0;border:1px solid var(--borda);border-radius:8px}.fer-st{font-size:12px;white-space:nowrap}
+@media(max-width:700px){.fer-meses{grid-template-columns:repeat(2,1fr)}.fer-l{grid-template-columns:70px 1fr}.fer-l>:last-child{grid-column:2}}
 #modal p{color:var(--suave);font-size:13px;margin-bottom:14px}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;color:var(--suave);font-weight:600;font-size:11px;padding:6px 4px}
@@ -145,6 +153,7 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
   <div class="esp"></div>
   <span id="relogio"></span>
   <button class="btn sec" id="btn-horarios" hidden>⏰ Horários</button>
+  <button class="btn sec" id="btn-feriados" hidden>📅 Feriados</button>
 </header>
 <div id="palco"><canvas id="ceu" style="position:absolute;inset:0;width:100%;height:100%;opacity:.9;pointer-events:none"></canvas><canvas id="cv"></canvas><canvas id="hud"></canvas></div>
 <div id="lado"><h3>Equipe agora</h3><div id="lista"></div></div>
@@ -161,6 +170,12 @@ td input{width:100%;background:rgba(9,24,56,.85);border:1px solid var(--borda);b
   <button id="tr-voltar">⬇ Descer pro escritório</button></div>
 <div id="menu" hidden></div><div id="pc-dica" hidden>💻 Usar meu computador</div>
 <div id="foto-hover" hidden><img alt=""><b></b><small></small></div>
+<div id="modal-fer" hidden style="position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:12px">
+  <div class="caixa" style="background:rgba(3,10,26,.97);border:1px solid var(--borda);border-radius:16px;padding:18px;width:100%;max-width:760px;max-height:92vh;overflow:auto">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">📅 Feriados</h3><span id="fer-anos" style="display:flex;gap:6px;margin-left:auto"></span><button class="btn sec" id="fer-fechar">Fechar</button></div>
+    <div id="fer-corpo" style="margin-top:12px"></div>
+  </div>
+</div>
 <div id="modal" hidden>
   <div class="caixa">
     <h3>⏰ Horários da equipe</h3>
@@ -1180,6 +1195,43 @@ gl.addEventListener('mousemove', e => {
 });
 gl.addEventListener('mouseleave', () => $('#foto-hover').hidden = true);
 
+/* ---------- feriados: calendário do ano, com o que é folga na XYZ (admin decide os pontos facultativos) ---------- */
+let FER = null, FER_ANO = null;
+const FER_COR = { 1: '#dc2626', 0: '#16a34a', n: '#d97706', f: '#475569' };
+function ferClasse(f, d) { const fds = d.getDay() === 0 || d.getDay() === 6; return fds ? 'ff' : f.folga === true ? 'f1' : f.folga === false ? 'f0' : 'fn'; }
+function desenharFeriados() {
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }), anos = [...new Set(FER.map(f => f.data.slice(0, 4)))];
+  if (!FER_ANO || !anos.includes(FER_ANO)) FER_ANO = anos.includes(hoje.slice(0, 4)) ? hoje.slice(0, 4) : anos[0];
+  $('#fer-anos').innerHTML = anos.map(a => `<button class="btn sec" data-ano="${a}" style="${a === FER_ANO ? 'border-color:var(--ciano);color:var(--ciano)' : ''}">${a}</button>`).join('');
+  const doAno = FER.filter(f => f.data.startsWith(FER_ANO)), mapa = Object.fromEntries(doAno.map(f => [f.data, f])), adm = eu.papel === 'admin';
+  const DS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'], dt = iso => new Date(iso + 'T12:00:00');
+  const prox = FER.find(f => f.data >= hoje && f.folga === true && ![0, 6].includes(dt(f.data).getDay()));
+  let h = prox ? `<div style="padding:10px 12px;border:1px solid rgba(220,38,38,.5);border-radius:10px;background:rgba(220,38,38,.08);margin-bottom:12px;font-size:13px">Próxima folga: <b>${dt(prox.data).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</b> · ${esc(prox.nome)}</div>` : '';
+  h += `<div class="fer-leg"><span><i style="background:${FER_COR[1]}"></i>não trabalhamos</span><span><i style="background:${FER_COR.n}"></i>a decidir</span><span><i style="background:${FER_COR[0]}"></i>trabalhamos normal</span><span><i style="background:${FER_COR.f}"></i>cai no fim de semana</span></div><div class="fer-meses">`;
+  for (let m = 0; m < 12; m++) { const p = new Date(+FER_ANO, m, 1), n = new Date(+FER_ANO, m + 1, 0).getDate();
+    h += `<div class="fer-mes"><b>${p.toLocaleDateString('pt-BR', { month: 'long' })}</b><div class="fer-g">${['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(x => `<span class="h">${x}</span>`).join('')}${'<span></span>'.repeat(p.getDay())}`;
+    for (let d = 1; d <= n; d++) { const iso = `${FER_ANO}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, f = mapa[iso], o = new Date(+FER_ANO, m, d), fds = o.getDay() === 0 || o.getDay() === 6;
+      h += `<span class="${f ? ferClasse(f, o) : fds ? 'fds' : ''}${iso === hoje ? ' hoje' : ''}"${f ? ` title="${esc(f.nome)}"` : ''}>${d}</span>`; }
+    h += '</div></div>'; }
+  h += '</div>' + doAno.map(f => { const o = dt(f.data), fds = o.getDay() === 0 || o.getDay() === 6, c = ferClasse(f, o);
+    const st = fds ? 'cai no fim de semana' : f.folga === true ? 'não trabalhamos' : f.folga === false ? 'trabalhamos normal' : 'a decidir';
+    return `<div class="fer-l ${f.data < hoje ? 'passou' : ''}"><b>${f.data.slice(8)}/${f.data.slice(5, 7)} <small>${DS[o.getDay()]}</small></b><div>${esc(f.nome)}<small>${{ nacional: 'feriado nacional', estadual: 'feriado estadual (SP)', municipal: 'feriado municipal (Taubaté)', facultativo: 'ponto facultativo' }[f.tipo]}${f.obs ? ' · ' + esc(f.obs) : ''}</small></div>
+      ${adm && !fds ? `<select data-fer="${f.data}"><option value="1"${f.folga === true ? ' selected' : ''}>🔴 não trabalhamos</option><option value="0"${f.folga === false ? ' selected' : ''}>🟢 trabalhamos normal</option><option value=""${f.folga == null ? ' selected' : ''}>🟡 a decidir</option></select>`
+        : `<span class="fer-st"><i style="background:${FER_COR[c === 'f1' ? 1 : c === 'f0' ? 0 : c === 'fn' ? 'n' : 'f']}"></i>${st}</span>`}</div>`; }).join('');
+  $('#fer-corpo').innerHTML = h;
+  document.querySelectorAll('#fer-anos [data-ano]').forEach(b => b.onclick = () => { FER_ANO = b.dataset.ano; desenharFeriados(); });
+  document.querySelectorAll('#fer-corpo [data-fer]').forEach(sel => sel.onchange = async () => { const v = sel.value === '' ? null : sel.value === '1';
+    const { error } = await sb.rpc('feriado_folga', { p_data: sel.dataset.fer, p_folga: v }); if (error) return alert('Não consegui salvar: ' + error.message);
+    FER.find(f => f.data === sel.dataset.fer).folga = v; desenharFeriados(); });
+}
+async function abrirFeriados() {
+  if (!FER) { const { data, error } = await sb.rpc('feriados_lista'); if (error) return alert('Não consegui carregar os feriados.'); FER = data || []; }
+  desenharFeriados(); $('#modal-fer').hidden = false;
+}
+$('#btn-feriados').onclick = abrirFeriados;
+$('#fer-fechar').onclick = () => $('#modal-fer').hidden = true;
+$('#modal-fer').onclick = e => { if (e.target.id === 'modal-fer') e.target.hidden = true; };
+
 /* ---------- horários (admin) ---------- */
 $('#btn-horarios').onclick = () => {
   $('#tb-hor').innerHTML = equipe.filter(p => p.papel !== 'advogado').map(p => `<tr data-id="${p.id}"><td>${esc(p.nome)}</td>${['entrada', 'almoco_ini', 'almoco_fim', 'saida'].map(c =>
@@ -1416,7 +1468,9 @@ async function carregarEquipe() {
   if (!perfil || !perfil.ativo) return location.href = './';
   eu = perfil;
   if (eu.papel === 'advogado') { const v = document.querySelector('a[href="./"]'); if (v) { v.href = '../controle/'; v.textContent = '← Controle'; } }
-  $('#btn-horarios').hidden = eu.papel !== 'admin';
+  $('#btn-horarios').hidden = eu.papel !== 'admin'; $('#btn-feriados').hidden = eu.papel === 'advogado';
+  // começo do mês: o calendário abre sozinho uma vez para a administração conferir as folgas
+  try { const h = new Date(), k = 'fer-visto-' + h.getFullYear() + '-' + (h.getMonth() + 1); if (eu.papel === 'admin' && h.getDate() <= 7 && !localStorage.getItem(k)) { localStorage.setItem(k, '1'); setTimeout(abrirFeriados, 2500); } } catch (e) {}
   $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   XYZPresenca.entrar(sb, eu, {
     sync: st => { online = new Set(Object.keys(st)); syncOk = true; atualizarAtores(); },

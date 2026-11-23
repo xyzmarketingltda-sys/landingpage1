@@ -423,6 +423,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
           <div class="g-kpi" id="g-res-box"><span id="g-res-rot">Resultado</span><b id="g-res">–</b><small id="g-res-sub">comissões − despesas</small></div>
           <div class="g-kpi" id="g-dia-box" style="border-color:rgba(34,197,94,.45)"><span>💰 Ganho hoje (previsto)</span><b id="g-dia" style="color:#86efac">–</b><small id="g-dia-sub"></small></div>
         </div>
+        <div id="g-feriados" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(56,189,248,.5);background:rgba(56,189,248,.07);font-size:13px"></div>
         <div id="g-alerta-pix" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,191,36,.6);background:rgba(251,191,36,.08);font-size:13px"></div>
         <div id="g-alerta-cpf" hidden style="margin-bottom:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(251,146,60,.6);background:rgba(251,146,60,.08);font-size:13px"></div>
           <div id="g-fin" class="aviso" style="border-color:rgba(34,197,94,.45)" hidden></div>
@@ -1133,6 +1134,18 @@ async function alertaCpfMulti() {
   box.hidden = !(data || []).length; if (!data || !data.length) return;
   box.innerHTML = `<b style="color:#fdba74">⚠️ ${data.length} CPF(s) lançado(s) para mais de um advogado</b> — confira qual procuração vale:<div class="g-tab" style="margin-top:8px"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Advogados</th><th>Atendente(s)</th><th>Último lançamento</th></tr></thead><tbody>${data.map(d => `<tr><td>${esc(d.nome)}</td><td>${esc(d.cpf)}</td><td><b>${esc(d.advogados)}</b></td><td>${esc(d.atendentes || '')}</td><td>${d.ultimo ? d.ultimo.split('-').reverse().join('/') : ''}</td></tr>`).join('')}</tbody></table></div>`;
 }
+/* começo do mês (dias 1 a 7): lembra a administração dos feriados do mês e do que é folga */
+async function avisoFeriados() {
+  const box = $('#g-feriados'), h = new Date(), k = 'fer-aviso-' + h.getFullYear() + '-' + (h.getMonth() + 1); if (!box || eu.papel !== 'admin') return;
+  let visto = false; try { visto = !!localStorage.getItem(k); } catch (e) {}
+  if (h.getDate() > 7 || visto) { box.hidden = true; return; }
+  const { data } = await sb.rpc('feriados_lista'), pre = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'), l = (data || []).filter(f => f.data.startsWith(pre));
+  if (!l.length) { box.hidden = true; return; }
+  const DS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  box.innerHTML = `<b>📅 Feriados de ${MESES[h.getMonth()]}</b> <button class="btn sec peq" id="gfer-ok" style="float:right">Ok, vi</button><div style="margin-top:6px;line-height:1.7">` + l.map(f => { const d = new Date(f.data + 'T12:00:00'), fds = d.getDay() === 0 || d.getDay() === 6;
+    return `<b>${f.data.slice(8)}/${f.data.slice(5, 7)}</b> (${DS[d.getDay()]}) ${esc(f.nome)} · ${fds ? '<span style="color:var(--suave)">cai no fim de semana</span>' : f.folga === true ? '<b style="color:#fca5a5">não trabalhamos</b>' : f.folga === false ? '<span style="color:#86efac">trabalhamos normal</span>' : '<b style="color:#fbbf24">a decidir se trabalhamos</b>'}`; }).join('<br>') + `</div><small style="color:var(--suave)">Para mudar o que é folga: Escritório virtual → 📅 Feriados.</small>`;
+  box.hidden = false; $('#gfer-ok').onclick = () => { try { localStorage.setItem(k, '1'); } catch (e) {} box.hidden = true; };
+}
 async function alertaProcuracao() {
   const { data } = await sb.from('clientes').select('id,nome,advogado,adv_drive,adv_procuracao,pasta_caminho,atendente_id').not('adv_procuracao', 'is', null).not('adv_drive', 'is', null).limit(1000);
   const ruins = (data || []).filter(c => c.adv_procuracao !== c.adv_drive);
@@ -1168,7 +1181,7 @@ async function fechadosHoje() {
   $('#gp-dia-sub').textContent = (lista || 'nenhum lançado ainda') + ' — ' + assinadas + ' procuraç' + (assinadas === 1 ? 'ão assinada' : 'ões assinadas') + ' hoje no ZapSign';
 }
 async function calcularPrevisoes() {
-  try { alertaProcuracao(); alertaCpfMulti(); resumoFinanceira().catch(() => {}); fechadosHoje().catch(() => {}); } catch (e) {}
+  try { avisoFeriados().catch(() => {}); alertaProcuracao(); alertaCpfMulti(); resumoFinanceira().catch(() => {}); fechadosHoje().catch(() => {}); } catch (e) {}
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim); window.__cliMes = cli;
