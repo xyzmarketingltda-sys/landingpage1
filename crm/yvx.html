@@ -94,7 +94,7 @@ const ROT = { beneficio: 'Número do benefício', situacao_beneficio: 'Situaçã
 const UFS = { AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará', DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão', MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará', PB: 'Paraíba', PR: 'Paraná', PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro', RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima', SC: 'Santa Catarina', SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins' };
 const LOGOS = new Set('001 003 004 012 021 029 033 037 041 047 070 077 079 082 104 212 213 237 246 318 336 341 386 389 394 422 604 611 623 626 637 643 655 707 748 752 756 903 925'.split(' '));
 // selo com as iniciais do banco, para os que não têm logo na pasta bancos/
-const SIGLAS = { '254': 'PR', '935': 'FA', '121': 'AGI', '934': 'AGI', '012': 'INB', '329': 'QI', '081': 'BS', '243': 'MAS', '954': 'DIG', '465': 'CC', '069': 'CRE', '753': 'NBC', '359': 'ZE', '330': 'BARI', '402': 'COB', '276': 'SE', '174': 'PEF', '905': 'ALFA' };
+const SIGLAS = { '254': 'PR', '908': 'PAR', '935': 'FA', '121': 'AGI', '934': 'AGI', '012': 'INB', '329': 'QI', '081': 'BS', '243': 'MAS', '954': 'DIG', '465': 'CC', '069': 'CRE', '753': 'NBC', '359': 'ZE', '330': 'BARI', '402': 'COB', '276': 'SE', '174': 'PEF', '905': 'ALFA' };
 // bancos sem arquivo de logo: usa o ícone oficial do site do banco (favicon); se não carregar, cai no selo com iniciais
 const SITES = { '254': 'paranabanco.com.br', '121': 'agibank.com.br', '934': 'agibank.com.br', '329': 'qitech.com.br', '081': 'bancoseguro.com.br', '243': 'bancomaster.com.br', '465': 'capitalconsig.com.br', '069': 'www.crefisa.com.br', '753': 'nbcbank.com.br', '359': 'zema.com', '330': 'bancobari.com.br', '276': 'senff.com.br', '174': 'www.pefisa.com.br' };
 function seloBanco(cod, nome, semSite) { if (!semSite && !LOGOS.has(cod) && SITES[cod]) return `<img data-fav="${cod}" data-nome="${esc(nome || '')}" src="https://www.google.com/s2/favicons?domain=${SITES[cod]}&sz=128" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex:none">`;
@@ -341,6 +341,9 @@ $('#f').addEventListener('submit', async e => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { $('#saida').innerHTML = `<div class="aviso"><b style="color:#fca5a5">Não consegui consultar.</b> ${esc(j.erro || 'erro ' + r.status)}</div>`; return; }
     if (!j.linhas || !j.linhas.length) { $('#saida').innerHTML = `<div class="aviso"><b style="color:#fde68a">CPF ${fmtCPF(cpf)} não está na base.</b><br><span class="sub">Confira se digitou certo. A base tem os benefícios do INSS da data em que foi gerada; quem se aposentou depois não aparece.</span></div>`; return; }
+    // bancos que a base traz sem nome ("código 908 não encontrado")
+    const NOMES = { '908': 'PARATI - CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.' }, cN = j.colunas.find(c => chave(c) === 'contrato_banco_nome'), cC = j.colunas.find(c => chave(c) === 'contrato_banco_codigo');
+    if (cN && cC) j.linhas.forEach(r => { const nm = NOMES[cod3(r[cC])]; if (nm && (!String(r[cN] || '').trim() || /n[aã]o encontrado/i.test(r[cN]))) r[cN] = nm; });
     RES = Object.assign(j, { cpf }); SEL = -1; desenhar();
   } finally { b.disabled = false; b.textContent = 'Consultar'; }
 });
