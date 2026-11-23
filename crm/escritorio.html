@@ -675,9 +675,9 @@ function criarVoxel(v) {
   // pernas (coxa + canela com joelho), quadril em y=3.6
   const perna = lado => {
     const coxa = new THREE.Group(); coxa.position.set(lado * .62, 3.6, 0); corpo.add(coxa);
-    bloco(coxa, 1.1, 1.9, 1.15, calca, 0, -.95, 0, M);
+    if (v.vestido) bloco(coxa, 1.34, 1.95, 1.5, rou, 0, -.95, 0, M); else bloco(coxa, 1.1, 1.9, 1.15, calca, 0, -.95, 0, M);
     const canela = new THREE.Group(); canela.position.set(0, -1.9, 0); coxa.add(canela);
-    bloco(canela, 1.05, 1.35, 1.1, calca, 0, -.68, 0, M);
+    bloco(canela, v.vestido ? .85 : 1.05, 1.35, v.vestido ? .9 : 1.1, v.vestido ? pele : calca, 0, -.68, 0, M);
     bloco(canela, 1.15, .45, 1.5, sapato, 0, -1.48, .18, M);
     return { coxa, canela };
   };
@@ -689,10 +689,11 @@ function criarVoxel(v) {
   else if (v.gravata) { bloco(tronco, .9, 2.5, .05, '#f8fafc', 0, 1.65, .79, M); bloco(tronco, .35, 2.1, .08, '#dc2626', 0, 1.6, .82, M); bloco(tronco, .9, .2, .1, '#0b2d6b', 0, 2.9, .8, M); }
   else if (rou === '#1e3a8a') { bloco(tronco, .12, 2.8, .06, '#0b1840', 0, 1.5, .8, M); bloco(tronco, 2.75, .45, 1.6, rouE, 0, 2.85, 0, M); }
   else bloco(tronco, 1.0, .25, .06, tom(pele, -.06), 0, 2.88, .79, M);
+  if (v.vestido) { bloco(tronco, 2.9, .5, 1.75, rou, 0, .1, 0, M); bloco(tronco, 1.3, .5, .06, pele, 0, 2.75, .79, M); bloco(tronco, 2.75, .22, 1.6, '#3f3f46', 0, 1.05, 0, M); }   // quadril da saia, decote e cinto
   // braços (pivô no ombro)
   const braco = lado => {
     const g = new THREE.Group(); g.position.set(lado * 1.75, 6.35, 0); corpo.add(g);
-    bloco(g, .8, 2.4, .9, rou, 0, -1.2, 0, M); bloco(g, .78, .6, .85, pele, 0, -2.7, 0, M);
+    if (v.vestido) { bloco(g, .8, .9, .9, rou, 0, -.45, 0, M); bloco(g, .74, 2.1, .82, pele, 0, -1.95, 0, M); } else { bloco(g, .8, 2.4, .9, rou, 0, -1.2, 0, M); bloco(g, .78, .6, .85, pele, 0, -2.7, 0, M); }
     return g;
   };
   const be = braco(-1), bd = braco(1);
@@ -765,6 +766,7 @@ const MULHERES = ['barbara', 'julia', 'rina', 'naira', 'andressa'];
 const ehMulher = p => MULHERES.includes(norm(p.nome)) || (p.papel === 'advogado' && (p.restrito || DRAS.includes(norm(p.nome))));
 function visualDe(p) {
   if (p.papel === 'admin' && ['administrador', 'lucas'].includes(norm(p.nome))) return { ...PADRAO, rou: '#0d0d10', polo: true };
+  if (p.papel === 'admin' && norm(p.nome).startsWith('andressa')) return { ...PADRAO, rou: '#0d0d10', est: 'longo', vestido: true };   // pedido dela: vestido preto
   if (p.papel === 'admin') return ehMulher(p) ? { ...PADRAO, rou: '#0b5ed7', est: 'longo' } : { ...PADRAO, rou: '#0b5ed7', gravata: true };
   if (norm(p.nome) === 'julia') return { ...PADRAO, cab: '#e0263f', est: 'longo' }; // pedido do chefe: Júlia de cabelo vermelho
   if (ehMulher(p)) return { ...PADRAO, est: 'longo' }; // só diferencia feminino (cabelo comprido) e masculino (curto); pele e cor iguais
@@ -775,12 +777,12 @@ function tom(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g 
   const k = v => Math.max(0, Math.min(255, Math.round(f > 0 ? v + (255 - v) * f : v * (1 + f))));
   return `rgb(${k(r)},${k(g)},${k(b)})`; }
 function sprite(v, pose, quadroAnd, braco) {
-  const chave = [v.cab, v.est, v.rou, v.pele, v.gravata, v.polo, pose, quadroAnd, braco].join('|');
+  const chave = [v.cab, v.est, v.rou, v.pele, v.gravata, v.polo, v.vestido, pose, quadroAnd, braco].join('|');
   if (cacheSpr.has(chave)) return cacheSpr.get(chave);
   const c = document.createElement('canvas'); c.width = SPR_W; c.height = SPR_H; const g = c.getContext('2d');
   const P = (x, y, w, h, cor) => { g.fillStyle = cor; g.fillRect(x, y, w, h); };
   const pele = v.pele, peleS = tom(pele, -.18), rou = v.rou, rouS = tom(rou, -.3), rouL = tom(rou, .18);
-  const calca = '#2c3650', calcaS = '#1e2538', sapato = '#151515', cab = v.cab, cabL = tom(cab, .28), cabS = tom(cab, -.3);
+  const calca = v.vestido ? v.rou : '#2c3650', calcaS = v.vestido ? tom(v.rou, -.3) : '#1e2538', sapato = '#151515', cab = v.cab, cabL = tom(cab, .28), cabS = tom(cab, -.3);
   const cx = 14, base = 56; // pés
   // pernas
   if (pose === 'sentado') {
