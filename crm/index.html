@@ -1122,7 +1122,7 @@ async function ajustarCrmProc(lista) {
 }
 /* Financeira (aumento de margem / portabilidade): contagem à parte, só o admin vê. Não entra em meta, missão, desafio nem ranking. */
 async function resumoFinanceira() {
-  const box = $('#g-fin'); if (box) box.hidden = true; return;   // faixa desligada a pedido do Lucas (23/11): os lançamentos seguem guardados por atendente; painel próprio virá depois
+  { const b0 = $('#g-fin'); if (b0) b0.hidden = true; return; }   // faixa desligada a pedido do Lucas (23/11): os lançamentos seguem guardados por atendente; painel próprio virá depois
   const box = $('#g-fin'); if (!box || eu.papel !== 'admin') return;
   const { data } = await sb.rpc('fin_resumo', { inicio: G.mes, fim: fimMes(G.mes) }); box.hidden = !(data || []).length; if (!data || !data.length) return;
   const t = k => data.reduce((x, d) => x + Number(d[k] || 0), 0);
