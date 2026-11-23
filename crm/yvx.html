@@ -85,13 +85,19 @@ const GRUPOS = [
 const grupoDe = k => { if (/^bloqueado|^possui_|^pensao/.test(k)) return 'beneficio'; for (const g of GRUPOS) if (g[3].test(k)) return g[0]; return 'outros'; };
 const ehDinheiro = k => /valor|vl_|_vl|margem|parcela|saldo|renda|salario|^mr$|emprestado|liberado|rmc|rcc/.test(k) && !/qtd|quant|data|dt_|prazo|numero|contrato|parcelas_/.test(k);
 const ehData = k => /data|^dt_|_dt$|nasc|dib|ddb|dcb|competencia/.test(k);
-const ROT = { beneficio: 'Número do benefício', situacao_beneficio: 'Situação do benefício', consignavel: 'Consignável', uf_beneficio: 'Estado do benefício', valor_beneficio: 'Valor do benefício', valor_consignavel: 'Valor consignável', valor_margem: 'Valor da margem', valor_rcc: 'Valor RCC', valor_rmc: 'Valor RMC', especie_codigo: 'Código da espécie',
+const ROT = { beneficio: 'Número do benefício', situacao_beneficio: 'Situação do benefício', consignavel: 'Consignável', uf_beneficio: 'Estado do benefício', valor_beneficio: 'Valor do benefício', valor_consignavel: 'Margem consignável (cheia)', valor_margem: 'Valor da margem livre', valor_rcc: 'Valor RCC', valor_rmc: 'Valor RMC', especie_codigo: 'Código da espécie',
   banco_pagamento_codigo: 'Código do banco de pagamento', banco_pagamento_agencia: 'Agência de pagamento', banco_pagamento_conta: 'Conta de pagamento', banco_pagamento_tipo_conta: 'Tipo de conta', dib: 'Início do benefício (DIB)', nome_representante: 'Nome do representante', cpf_representante: 'CPF do representante',
   possui_procurador: 'Possui procurador', possui_representante: 'Possui representante', pensao_alimenticia: 'Pensão alimentícia', bloqueado_emprestimo: 'Bloqueado para empréstimo', cliente_nome: 'Nome', cliente_cpf: 'CPF', cliente_rg: 'RG', cliente_data_nascimento: 'Data de nascimento', cliente_sexo: 'Sexo', cliente_nome_mae: 'Nome da mãe', cliente_email: 'E-mail',
   numero_contrato: 'Número do contrato', tipo_emprestimo: 'Tipo de empréstimo', contrato_banco_codigo: 'Código do banco', contrato_banco_nome: 'Banco', data_averbacao: 'Data de averbação', data_inicio_contrato: 'Início do contrato', data_fim_contrato: 'Fim do contrato', valor_emprestimo: 'Valor do empréstimo', valor_parcela: 'Valor da parcela',
   prazo: 'Prazo (parcelas)', parcelas_pagas: 'Parcelas pagas', parcelas_restantes: 'Parcelas restantes', saldo: 'Saldo devedor', taxa: 'Taxa de juros', endereco_cidade: 'Cidade', endereco_uf: 'Estado' };
 const UFS = { AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará', DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão', MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará', PB: 'Paraíba', PR: 'Paraná', PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro', RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima', SC: 'Santa Catarina', SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins' };
-const LOGOS = new Set('001 003 004 021 029 033 037 041 047 070 077 082 104 212 213 237 246 318 336 341 389 394 422 604 611 623 626 637 643 707 748 756'.split(' '));
+const LOGOS = new Set('001 003 004 021 029 033 037 041 047 070 077 079 082 104 212 213 237 246 318 336 341 386 389 394 422 604 611 623 626 637 643 655 707 748 752 756 903 925'.split(' '));
+// selo com as iniciais do banco, para os que não têm logo na pasta bancos/
+const SIGLAS = { '254': 'PR', '935': 'FA', '121': 'AGI', '934': 'AGI', '012': 'INB', '329': 'QI', '081': 'BS', '243': 'MAS', '954': 'DIG', '465': 'CC', '069': 'CRE', '753': 'NBC', '359': 'ZE', '330': 'BARI', '402': 'COB', '276': 'SE', '174': 'PEF', '905': 'ALFA' };
+function seloBanco(cod, nome) { if (LOGOS.has(cod)) return `<img src="bancos/${cod}.svg" alt="" loading="lazy" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex:none">`;
+  const lim = String(nome || '').replace(/\b(BANCO|BCO|S\.?A\.?|S\/A|FINANCEIRA|SOCIEDADE|DE|DO|DA|CR[EÉ]DITO|DIRETO|CFI|SCD)\b/gi, ' ').trim().split(/\s+/).filter(Boolean);
+  const sig = SIGLAS[cod] || (lim.length > 1 ? lim.slice(0, 2).map(x => x[0]).join('') : (lim[0] || '?').slice(0, 2)).toUpperCase(), h = (parseInt(cod, 10) || 0) * 47 % 360;
+  return `<span style="width:30px;height:30px;flex:none;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:${sig.length > 3 ? 8.5 : sig.length > 2 ? 10 : 12}px;font-weight:800;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,hsl(${h},65%,42%),hsl(${(h + 40) % 360},70%,30%));border:1px solid rgba(255,255,255,.25)">${esc(sig)}</span>`; }
 const rotulo = n => { const k = chave(n); if (ROT[k]) return ROT[k]; let m; if ((m = k.match(/^telefone_(\d+)$/))) return 'Telefone ' + m[1];
   const t = String(n).replace(/_/g, ' ').trim().toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
 function dataBR(v) { v = String(v).trim(); let m;
@@ -267,7 +273,7 @@ function desenhar() {
       const banco = cBanco && String(row[cBanco.n] || '').trim() ? String(row[cBanco.n]).trim() : 'Contrato';
       const nnum = cNum && String(row[cNum.n] || '').trim() ? ' · nº ' + esc(row[cNum.n]) : '';
       const cCod = ce.find(c => /contrato_banco_codigo|banco_cod/.test(c.k)), cb = cCod ? cod3(row[cCod.n]) : '';
-      const ico = LOGOS.has(cb) ? `<img src="bancos/${cb}.svg" alt="" loading="lazy" style="width:28px;height:28px;object-fit:contain;background:#fff;border-radius:7px;padding:3px;flex:none">` : '<i>🏦</i>';
+      const ico = seloBanco(cb, cBanco ? row[cBanco.n] : '');
       return `<div class="cart" id="ct-${i}"><h3>${ico}${esc(banco)}<span class="sub" style="margin-left:auto;font-weight:400">${i + 1}/${L.length}</span></h3>${A ? vereditoHTML(A.contratos[i]) : ''}<div class="campo"><span>Contrato</span><b class="vazio" style="color:var(--texto)">${nnum ? esc(cNum ? row[cNum.n] : '') : '—'}</b></div>` + ce.filter(c => c !== cNum).map(c => campoHTML(c, row)).join('') + '</div>';
     }).join('') + '</div>';
   }
