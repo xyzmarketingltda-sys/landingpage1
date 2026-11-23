@@ -154,9 +154,10 @@ function analisar(L, cols) {
   const esp = parseInt(so(g(l, 'especie_codigo')), 10), inval = Q.invalidez.includes(esp);
   const nasc = paraData(g(l, 'cliente_data_nascimento')), idM = nasc ? mesesDesde(nasc) : null;
   let prazoPort = null, prazoNovo = null, so108 = false;
-  if (esp === 32) cli.bloq.push('Espécie 32 (aposentadoria por invalidez): a XYZ não opera.');
+  if (inval) cli.bloq.push('Espécie ' + esp + ' (invalidez): a XYZ não opera.');
+  if (esp === 87 || esp === 88) cli.bloq.push('Espécie ' + esp + ' (BPC/LOAS): a XYZ não opera.');
   if (isNaN(esp)) cli.avisos.push('Sem código de espécie na base: confira se a espécie é atendida.');
-  else if (!inval && !Q.esp45.includes(esp) && !Q.espLivre.includes(esp)) cli.bloq.push('Espécie ' + esp + ' não está na lista de espécies atendidas.');
+  else if (!inval && esp !== 87 && esp !== 88 && !Q.esp45.includes(esp) && !Q.espLivre.includes(esp)) cli.bloq.push('Espécie ' + esp + ' não está na lista de espécies atendidas.');
   if (idM == null) cli.avisos.push('Sem data de nascimento na base: confira a idade.');
   else {
     if (idM < 216) cli.bloq.push('Menor de 18 anos.');
