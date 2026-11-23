@@ -451,6 +451,26 @@ function montarSalaVidro() {
   const led = caixa3(X1 - X0, .06, Z1 - Z0, '#0b2d6b', (X0 + X1) / 2, .02, (Z0 + Z1) / 2, { emissive: '#0b5ed7', emissiveIntensity: .15 });
 }
 
+/* ---------- sala da Andressa (administração), ao lado da diretoria ---------- */
+const MESA_ADM = [8.05, 5.35];
+function montarSalaAdm() {
+  const X0 = GX * U, X1 = (GX + VIPX) * U, Z0 = SALA.z * U, Z1 = GY * U, h = 10.5, porta = [X0 + .5, X0 + 6.5];
+  for (let x = 0; x < VIPX; x++) for (let z = 3; z < GY; z++) por('floorFull', GX + x + .5, z + .5, 0, { cor: '#3a4660' });
+  const vidro = { color: '#e9d5ff', transparent: true, opacity: .22, roughness: .05, metalness: .2, depthWrite: false }, quadro = { color: '#0f172a', metalness: .7, roughness: .3 };
+  caixa3(X1 - porta[1], h, .2, '#e9d5ff', (porta[1] + X1) / 2, 0, Z0, vidro);            // frente, com a porta à esquerda
+  caixa3(.2, h, Z1 - Z0, '#bfe3ff', X0, 0, (Z0 + Z1) / 2, vidro);                        // divisória com a sala do Lucas
+  caixa3(X1 - porta[1], .35, .35, '#0f172a', (porta[1] + X1) / 2, h, Z0, quadro); caixa3(.35, .35, Z1 - Z0, '#0f172a', X0, h, (Z0 + Z1) / 2, quadro);
+  for (const x of [porta[1], X1 - .2]) caixa3(.35, h, .35, '#0f172a', x, 0, Z0, quadro);
+  caixa3(.35, h, .35, '#0f172a', X0, 0, Z1 - .2, quadro);
+  caixa3(X1 - X0, .06, Z1 - Z0, '#3b1d6b', (X0 + X1) / 2, .05, (Z0 + Z1) / 2, { emissive: '#7c3aed', emissiveIntensity: .15 });
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 1.7), new THREE.MeshBasicMaterial({ map: texturaTexto('ANDRESSA', 384, 88, '800 52px Inter, sans-serif', '#f3e8ff', '#a855f7'), transparent: true }));
+  placa.position.set((porta[1] + X1) / 2, h + 1.4, Z0 + .2); scene.add(placa);
+  const [x, z] = MESA_ADM;
+  por('v:Table_White_2x2_01', x, z, 180); por('v:PC_01', x - .1, z - .05, 180, { y: 3.85 }); por('laptop', x + .25, z + .05, 200, { y: 3.85 });
+  por('lampRoundTable', x - .35, z, 0, { y: 3.85 }); por('v:Chair_Black_01', x - .25, z - .43, 0);
+  por('rugRectangle', x - .05, z - .05, 0, { cor: '#3b1d6b', so: /carpet/i }); por('v:Plant_03', GX + VIPX - .3, GY - .3);
+}
+
 /* ---------- metas: dinheiro na mesa ---------- */
 const FAIXAS = { clt: [90, 110, 140, 200], estagiario: [60, 74, 94, 134] };
 let nivelMesa = {}, mesaDe = {};
@@ -588,6 +608,7 @@ async function montarMoveis() {
     }
   }
   montarSalaVidro();
+  montarSalaAdm();
   await montarSalaVip();
 }
 
@@ -834,7 +855,8 @@ function estadoDe(p) {
 function assentoDe(p, i) {
   if (p.papel === 'advogado') { let k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); k = Math.max(0, k); if (k < VIP_SEATS.length) return [VIP_SEATS[k][0] - .05, VIP_SEATS[k][1]]; const j = (k - VIP_SEATS.length) % 10; return [7.2 + (j % 2) * 1.0, .5 + (j >> 1) * .5]; }
   if (p.papel === 'admin') {
-    const k = Math.max(0, equipe.filter(q => q.papel === 'admin' && online.has(q.id)).sort((m, n) => (/^lucas/i.test(n.nome) ? 1 : 0) - (/^lucas/i.test(m.nome) ? 1 : 0)).indexOf(p));   // só online contam; Lucas fica com a cadeira do chefe
+    if (/^andressa/i.test(p.nome || '')) return [MESA_ADM[0] - .25, MESA_ADM[1] - .5];   // sala própria, ao lado da diretoria
+    const k = Math.max(0, equipe.filter(q => q.papel === 'admin' && online.has(q.id) && !/^andressa/i.test(q.nome || '')).sort((m, n) => (/^lucas/i.test(n.nome) ? 1 : 0) - (/^lucas/i.test(m.nome) ? 1 : 0)).indexOf(p));   // só online contam; Lucas fica com a cadeira do chefe
     mesaDe[p.id] = DESKS.length - 1;
     const [x, y] = DESKS[DESKS.length - 1]; return [x - .25 + k * .7, y - .5];
   }
@@ -1115,7 +1137,7 @@ gl.addEventListener('click', e => {
     const eu_ = atores.get(eu.id); if (!eu_) return;
     const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(mx / r.width * 2 - 1, -(my / r.height) * 2 + 1), camera);
     const pt = new THREE.Vector3(); if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -AV_ALT * .5), pt)) return;
-    let x = pt.x / U, y = pt.z / U; const lim = y < 3 ? GX + VIPX - .25 : GX - .25;
+    let x = pt.x / U, y = pt.z / U; const lim = GX + VIPX - .25;
     if (x < .2 || y < .2 || x > lim || y > GY - .2) return;
     if (BLOQ) { const c = livreMaisPerto(celDe([x, y])); if (!c) return; if (!livre(...celDe([x, y]))) { x = (c[0] + .5) * CEL / U; y = (c[1] + .5) * CEL / U; } }
     XYZPresenca.enviar('acao', { de: eu.id, tipo: 'andar', x: +x.toFixed(2), y: +y.toFixed(2) });
@@ -1143,7 +1165,7 @@ gl.addEventListener('mousemove', e => {
   if (!alvo || !alvo.p.foto_url) { card.hidden = true; gl.style.cursor = alvo ? 'pointer' : ''; return; }
   const [X, Y] = cabecaDe(alvo);
   card.querySelector('img').src = alvo.p.foto_url; card.querySelector('b').textContent = alvo.p.papel === 'advogado' ? nomeExib(alvo.p) : alvo.p.nome;
-  card.querySelector('small').textContent = alvo.p.restrito ? 'equipe do escritório parceiro · no hall' : alvo.p.papel === 'advogado' ? 'advogado parceiro · no hall' : alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? 'diretoria' : 'na mesa';
+  card.querySelector('small').textContent = alvo.p.restrito ? 'equipe do escritório parceiro · no hall' : alvo.p.papel === 'advogado' ? 'advogado parceiro · no hall' : alvo.est === 'almoco' ? 'almoçando' : alvo.p.papel === 'admin' ? (/^andressa/i.test(alvo.p.nome || '') ? 'administração' : 'diretoria') : 'na mesa';
   card.style.left = (r.left + X) + 'px'; card.style.top = (r.top + Y - 30) + 'px'; card.hidden = false; gl.style.cursor = 'pointer';
 });
 gl.addEventListener('mouseleave', () => $('#foto-hover').hidden = true);
