@@ -834,9 +834,14 @@ function estadoDe(p) {
 }
 function assentoDe(p, i) {
   if (p.papel === 'advogado') { let k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); k = Math.max(0, k); if (k < VIP_SEATS.length) return [VIP_SEATS[k][0] - .05, VIP_SEATS[k][1]]; return [7.15 + (k % 2) * .35, .55 + (k - 3) * .45]; }
-  const idx = p.papel === 'admin' ? DESKS.length - 1 : i % (DESKS.length - 1);
+  if (p.papel === 'admin') {
+    const k = Math.max(0, equipe.filter(q => q.papel === 'admin').indexOf(p));   // 2+ admins não empilham na mesma cadeira
+    mesaDe[p.id] = DESKS.length - 1;
+    const [x, y] = DESKS[DESKS.length - 1]; return [x - .25 + k * .7, y - .5];
+  }
+  const idx = i % (DESKS.length - 1);
   mesaDe[p.id] = idx;
-  const [x, y] = DESKS[idx]; return p.papel === 'admin' ? [x - .25, y - .5] : [x, y - .45];
+  const [x, y] = DESKS[idx]; return [x, y - .45];
 }
 /* ---------- caminho: grade de obstáculos (móveis) + A* ---------- */
 const CEL = 1, NX = (GX + VIPX) * U / CEL | 0, NZ = GY * U / CEL | 0;
