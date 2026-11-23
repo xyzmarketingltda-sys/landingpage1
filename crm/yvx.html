@@ -258,7 +258,7 @@ function oportunidadesHTML(A) { const ok = A.contratos.filter(c => c.st === 'ok'
 /* ---------- endereço para digitação (base Credilink no computador do escritório, só do CPF consultado) ---------- */
 let ENDE = null;   // null = buscando · {disponivel, enderecos} · {erro}
 function enderecoHTML() {
-  const cab = '<div class="cart" style="margin-top:12px"><h3><i>🏠</i>Endereço para digitação <span class="sub" style="font-weight:400;margin-left:auto">Credilink 2023</span></h3>';
+  const cab = '<div class="cart" style="margin-top:12px"><h3><i>🏠</i>Endereço e dados para digitação <span class="sub" style="font-weight:400;margin-left:auto">Credilink 2023</span></h3>';
   if (!ENDE) return cab + '<div class="sub">Buscando o endereço…</div></div>';
   if (ENDE.erro) return cab + '<div class="sub">Não consegui buscar o endereço agora.</div></div>';
   if (!ENDE.disponivel) return '';
@@ -266,7 +266,8 @@ function enderecoHTML() {
   const linha = (r, v) => `<div class="campo"><span>${r}</span><b class="${v ? '' : 'vazio'}" ${v ? 'title="Toque para copiar"' : ''}>${esc(v || '—')}</b></div>`;
   return cab + ENDE.enderecos.map((e, n) => (ENDE.enderecos.length > 1 ? `<div class="sub" style="margin:${n ? 10 : 0}px 0 2px">Endereço ${n + 1}</div>` : '') +
     linha('CEP', so(e.CEP).length === 8 ? so(e.CEP).replace(/(\d{5})(\d{3})/, '$1-$2') : e.CEP) + linha('Logradouro', [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' ')) + linha('Número', e.NUMERO) + linha('Complemento', e.COMPLEMENTO) + linha('Bairro', e.BAIRRO) + linha('Cidade', e.CIDADE) + linha('Estado', UFS[String(e.UF).toUpperCase()] ? UFS[e.UF.toUpperCase()] + ' (' + e.UF.toUpperCase() + ')' : e.UF)).join('') +
-    '<div class="sub" style="margin-top:8px">Endereço de 2023: confirme com o cliente antes de digitar.</div></div>'; }
+    (() => { const e = ENDE.enderecos[0], sx = /^m/i.test(e.SEXO || '') ? 'Masculino' : /^f/i.test(e.SEXO || '') ? 'Feminino' : (e.SEXO || ''); return '<div class="sub" style="margin:10px 0 2px">Dados pessoais</div>' + linha('Sexo', sx) + linha('Nome da mãe', e.NOME_MAE) + linha('Situação do CPF na Receita (2023)', e.STATUS_RECEITA_FEDERAL) + linha('Estado civil', ''); })() +
+    '<div class="sub" style="margin-top:8px">Dados de 2023: confirme com o cliente antes de digitar. Estado civil não existe nesta base: pergunte ao cliente.</div></div>'; }
 async function buscarEndereco(cpf, token) { ENDE = null;
   try { const r = await fetch(SRV.url + '/endereco/' + cpf, { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' }); ENDE = r.ok ? await r.json() : (r.status === 404 ? { disponivel: false, enderecos: [] } : { erro: true }); } catch (e) { ENDE = { erro: true }; }
   if (RES && RES.cpf === cpf) { const el = document.getElementById('end-cred'); if (el) el.innerHTML = enderecoHTML(); } }
