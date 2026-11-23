@@ -57,6 +57,7 @@ button:disabled{opacity:.5}
   <div class="linha" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="status" id="st"><i></i><span id="st-t">verificando o servidor…</span></span><a class="btn" href="./">← CRM</a></div></header>
 
 <form class="busca" id="f"><input id="cpf" placeholder="Digite o CPF" inputmode="numeric" autocomplete="off" maxlength="14" autofocus><button id="b">Consultar</button></form>
+<div style="margin-top:12px"><button type="button" id="b-meus" style="border-color:rgba(251,191,36,.5)">🎯 Oportunidades dos meus clientes</button></div>
 <div id="saida"></div>
 <details class="aviso" id="hist-box" hidden><summary style="cursor:pointer"><b>Consultas dos últimos 30 dias</b> <span class="sub">(só o administrador vê)</span></summary><div id="hist" style="margin-top:10px"></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--borda)"><button type="button" id="b-chave">Copiar a chave do servidor</button> <span class="sub">O programa INICIAR YVX pede esta chave uma única vez, na primeira vez que abre. Não passe para ninguém.</span></div></details>
 <p class="nota">A base fica no computador do escritório: com ele desligado não há consulta. Cada consulta fica registrada com o nome de quem fez. Use só para atender o cliente que procurou a XYZ; os dados são pessoais e protegidos pela LGPD.</p>
@@ -281,11 +282,30 @@ function desenhar() {
 }
 $('#saida').addEventListener('change', e => { const lim = { 'q-taxa': ['yvx_taxa', 0, 5], 'q-piso': ['yvx_piso', PISO_AT, 3000], 'q-inpc': ['yvx_inpc', 0, 20] }[e.target.id]; if (!lim) return;
   const v = parseFloat(String(e.target.value).replace(/\./g, m => /,/.test(e.target.value) ? '' : m).replace(',', '.')); if (v > lim[1] && v < lim[2]) { try { localStorage.setItem(lim[0], v); } catch (x) {} desenhar(); } else toast('Valor inválido'); });
-$('#saida').addEventListener('click', e => { if (e.target.closest('#b-op')) { OPON = !OPON; try { localStorage.setItem('yvx_op', OPON ? '1' : '0'); } catch (x) {} desenhar(); return; }
+$('#saida').addEventListener('click', e => { const mf = e.target.closest('[data-mf]'), ma = e.target.closest('[data-ma]'), mc = e.target.closest('[data-cpf]');
+  if (mf) { MF = mf.dataset.mf; $('#saida').innerHTML = meusHTML(); return; } if (ma) { MA = ma.dataset.ma; $('#saida').innerHTML = meusHTML(); return; }
+  if (mc) { OPON = true; $('#cpf').value = fmtCPF(mc.dataset.cpf); $('#f').requestSubmit(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('#b-op')) { OPON = !OPON; try { localStorage.setItem('yvx_op', OPON ? '1' : '0'); } catch (x) {} desenhar(); return; }
   const ir = e.target.closest('[data-ir]'); if (ir) { const el = document.getElementById('ct-' + ir.dataset.ir); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.transition = 'box-shadow .3s'; el.style.boxShadow = '0 0 0 3px #fbbf24, 0 0 30px rgba(251,191,36,.5)'; setTimeout(() => { el.style.boxShadow = ''; }, 2200); } return; }
   if (e.target.closest('.vd, .op')) return;
   const a = e.target.closest('[data-i]'); if (a) { SEL = +a.dataset.i; desenhar(); return; }
   const b = e.target.closest('.campo b:not(.vazio)'); if (b && navigator.clipboard) navigator.clipboard.writeText(b.textContent).then(() => toast('Copiado: ' + b.textContent)); });
+
+/* ---------- oportunidades dos clientes do atendente (calculadas em lote) ---------- */
+let MEUS = null, MF = 'port', MA = '';
+function meusHTML() {
+  const base = MEUS.filter(x => !MA || x.atendente === MA), F = { port: x => x.fecha > 0, novo: x => x.novo > 0, aum: x => x.aum_valor > 0 }, val = { port: x => +x.troco, novo: x => +x.novo, aum: x => +x.aum_valor };
+  const L = base.filter(F[MF]).sort((a, b) => val[MF](b) - val[MF](a)), nomes = { port: 'Portabilidade', novo: 'Empréstimo novo', aum: 'Aumento de margem' };
+  const ats = [...new Set(MEUS.map(x => x.atendente).filter(Boolean))].sort(), quando = MEUS[0] ? new Date(MEUS[0].atualizado_em).toLocaleDateString('pt-BR') : '';
+  let h = `<div class="cart op" style="margin-top:14px;border-color:rgba(251,191,36,.45)"><h3><i>🎯</i>Oportunidades dos ${EU.papel === 'admin' ? 'clientes' : 'meus clientes'}<span class="sub" style="font-weight:400;margin-left:auto">calculado em ${quando}</span></h3>
+    <div class="abas" style="margin-top:0">${Object.keys(nomes).map(k => `<button type="button" data-mf="${k}" class="${k === MF ? 'sel' : ''}">${nomes[k]} (${base.filter(F[k]).length})</button>`).join('')}</div>
+    ${EU.papel === 'admin' && ats.length > 1 ? `<div class="abas" style="margin-top:6px"><button type="button" data-ma="" class="${!MA ? 'sel' : ''}">Todos</button>${ats.map(a => `<button type="button" data-ma="${esc(a)}" class="${a === MA ? 'sel' : ''}">${esc(a)}</button>`).join('')}</div>` : ''}
+    <div class="sub" style="margin:8px 0">${L.length} cliente(s) · total estimado ${brl(L.reduce((t, x) => t + val[MF](x), 0))}. Toque no cliente para abrir a consulta. Dados da base de agosto/2026: confirme no extrato antes de ofertar.</div>`;
+  h += L.length ? L.map(x => `<button type="button" data-cpf="${x.cpf}" style="display:flex;width:100%;gap:10px;align-items:center;flex-wrap:wrap;text-align:left;margin-top:6px"><b style="flex:1;min-width:150px">${esc(x.nome || fmtCPF(x.cpf))}</b>${EU.papel === 'admin' && x.atendente ? `<span class="sub">${esc(x.atendente)}</span>` : ''}<span class="sub">${MF === 'port' ? x.fecha + ' contrato(s)' : MF === 'novo' ? 'margem livre ' + brl(+x.margem || 0) : 'margem +' + brl(+x.aum_margem)}</span><span style="color:#fde68a;font-weight:700">${brl(val[MF](x))}</span></button>`).join('') : '<div class="sub">Nenhum cliente nesta lista.</div>';
+  return h + '</div>'; }
+$('#b-meus').addEventListener('click', async () => { const b = $('#b-meus'); b.disabled = true;
+  try { if (!MEUS) { const { data, error } = await sb.rpc('yvx_minhas_oportunidades'); if (error) { toast('Não consegui carregar'); return; } MEUS = data || []; }
+    $('#saida').innerHTML = meusHTML(); } finally { b.disabled = false; } });
 
 /* ---------- servidor do escritório ---------- */
 async function servidor() {
