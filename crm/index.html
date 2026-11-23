@@ -1137,7 +1137,7 @@ async function fechadosHoje() {
   // ganho de hoje: o que os fechados de hoje rendem pelas regras de cada advogado
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
-    const porAdv = {}; (cli || []).forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
+    const porAdv = {}; (cli || []).filter(c => !ehFin(c.produto)).forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
     let ganho = 0, semValor = 0, exito = 0;
     Object.entries(porAdv).forEach(([adv, l]) => { const r = REGRAS[adv], itens = aplicarRegra(r?.regra, l); itens.forEach(i => { ganho += i.v || 0; if (i.semValor) semValor++; }); if (r?.regra?.tipo === 'percentual') exito += itens.length; });
     $('#g-dia').textContent = brl(ganho);
@@ -1151,8 +1151,8 @@ async function calcularPrevisoes() {
   try {
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     const ini = G.mes, fim = fimMes(G.mes), cli = await clientesDoMes(ini, fim); window.__cliMes = cli;
-    DIVERGE = cli.filter(c => { const crm = (c.advogado || '').toUpperCase().trim(); return c.adv_procuracao ? c.adv_procuracao !== crm : (c.adv_drive && c.adv_drive !== crm); });
-    const porAdv = {}; cli.forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
+    DIVERGE = cli.filter(c => { if (ehFin(c.produto)) return false; const crm = (c.advogado || '').toUpperCase().trim(); return c.adv_procuracao ? c.adv_procuracao !== crm : (c.adv_drive && c.adv_drive !== crm); });
+    const porAdv = {}; cli.filter(c => !ehFin(c.produto)).forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
     RECEBER = Object.entries(porAdv).map(([adv, l]) => { const r = REGRAS[adv]; const itens = aplicarRegra(r?.regra, l); return { adv, obs: r?.obs || 'sem regra', itens, total: itens.reduce((x, i) => x + i.v, 0), semValor: itens.filter(i => i.semValor).length, processos: l.filter(c => !c.fora_comissao).length }; }).sort((a, b) => b.total - a.total);
     const prev = RECEBER.reduce((x, a) => x + a.total, 0);
     $('#gp-prev').textContent = brl(prev); $('#gp-prev-sub').textContent = cli.length + ' lançamentos · ' + RECEBER.reduce((x, a) => x + a.semValor, 0) + ' cliente(s) sem valor de seguro';

@@ -302,7 +302,7 @@ function digPayload() { const { l, cols, A } = DIG, v = re => { const c = cols.f
   const sx = (v(/sexo/) || e.SEXO || '').toUpperCase()[0], uf = (v(/^uf_beneficio$/) || v(/endereco_uf|^uf$/) || e.UF || '').toUpperCase();
   const item = { hasInsurance: false, installmentValue: par, loanValue: valor, rate: A.taxa, term: 108, referenceCode: null };
   return { calculo: item, simulacao: {
-    borrower: { name: v(/^nome$|nome_benef|^nome/) || 'vazio', identity: RES.cpf, benefit: so(v(/^beneficio$|^nb$|numero_beneficio/)), benefitState: uf, benefitStartDate: iso(v(/^dib$/)), benefitPaymentMethod: 1,
+    borrower: { name: v(/^nome$|nome_benef|^nome/) || 'vazio', identity: RES.cpf, benefit: so(v(/^beneficio$|^nb$|numero_beneficio/)), benefitState: uf, benefitStartDate: iso(v(/^dib$/)), benefitPaymentMethod: 2 /* 2 = conta corrente, 1 = cartão magnético */,
       benefitType: parseInt(v(/especie_codigo|especie/), 10) || null, birthDate: iso(v(/nasc/)), motherName: v(/mae/) || e.NOME_MAE || 'vazio', maritalStatus: 'vazio', sex: sx === 'M' ? 'Masculino' : sx === 'F' ? 'Feminino' : 'vazio',
       income: num(v(/valor_beneficio/)) || 0, phone: so($('#dg-tel').value), email: null,
       address: { street: [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' ') || 'vazio', number: String(e.NUMERO || '0'), complement: e.COMPLEMENTO || null, district: e.BAIRRO || 'vazio', city: e.CIDADE || v(/endereco_cidade|cidade/) || 'vazio', state: (e.UF || uf || '').toUpperCase(), zipCode: so(e.CEP || '') || '00000000' },
