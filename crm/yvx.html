@@ -299,7 +299,7 @@ function desenhar() {
   if (A) h += oportunidadesHTML(A);
   const por = {}; cols.forEach(c => { (por[grupoDe(c.k)] = por[grupoDe(c.k)] || []).push(c); });
   // dados do cliente/benefício (iguais em todos os contratos): tira o grupo "emprestimo", que é por contrato
-  const ordemCli = ['pessoa', 'beneficio', 'margem', 'pagamento', 'contato', 'endereco', 'outros'];
+  const ordemCli = ['pessoa', 'beneficio', 'margem', 'pagamento', 'contato', 'outros'];   // o endereço (cidade/UF da base) saiu: fica só o quadro Endereço completo
   h += '<div class="grade">' + ordemCli.filter(g => por[g]).map(g => `<div class="cart"><h3><i>${INFO[g][1]}</i>${INFO[g][2]}</h3>` + por[g].map(c => campoHTML(c, l)).join('') + '</div>').join('') + '</div>';
   h += `<div id="end-cred">${enderecoHTML()}</div>`;
   // contratos: um card por linha da base, com o banco no título
