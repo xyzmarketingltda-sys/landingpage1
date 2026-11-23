@@ -34,6 +34,7 @@ h1{font-size:22px}a.btn,button{background:#0f2552;color:var(--texto);border:1px 
 .linha select{min-width:260px}
 #saida{white-space:pre-wrap;background:#fff;color:#111;border-radius:12px;padding:28px 32px;font:15px/1.6 Georgia,'Times New Roman',serif;margin-top:14px;min-height:200px}
 #saida mark{background:#ffe9a8;color:#111;border-radius:3px;padding:0 2px}
+#saida:focus{outline:none;box-shadow:0 0 0 2px #fbbf24}
 .aviso{border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.08);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:12px}
 select{color-scheme:dark}select option,select optgroup{background:#061230;color:#eaf3ff}
 </style>
@@ -54,6 +55,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
   <select id="rito"><option value="jec">Juizado Especial Cível</option><option value="vara">Vara Cível (procedimento comum)</option></select>
   <button class="btn" id="copiar">Copiar texto</button>
   <button class="btn" id="word">Baixar em Word</button>
+  <button class="btn sec" id="minha" type="button" title="Começar uma peça em branco e escrever do zero">➕ Minha peça</button>
 </div>
 <div class="sub" id="quando"></div>
 <details class="aviso" style="margin:10px 0" id="timbre"><summary style="cursor:pointer"><b>Papel timbrado do escritório</b> · aparece no Word baixado e fica salvo neste aparelho</summary>
@@ -64,7 +66,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
   </div>
 </details>
 <div class="form" id="form"></div>
-<div id="saida"></div>
+<div id="saida" contenteditable="true" spellcheck="true" title="Você pode escrever e editar aqui direto"></div>
 <p class="nota">O que você digita ou altera aqui fica só neste aparelho. Os dados do cliente vêm do CRM e você só enxerga os seus clientes.</p>
 </main>
 <script src="config.js"></script>
@@ -78,8 +80,9 @@ $('#peca').innerHTML = Object.entries(P.PECAS).map(([k, v]) => `<option value="$
 $('#form').innerHTML = P.CAMPOS.map(([k, r, pad]) => `<label>${esc(r)}<input id="c-${k}" value="${esc(q.get(k) || pad || '')}"></label>`).join('');
 if (q.get('peca') && P.PECAS[q.get('peca')]) $('#peca').value = q.get('peca');
 const dados = () => Object.fromEntries(P.CAMPOS.map(([k]) => [k, $('#c-' + k).value]));
-let TXT = '';
+let TXT = '', MINHA = false;
 function desenhar() {
+  if (MINHA) return;   // peça em branco / editada à mão: não regenerar por cima do que o advogado escreveu
   TXT = P.gerar($('#peca').value, dados(), $('#rito').value);
   $('#quando').textContent = 'Quando usar: ' + P.PECAS[$('#peca').value].quando;
   $('#saida').innerHTML = esc(TXT).replace(/\[[^\]\n]{3,220}\]/g, m => '<mark>' + m + '</mark>');
@@ -161,6 +164,10 @@ $('#word').onclick = () => {
   const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Arial;font-size:12pt;line-height:1.5}@page{margin:3cm 2cm 2cm 3cm}</style></head><body>${TIMBRE.logo || TIMBRE.cab ? `<div style="text-align:center;border-bottom:1px solid #999;padding-bottom:6pt;margin-bottom:18pt">${TIMBRE.logo ? `<img src="${TIMBRE.logo}" height="60"><br>` : ''}${TIMBRE.cab ? `<span style="font-size:10pt">${esc(TIMBRE.cab).replace(/\n/g, '<br>')}</span>` : ''}</div>` : ''}${corpo}${TIMBRE.rod ? `<div style="text-align:center;border-top:1px solid #999;padding-top:6pt;margin-top:24pt;font-size:9pt">${esc(TIMBRE.rod).replace(/\n/g, '<br>')}</div>` : ''}</body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff', doc], { type: 'application/msword' })); a.download = 'peca_' + $('#peca').value + '_' + ($('#c-nome').value || 'cliente').replace(/\s+/g, '_').slice(0, 40) + '.doc'; a.click();
 };
+// edi\u00e7\u00e3o na tela: o que o advogado digita no papel vira o texto (para copiar/baixar), sem o preview regenerar por cima
+$('#saida').addEventListener('input', e => { e.stopPropagation(); TXT = $('#saida').innerText; });
+$('#peca').addEventListener('change', () => { MINHA = false; desenhar(); });
+$('#minha').onclick = () => { MINHA = true; TXT = ''; $('#saida').innerHTML = ''; $('#quando').textContent = 'Pe\u00e7a em branco \u2014 escreva \u00e0 vontade. O timbre do escrit\u00f3rio entra no Word baixado.'; $('#saida').focus(); };
 (async () => {
   try {
     const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
