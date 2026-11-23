@@ -92,13 +92,13 @@ const ROT = { beneficio: 'Número do benefício', situacao_beneficio: 'Situaçã
   numero_contrato: 'Número do contrato', tipo_emprestimo: 'Tipo de empréstimo', contrato_banco_codigo: 'Código do banco', contrato_banco_nome: 'Banco', data_averbacao: 'Data de averbação', data_inicio_contrato: 'Início do contrato', data_fim_contrato: 'Fim do contrato', valor_emprestimo: 'Valor do empréstimo', valor_parcela: 'Valor da parcela',
   prazo: 'Prazo (parcelas)', parcelas_pagas: 'Parcelas pagas', parcelas_restantes: 'Parcelas restantes', saldo: 'Saldo devedor', taxa: 'Taxa de juros', endereco_cidade: 'Cidade', endereco_uf: 'Estado' };
 const UFS = { AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará', DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão', MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará', PB: 'Paraíba', PR: 'Paraná', PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro', RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima', SC: 'Santa Catarina', SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins' };
-const LOGOS = new Set('001 003 004 021 029 033 037 041 047 070 077 079 082 104 212 213 237 246 318 336 341 386 389 394 422 604 611 623 626 637 643 655 707 748 752 756 903 925'.split(' '));
+const LOGOS = new Set('001 003 004 012 021 029 033 037 041 047 070 077 079 082 104 212 213 237 246 318 336 341 386 389 394 422 604 611 623 626 637 643 655 707 748 752 756 903 925'.split(' '));
 // selo com as iniciais do banco, para os que não têm logo na pasta bancos/
 const SIGLAS = { '254': 'PR', '935': 'FA', '121': 'AGI', '934': 'AGI', '012': 'INB', '329': 'QI', '081': 'BS', '243': 'MAS', '954': 'DIG', '465': 'CC', '069': 'CRE', '753': 'NBC', '359': 'ZE', '330': 'BARI', '402': 'COB', '276': 'SE', '174': 'PEF', '905': 'ALFA' };
 // bancos sem arquivo de logo: usa o ícone oficial do site do banco (favicon); se não carregar, cai no selo com iniciais
 const SITES = { '254': 'paranabanco.com.br', '121': 'agibank.com.br', '934': 'agibank.com.br', '329': 'qitech.com.br', '081': 'bancoseguro.com.br', '243': 'bancomaster.com.br', '465': 'capitalconsig.com.br', '069': 'www.crefisa.com.br', '753': 'nbcbank.com.br', '359': 'zema.com', '330': 'bancobari.com.br', '276': 'senff.com.br', '174': 'www.pefisa.com.br' };
 function seloBanco(cod, nome, semSite) { if (!semSite && !LOGOS.has(cod) && SITES[cod]) return `<img data-fav="${cod}" data-nome="${esc(nome || '')}" src="https://www.google.com/s2/favicons?domain=${SITES[cod]}&sz=128" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex:none">`;
-  if (LOGOS.has(cod)) return `<img src="bancos/${cod}.svg" alt="" loading="lazy" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex:none">`;
+  if (LOGOS.has(cod)) return `<img src="bancos/${cod}.${cod === '012' ? 'png' : 'svg'}" alt="" loading="lazy" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:${cod === '012' ? 0 : 3}px;flex:none">`;
   const lim = String(nome || '').replace(/\b(BANCO|BCO|S\.?A\.?|S\/A|FINANCEIRA|SOCIEDADE|DE|DO|DA|CR[EÉ]DITO|DIRETO|CFI|SCD)\b/gi, ' ').trim().split(/\s+/).filter(Boolean);
   const sig = SIGLAS[cod] || (lim.length > 1 ? lim.slice(0, 2).map(x => x[0]).join('') : (lim[0] || '?').slice(0, 2)).toUpperCase(), h = (parseInt(cod, 10) || 0) * 47 % 360;
   return `<span style="width:30px;height:30px;flex:none;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:${sig.length > 3 ? 8.5 : sig.length > 2 ? 10 : 12}px;font-weight:800;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,hsl(${h},65%,42%),hsl(${(h + 40) % 360},70%,30%));border:1px solid rgba(255,255,255,.25)">${esc(sig)}</span>`; }
@@ -255,7 +255,7 @@ function desenhar() {
   // um cliente pode ter mais de um benefício: cada benefício tem margem, espécie e contratos próprios, então a tela mostra um por vez
   const cBen = cols.find(c => c.k === 'beneficio') || cols.find(c => /^nb$|numero_beneficio|num_beneficio/.test(c.k)), G = [];
   RES.linhas.forEach(r => { const v = cBen ? String(r[cBen.n] || '') : ''; let g = G.find(x => x.v === v); if (!g) G.push(g = { v, L: [] }); g.L.push(r); });
-  if (SEL < 0 || SEL >= G.length) { SEL = 0; if (G.length > 1) { let melhor = -1; G.forEach((g, n) => { const a = analisar(g.L, cols), p = a.contratos.filter(c => (c.st === 'ok' || c.st === 'ver') && c.troco != null && c.troco >= c.trocoMin).length * 1e9 + a.contratos.filter(c => c.st === 'ok' || c.st === 'ver').length * 1e6 + (a.novo.ok ? a.novo.valor : 0); g.pt = p; if (p > melhor) { melhor = p; SEL = n; } }); } }
+  if (SEL < 0 || SEL >= G.length) { SEL = 0; if (G.length > 1 && !(EU && EU.sem_quali)) { let melhor = -1; G.forEach((g, n) => { const a = analisar(g.L, cols), p = a.contratos.filter(c => (c.st === 'ok' || c.st === 'ver') && c.troco != null && c.troco >= c.trocoMin).length * 1e9 + a.contratos.filter(c => c.st === 'ok' || c.st === 'ver').length * 1e6 + (a.novo.ok ? a.novo.valor : 0); g.pt = p; if (p > melhor) { melhor = p; SEL = n; } }); } }
   const L = G[SEL].L, l = L[0] || {};
   const acha = re => cols.find(c => re.test(c.k) && String(l[c.n] || '').trim());
   const cNome = cols.find(c => /nome/.test(c.k) && !/mae|pai|banco|municipio|cidade|orgao|aps|social|represent/.test(c.k)), cNasc = acha(/nasc/), cUF = acha(/^uf$|_uf$|^uf_|estado$/), cCid = acha(/cidade|municipio/), cEsp = acha(/especie/);
@@ -267,8 +267,8 @@ function desenhar() {
   h += `<div class="heroi"><h2>${esc(cNome ? l[cNome.n] || 'Sem nome na base' : 'Registro encontrado')}</h2><div class="sub">CPF ${fmtCPF(RES.cpf)} · ${L.length} contrato(s) ${G.length > 1 ? 'neste benefício · ' + G.length + ' benefícios' : 'na base'}${RES.mais ? ' (mostrando os primeiros ' + L.length + ')' : ''}</div>
     <div class="chips">${id != null ? `<span class="chip o">${id} anos</span>` : ''}${cNasc ? `<span class="chip">nasc. ${esc(dataBR(l[cNasc.n]))}</span>` : ''}${cCid || cUF ? `<span class="chip">📍 ${esc([cCid && l[cCid.n], cUF && l[cUF.n]].filter(Boolean).join(' / '))}</span>` : ''}${cEsp ? `<span class="chip g">espécie ${esc(l[cEsp.n])}</span>` : ''}</div>
     ${dins.length ? '<div class="dest">' + dins.map(c => `<div><span>${esc(rotulo(c.n))}</span><b>${brl(num(l[c.n]))}</b></div>`).join('') + '</div>' : ''}
-    <div style="position:relative;z-index:1;margin-top:14px"><button type="button" id="b-op" style="${OPON ? 'background:linear-gradient(135deg,#b45309,#fbbf24);color:#1a1205;border:0;font-weight:700' : ''}">🎯 ${OPON ? 'Ocultar oportunidades' : 'Ver oportunidades (regras da Quali)'}</button></div></div>`;
-  const A = OPON ? analisar(L, cols) : null;
+    <div style="position:relative;z-index:1;margin-top:14px"${EU && EU.sem_quali ? ' hidden' : ''}><button type="button" id="b-op" style="${OPON ? 'background:linear-gradient(135deg,#b45309,#fbbf24);color:#1a1205;border:0;font-weight:700' : ''}">🎯 ${OPON ? 'Ocultar oportunidades' : 'Ver oportunidades (regras da Quali)'}</button></div></div>`;
+  const A = OPON && !(EU && EU.sem_quali) ? analisar(L, cols) : null;
   if (A) h += oportunidadesHTML(A);
   const por = {}; cols.forEach(c => { (por[grupoDe(c.k)] = por[grupoDe(c.k)] || []).push(c); });
   // dados do cliente/benefício (iguais em todos os contratos): tira o grupo "emprestimo", que é por contrato
@@ -347,9 +347,9 @@ $('#f').addEventListener('submit', async e => {
 (async () => {
   try {
     const { data: { session } } = await sb.auth.getSession(); if (!session) throw 0;
-    const { data: eu } = await sb.from('perfis').select('papel,ativo').eq('id', session.user.id).single();
+    const { data: eu } = await sb.from('perfis').select('papel,ativo,sem_quali').eq('id', session.user.id).single();
     if (!eu || !eu.ativo || !['admin', 'atendente'].includes(eu.papel)) throw 0;
-    EU = eu; document.body.hidden = false; servidor(); setInterval(servidor, 90000);
+    EU = eu; if (eu.sem_quali) { OPON = false; $('#b-meus').parentElement.hidden = true; } document.body.hidden = false; servidor(); setInterval(servidor, 90000);
     const q = new URLSearchParams(location.search).get('cpf'); if (q && so(q).length === 11) { $('#cpf').value = fmtCPF(q); $('#f').requestSubmit(); }
     if (eu.papel === 'admin') { const { data } = await sb.rpc('yvx_historico'); $('#hist-box').hidden = false;
       $('#b-chave').onclick = async () => { const { data: k } = await sb.rpc('yvx_chave'); if (!k) return toast('Só o administrador'); try { await navigator.clipboard.writeText(k); toast('Chave copiada. Cole na janela do INICIAR YVX.'); } catch (e) { prompt('Copie a chave:', k); } };
