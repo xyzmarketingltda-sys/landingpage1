@@ -293,6 +293,10 @@ function digitarHTML() { const a = DIG.A.aum, tel = (MEUS || []).find(x => x.cpf
       <label class="sub">Tabela<br><select id="dg-tab"><option value="000617">000617 Novo Aumento 108x 1,85%</option><option value="000618">000618 Novo Aumento CAR 90D 108x 1,85%</option></select></label>
       <label class="sub">Parcela (R$)<br><input id="dg-par" value="${(Math.floor(a.util * 100) / 100).toFixed(2).replace('.', ',')}" style="width:110px"></label>
       <label class="sub">Telefone do cliente<br><input id="dg-tel" value="${esc(tel)}" style="width:150px" placeholder="DDD + número"></label>
+      <label class="sub">RG do cliente<br><input id="dg-rg" value="${esc(so((DIG.cols.find(c => /cliente_rg|^rg$/.test(c.k)) ? DIG.l[DIG.cols.find(c => /cliente_rg|^rg$/.test(c.k)).n] : '') || ''))}" style="width:130px" placeholder="só números"></label>
+      <label class="sub">Emissão do RG<br><input id="dg-emi" type="date" style="width:150px"></label>
+      <label class="sub">Órgão<br><input id="dg-org" value="SSP" style="width:70px"></label>
+      <label class="sub">Estado civil<br><select id="dg-ec"><option value="">—</option><option>Solteiro</option><option>Casado</option><option>Divorciado</option><option>Viúvo</option><option>Separado</option><option>União Estável</option></select></label>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" data-dg="calc">1 · Calcular (não cria nada)</button><button type="button" data-dg="simular">2 · Criar simulação</button><button type="button" data-dg="termo">3 · Ver termo</button><button type="button" data-dg="criar">4 · Virar proposta</button><button type="button" data-dg="contratos">5 · Ver contratos</button></div>
     <pre id="dg-out" style="margin-top:10px;max-height:340px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.35);padding:10px;border-radius:10px" hidden></pre></div>`; }
@@ -303,10 +307,10 @@ function digPayload() { const { l, cols, A } = DIG, v = re => { const c = cols.f
   const item = { hasInsurance: false, installmentValue: par, loanValue: valor, rate: A.taxa, term: 108, referenceCode: null };
   return { calculo: item, simulacao: {
     borrower: { name: v(/^nome$|nome_benef|^nome/) || 'vazio', identity: RES.cpf, benefit: so(v(/^beneficio$|^nb$|numero_beneficio/)), benefitState: uf, benefitStartDate: iso(v(/^dib$/)), benefitPaymentMethod: 2 /* 2 = conta corrente, 1 = cartão magnético */,
-      benefitType: parseInt(v(/especie_codigo|especie/), 10) || null, birthDate: iso(v(/nasc/)), motherName: v(/mae/) || e.NOME_MAE || 'vazio', maritalStatus: 'vazio', sex: sx === 'M' ? 'Masculino' : sx === 'F' ? 'Feminino' : 'vazio',
+      benefitType: parseInt(v(/especie_codigo|especie/), 10) || null, birthDate: iso(v(/nasc/)), motherName: v(/mae/) || e.NOME_MAE || 'vazio', maritalStatus: $('#dg-ec').value || 'vazio', sex: sx === 'M' ? 'Masculino' : sx === 'F' ? 'Feminino' : 'vazio',
       income: num(v(/valor_beneficio/)) || 0, phone: so($('#dg-tel').value), email: null,
       address: { street: [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' ') || 'vazio', number: String(e.NUMERO || '0'), complement: e.COMPLEMENTO || null, district: e.BAIRRO || 'vazio', city: e.CIDADE || v(/endereco_cidade|cidade/) || 'vazio', state: (e.UF || uf || '').toUpperCase(), zipCode: so(e.CEP || '') || '00000000' },
-      document: { type: { code: 'RG', name: 'Registro Geral' }, number: '00000000', issuingDate: null, issuingEntity: 'vazio', issuingState: uf } },
+      document: { type: { code: 'RG', name: 'Registro Geral' }, number: so($('#dg-rg').value) || '00000000', issuingDate: $('#dg-emi').value || null, issuingEntity: $('#dg-org').value.trim() || 'vazio', issuingState: uf } },
     items: [item],
     creditBankAccount: { bank: cod3(v(/banco_pagamento_codigo/)), branch: so(v(/banco_pagamento_agencia/)), number: conta.slice(0, -1), digit: conta.slice(-1) },
     step: { code: 0 }, files: [], note: null, brokerId: null, accessId: null } }; }
