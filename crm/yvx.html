@@ -284,47 +284,44 @@ async function buscarEndereco(cpf, token) { ENDE = null;
   try { const r = await fetch(SRV.url + '/endereco/' + cpf, { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' }); ENDE = r.ok ? await r.json() : (r.status === 404 ? { disponivel: false, enderecos: [] } : { erro: true }); } catch (e) { ENDE = { erro: true }; }
   if (RES && RES.cpf === cpf) desenhar(); }
 
-/* ---------- digitar o aumento de margem na Quali pela API (teste, só admin) ---------- */
-let DIG = null, DIGSIM = '';
-function digitarHTML() { const a = DIG.A.aum, tel = (MEUS || []).find(x => x.cpf === RES.cpf)?.telefone || '';
-  return `<div class="cart" style="margin-top:12px;border-color:rgba(34,197,94,.5)"><h3><i>🧪</i>Digitar aumento de margem na Quali <span class="sub" style="font-weight:400;margin-left:auto">teste pela API · só você vê</span></h3>
-    <div class="sub">Cria proposta <b>de verdade</b> na Quali (não existe ambiente de teste). O termo de autorização quem assina é o cliente.</div>
+/* ---------- digitar o aumento de margem na Quali pela API (atendente ou admin) ---------- */
+let DIG = null, DOCQ = null, DIGOK = null;
+function digitarHTML() { const a = DIG.A.aum, x = (MEUS || []).find(m => m.cpf === RES.cpf) || {}, d = DOCQ || {}, cRg = DIG.cols.find(c => /cliente_rg|^rg$/.test(c.k));
+  const rg = d.rg || so(cRg ? DIG.l[cRg.n] : ''), ok = DIGOK && DIGOK.cpf === RES.cpf ? DIGOK : (x.qlink ? { link: x.qlink.link, ja: true } : null);
+  const ecs = ['Solteiro', 'Casado', 'Divorciado', 'Viúvo', 'Separado', 'União Estável'];
+  return `<div class="cart" id="dg-box" style="margin-top:12px;border-color:rgba(34,197,94,.5)"><h3><i>✍️</i>Digitar aumento de margem na Quali <span class="sub" style="font-weight:400;margin-left:auto">tabela 000617 · 108x · 1,85%</span></h3>
+    ${ok ? `<div class="sub" style="color:#86efac;font-weight:700">${ok.ja ? 'Proposta já digitada para este cliente.' : '✅ Proposta digitada na Quali!'}</div><div class="campo"><span>Link de formalização</span><b title="Toque para copiar">${esc(ok.link || 'a Quali ainda não devolveu o link — atualize a página em instantes')}</b></div><div class="sub">O link também fica na lista de oportunidades (botão do WhatsApp) quando você atualizar a página.</div>` : `
+    <div class="sub">Confira com o cliente os dados do documento. Só vai para a Quali com tudo preenchido de verdade.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:end">
-      <label class="sub">Tabela<br><select id="dg-tab"><option value="000617">000617 Novo Aumento 108x 1,85%</option><option value="000618">000618 Novo Aumento CAR 90D 108x 1,85%</option></select></label>
-      <label class="sub">Parcela (R$)<br><input id="dg-par" value="${(Math.floor(a.util * 100) / 100).toFixed(2).replace('.', ',')}" style="width:110px"></label>
-      <label class="sub">Telefone do cliente<br><input id="dg-tel" value="${esc(tel)}" style="width:150px" placeholder="DDD + número"></label>
-      <label class="sub">RG do cliente<br><input id="dg-rg" value="${esc(so((DIG.cols.find(c => /cliente_rg|^rg$/.test(c.k)) ? DIG.l[DIG.cols.find(c => /cliente_rg|^rg$/.test(c.k)).n] : '') || ''))}" style="width:130px" placeholder="só números"></label>
-      <label class="sub">Emissão do RG<br><input id="dg-emi" type="date" style="width:150px"></label>
-      <label class="sub">Órgão<br><input id="dg-org" value="SSP" style="width:70px"></label>
-      <label class="sub">Estado civil<br><select id="dg-ec"><option value="">—</option><option>Solteiro</option><option>Casado</option><option>Divorciado</option><option>Viúvo</option><option>Separado</option><option>União Estável</option></select></label>
+      <label class="sub">Parcela (R$)<br><input id="dg-par" value="${(Math.floor(a.util * 100) / 100).toFixed(2).replace('.', ',')}" style="width:100px" ${EU.papel === 'admin' ? '' : 'readonly'}></label>
+      <label class="sub">Telefone<br><input id="dg-tel" value="${esc(x.telefone || '')}" style="width:140px" placeholder="DDD + número"></label>
+      <label class="sub">RG<br><input id="dg-rg" value="${esc(rg)}" style="width:130px" placeholder="só números"></label>
+      <label class="sub">Emissão do RG<br><input id="dg-emi" type="date" value="${esc(d.emissao || '')}" style="width:150px"></label>
+      <label class="sub">Órgão<br><input id="dg-org" value="${esc(d.orgao || 'SSP')}" style="width:70px"></label>
+      <label class="sub">Estado civil<br><select id="dg-ec"><option value="">— escolha —</option>${ecs.map(e => `<option${d.estado_civil === e ? ' selected' : ''}>${e}</option>`).join('')}</select></label>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" data-dg="calc">1 · Calcular (não cria nada)</button><button type="button" data-dg="simular">2 · Criar simulação</button><button type="button" data-dg="termo">3 · Ver termo</button><button type="button" data-dg="criar">4 · Virar proposta</button><button type="button" data-dg="contratos">5 · Ver contratos</button></div>
-    <pre id="dg-out" style="margin-top:10px;max-height:340px;overflow:auto;font-size:11px;white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.35);padding:10px;border-radius:10px" hidden></pre></div>`; }
-function digPayload() { const { l, cols, A } = DIG, v = re => { const c = cols.find(c => re.test(c.k) && String(l[c.n] ?? '').trim()); return c ? String(l[c.n]).trim() : ''; };
+    <div style="margin-top:10px"><button type="button" id="dg-go" style="background:linear-gradient(135deg,#15803d,#22c55e);color:#04130a;border:0;font-weight:800">✍️ Digitar proposta na Quali</button></div>
+    <div id="dg-out" class="sub" style="margin-top:8px"></div>`}</div>`; }
+function digPayload() { const { l, cols } = DIG, v = re => { const c = cols.find(c => re.test(c.k) && String(l[c.n] ?? '').trim()); return c ? String(l[c.n]).trim() : ''; }, d = DOCQ || {};
   const iso = x => { const m = dataBR(x || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; }, e = (ENDE && ENDE.enderecos && ENDE.enderecos[0]) || {};
-  const par = num($('#dg-par').value) || 0, i = A.taxa / 100, valor = Math.round(par * fatorPV(i, 108) * 100) / 100, conta = so(v(/banco_pagamento_conta|conta/));
-  const sx = (v(/sexo/) || e.SEXO || '').toUpperCase()[0], uf = (v(/^uf_beneficio$/) || v(/endereco_uf|^uf$/) || e.UF || '').toUpperCase();
-  const item = { hasInsurance: false, installmentValue: par, loanValue: valor, rate: A.taxa, term: 108, referenceCode: null };
-  return { calculo: item, simulacao: {
-    borrower: { name: v(/^nome$|nome_benef|^nome/) || 'vazio', identity: RES.cpf, benefit: so(v(/^beneficio$|^nb$|numero_beneficio/)), benefitState: uf, benefitStartDate: iso(v(/^dib$/)), benefitPaymentMethod: 2 /* 2 = conta corrente, 1 = cartão magnético */,
-      benefitType: parseInt(v(/especie_codigo|especie/), 10) || null, birthDate: iso(v(/nasc/)), motherName: v(/mae/) || e.NOME_MAE || 'vazio', maritalStatus: $('#dg-ec').value || 'vazio', sex: sx === 'M' ? 'Masculino' : sx === 'F' ? 'Feminino' : 'vazio',
-      income: num(v(/valor_beneficio/)) || 0, phone: so($('#dg-tel').value), email: null,
-      address: { street: [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' ') || 'vazio', number: String(e.NUMERO || '0'), complement: e.COMPLEMENTO || null, district: e.BAIRRO || 'vazio', city: e.CIDADE || v(/endereco_cidade|cidade/) || 'vazio', state: (e.UF || uf || '').toUpperCase(), zipCode: so(e.CEP || '') || '00000000' },
-      document: { type: { code: 'RG', name: 'Registro Geral' }, number: so($('#dg-rg').value) || '00000000', issuingDate: $('#dg-emi').value || null, issuingEntity: $('#dg-org').value.trim() || 'vazio', issuingState: uf } },
-    items: [item],
-    creditBankAccount: { bank: cod3(v(/banco_pagamento_codigo/)), branch: so(v(/banco_pagamento_agencia/)), number: conta.slice(0, -1), digit: conta.slice(-1) },
-    step: { code: 0 }, files: [], note: null, brokerId: null, accessId: null } }; }
-document.addEventListener('click', async ev => { const b = ev.target.closest('[data-dg]'); if (!b || !DIG) return; const acao = b.dataset.dg, o = $('#dg-out');
-  if ((acao === 'termo' || acao === 'criar' || acao === 'contratos') && !DIGSIM) { DIGSIM = (prompt('ID da simulação (aparece na resposta do passo 2):') || '').trim(); if (!DIGSIM) return; }
-  const P = digPayload();
-  if (acao === 'simular' && !confirm(`Criar simulação REAL na Quali para ${P.simulacao.borrower.name} (CPF ${fmtCPF(RES.cpf)})?\nParcela ${brl(P.calculo.installmentValue)} em 108x, valor ${brl(P.calculo.loanValue)}.`)) return;
-  if (acao === 'criar' && !confirm('Transformar a simulação em PROPOSTA na Quali? Só faça depois de o cliente assinar o termo.')) return;
-  b.disabled = true; o.hidden = false; o.textContent = 'Enviando…';
-  try { const { data, error } = await sb.functions.invoke('quali-digitar', { body: { acao, cpf: RES.cpf, tabela: $('#dg-tab').value, simulacao_id: DIGSIM, calculo: P.calculo, simulacao: P.simulacao } });
-    if (error) { let t = error.message; try { t = JSON.stringify(await error.context.json(), null, 2); } catch (x) {} o.textContent = 'ERRO: ' + t; return; }
-    if (acao === 'simular' && data.simulacao_id) DIGSIM = data.simulacao_id;
-    o.textContent = `${acao} → HTTP ${data.http}${data.simulacao_id ? ' · simulação ' + data.simulacao_id : ''}\n\nRESPOSTA:\n${JSON.stringify(data.resposta, null, 2)}\n\nENVIADO:\n${JSON.stringify(data.envio, null, 2)}`;
-  } catch (x) { o.textContent = 'ERRO: ' + x.message; } finally { b.disabled = false; } });
+  const conta = so(v(/banco_pagamento_conta/)), sx = (v(/sexo/) || e.SEXO || '').toUpperCase()[0], uf = (v(/^uf_beneficio$/) || v(/endereco_uf|^uf$/) || e.UF || '').toUpperCase();
+  return { borrower: { name: v(/cliente_nome|^nome$|^nome/), identity: RES.cpf, benefit: so(v(/^beneficio$|^nb$|numero_beneficio/)), benefitState: uf, benefitStartDate: iso(v(/^dib$/)), benefitPaymentMethod: 2,
+      benefitType: parseInt(v(/especie_codigo|especie/), 10) || null, birthDate: iso(v(/nasc/)), motherName: v(/mae/) || e.NOME_MAE || null, maritalStatus: $('#dg-ec').value, sex: sx === 'M' ? 'Masculino' : 'Feminino',
+      income: num(v(/valor_beneficio/)) || 0, phone: so($('#dg-tel').value), email: d.email || (v(/email/) || e.EMAIL || '').toLowerCase() || null,
+      address: { street: d.rua || [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' '), number: String(d.numero || e.NUMERO || '0'), complement: d.complemento || e.COMPLEMENTO || null, district: d.bairro || e.BAIRRO || '', city: d.cidade || e.CIDADE || v(/endereco_cidade/), state: (d.uf_end || e.UF || uf).toUpperCase(), zipCode: so(d.cep || e.CEP || '') },
+      document: { type: { code: 'RG', name: 'Registro Geral' }, number: so($('#dg-rg').value), issuingDate: $('#dg-emi').value || null, issuingEntity: $('#dg-org').value.trim().toUpperCase(), issuingState: (d.uf || uf).toUpperCase() } },
+    creditBankAccount: { bank: cod3(v(/banco_pagamento_codigo/)), branch: so(v(/banco_pagamento_agencia/)).padStart(4, '0'), number: conta.slice(0, -1), digit: conta.slice(-1) } }; }
+document.addEventListener('click', async ev => { const b = ev.target.closest('#dg-go'); if (!b || !DIG) return; const o = $('#dg-out'), cpf = RES.cpf;
+  const P = digPayload(), par = num($('#dg-par').value) || 0, falta = [!P.borrower.document.number && 'RG', !P.borrower.document.issuingDate && 'data de emissão', !P.borrower.maritalStatus && 'estado civil', P.borrower.phone.length < 10 && 'telefone'].filter(Boolean);
+  if (falta.length) { o.innerHTML = `<b style="color:#fca5a5">Preencha: ${falta.join(', ')}.</b>`; return; }
+  if (!confirm(`Digitar proposta REAL de aumento de margem na Quali?\n\n${P.borrower.name}\nCPF ${fmtCPF(cpf)}\nParcela ${brl(par)} em 108x`)) return;
+  b.disabled = true; o.textContent = 'Digitando na Quali… pode levar até 1 minuto.';
+  try { const { data, error } = await sb.functions.invoke('quali-digitar', { body: { cpf, parcela: par, simulacao: P } });
+    let r = data; if (error) { try { r = await error.context.json(); } catch (x) { r = { erro: error.message }; } }
+    if (!r || !r.ok) { o.innerHTML = `<b style="color:#fca5a5">Não digitou:</b> ${esc((r && r.erro) || 'erro desconhecido')}`; return; }
+    DIGOK = { cpf, link: r.link, ja: !!r.ja_existia }; const m = (MEUS || []).find(m => m.cpf === cpf); if (m && r.link) m.qlink = { link: r.link, parcela: r.parcela, prazo: r.prazo, liquido: r.liquido };
+    toast('Proposta digitada! O link aparece nas oportunidades ao atualizar a página.'); if (RES && RES.cpf === cpf) desenhar();
+  } catch (x) { o.innerHTML = '<b style="color:#fca5a5">Erro:</b> ' + esc(x.message); } finally { b.disabled = false; } });
 
 /* ---------- desenhar ---------- */
 let RES = null, SEL = 0;
@@ -352,7 +349,7 @@ function desenhar() {
     <div style="position:relative;z-index:1;margin-top:14px"${EU && EU.sem_quali ? ' hidden' : ''}><button type="button" id="b-op" style="${OPON ? 'background:linear-gradient(135deg,#b45309,#fbbf24);color:#1a1205;border:0;font-weight:700' : ''}">🎯 ${OPON ? 'Ocultar oportunidades' : 'Ver oportunidades (regras da Quali)'}</button></div></div>`;
   const A = OPON && !(EU && EU.sem_quali) ? analisar(L, cols) : null;
   if (A) h += oportunidadesHTML(A);
-  DIG = { l, cols, A }; if (A && A.aum && A.aum.util >= 20 && EU && EU.papel === 'admin') h += digitarHTML();
+  DIG = { l, cols, A }; if (A && A.aum && A.aum.util >= 20 && A.aum.valor && EU && ['admin', 'atendente'].includes(EU.papel)) h += digitarHTML();
   const por = {}; cols.forEach(c => { (por[grupoDe(c.k)] = por[grupoDe(c.k)] || []).push(c); });
   // dados do cliente/benefício (iguais em todos os contratos): tira o grupo "emprestimo", que é por contrato
   const ordemCli = ['pessoa', 'beneficio', 'margem', 'pagamento', 'contato', 'outros'];   // o endereço (cidade/UF da base) saiu: fica só o quadro Endereço completo
@@ -398,11 +395,11 @@ function meusHTML() {
     ${EU.papel === 'admin' && ats.length > 1 ? `<div class="abas" style="margin-top:6px"><button type="button" data-ma="" class="${!MA ? 'sel' : ''}">Todos</button>${ats.map(a => `<button type="button" data-ma="${esc(a)}" class="${a === MA ? 'sel' : ''}">${esc(a)}</button>`).join('')}</div>` : ''}
     <div class="sub" style="margin:8px 0">${L.length} cliente(s) · total estimado ${brl(L.reduce((t, x) => t + val[MF](x), 0))}. Toque no cliente para abrir a consulta. Dados da base de agosto/2026: confirme no extrato antes de ofertar.</div>`;
   const OPS = { port: [3, 4], novo: [1], aum: [6] }[MF], QF = { finalizado: ['✅ finalizado', '#86efac'], assinado: ['✍️ proposta assinada', '#86efac'], aguardando_assinatura: ['📲 aguardando o cliente assinar', '#fde68a'], andamento: ['⏳ em andamento', '#7dd3fc'], cancelado: ['✖ cancelada', '#fca5a5'], erro: ['⚠️ com erro', '#fca5a5'] };
-  const qLinha = x => { const q = (x.quali || []).find(q => OPS.includes(q.operacao_cod)); if (!q) return '';
+  const qLinha = x => { const lk = MF === 'aum' && x.qlink && x.qlink.link ? x.qlink : null, q = (x.quali || []).find(q => OPS.includes(q.operacao_cod)) || (lk ? { fase: 'aguardando_assinatura', status: 'Proposta digitada', parcela: lk.parcela, prazo: lk.prazo, liquido: lk.liquido } : null); if (!q) return MF === 'aum' && x.tem_doc ? '<div class="sub" style="margin:2px 0 4px 10px;font-size:12px;color:#86efac">📄 documento já no sistema — pronto para digitar</div>' : '';
     const f = QF[q.fase] || QF.andamento, tel = String(x.telefone || '').replace(/\D/g, ''), pn = String(x.nome || '').trim().split(/\s+/)[0] || '';
     const nomeP = pn.charAt(0).toUpperCase() + pn.slice(1).toLowerCase(), prod = MF === 'aum' ? 'aumento de margem' : MF === 'port' ? 'portabilidade' : 'empréstimo';
-    const msg = `Olá, ${nomeP}! Aqui é da XYZ. Sua proposta de ${prod} na Quali está pronta para assinatura.` + (q.parcela ? ` Parcela de ${brl(+q.parcela)} em ${q.prazo}x` + (MF !== 'port' && +q.liquido > 0 ? `, valor liberado de ${brl(+q.liquido)}` : '') + '.' : '') + ` Para conferir e assinar, acesse: ${QLINK}`;
-    const zap = q.fase === 'aguardando_assinatura' && QLINK && tel.length >= 10 ? `<a href="https://wa.me/${tel.length <= 11 ? '55' + tel : tel}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="margin-left:auto;padding:5px 12px;border-radius:999px;background:#16a34a;color:#fff;font-weight:700;text-decoration:none;font-size:12px">📲 Enviar link no WhatsApp</a>` : '';
+    const msg = `Olá, ${nomeP}! Aqui é da XYZ. Sua proposta de ${prod} na Quali está pronta para assinatura.` + (q.parcela ? ` Parcela de ${brl(+q.parcela)} em ${q.prazo}x` + (MF !== 'port' && +q.liquido > 0 ? `, valor liberado de ${brl(+q.liquido)}` : '') + '.' : '') + ` Para conferir e assinar, acesse: ${lk ? lk.link : ''}`;
+    const zap = q.fase === 'aguardando_assinatura' && lk && tel.length >= 10 ? `<a href="https://wa.me/${tel.length <= 11 ? '55' + tel : tel}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="margin-left:auto;padding:5px 12px;border-radius:999px;background:#16a34a;color:#fff;font-weight:700;text-decoration:none;font-size:12px">📲 Enviar link no WhatsApp</a>` : '';
     return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 4px 10px;font-size:12px"><span style="color:${f[1]};font-weight:700">Quali: ${f[0]}</span><span class="sub">${esc(q.status || '')}${q.status_em ? ' · ' + new Date(q.status_em).toLocaleDateString('pt-BR') : ''}</span>${zap}</div>`; };
   h += L.length ? L.map(x => `<button type="button" data-cpf="${x.cpf}" style="display:flex;width:100%;gap:10px;align-items:center;flex-wrap:wrap;text-align:left;margin-top:6px"><b style="flex:1;min-width:150px">${esc(x.nome || fmtCPF(x.cpf))}</b>${EU.papel === 'admin' && x.atendente ? `<span class="sub">${esc(x.atendente)}</span>` : ''}<span class="sub">${MF === 'port' ? x.fecha + ' contrato(s)' : MF === 'novo' ? 'margem livre ' + brl(+x.margem || 0) : 'margem +' + brl(+x.aum_margem)}</span><span style="color:#fde68a;font-weight:700">${brl(val[MF](x))}</span></button>${qLinha(x)}`).join('') : '<div class="sub">Nenhum cliente nesta lista.</div>';
   return h + '</div>'; }
@@ -435,7 +432,8 @@ $('#f').addEventListener('submit', async e => {
     // bancos que a base traz sem nome ("código 908 não encontrado")
     const NOMES = { '908': 'PARATI - CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.', '902': 'BANCO CREFISA S.A.' }, cN = j.colunas.find(c => chave(c) === 'contrato_banco_nome'), cC = j.colunas.find(c => chave(c) === 'contrato_banco_codigo');
     if (cN && cC) j.linhas.forEach(r => { const nm = NOMES[cod3(r[cC])]; if (nm && (!String(r[cN] || '').trim() || /n[aã]o encontrado/i.test(r[cN]))) r[cN] = nm; });
-    RES = Object.assign(j, { cpf }); SEL = -1; ENDE = null; desenhar(); buscarEndereco(cpf, session.access_token);
+    RES = Object.assign(j, { cpf }); SEL = -1; ENDE = null; DOCQ = null; desenhar(); buscarEndereco(cpf, session.access_token);
+    sb.rpc('quali_doc_do_cpf', { p_cpf: cpf }).then(({ data }) => { if (data && RES && RES.cpf === cpf) { DOCQ = data; desenhar(); } }).catch(() => {});
   } finally { b.disabled = false; b.textContent = 'Consultar'; }
 });
 (async () => {
