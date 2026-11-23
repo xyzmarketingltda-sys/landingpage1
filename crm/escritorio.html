@@ -835,7 +835,7 @@ function estadoDe(p) {
 function assentoDe(p, i) {
   if (p.papel === 'advogado') { let k = equipe.filter(q => q.papel === 'advogado' && online.has(q.id)).indexOf(p); k = Math.max(0, k); if (k < VIP_SEATS.length) return [VIP_SEATS[k][0] - .05, VIP_SEATS[k][1]]; return [7.15 + (k % 2) * .35, .55 + (k - 3) * .45]; }
   if (p.papel === 'admin') {
-    const k = Math.max(0, equipe.filter(q => q.papel === 'admin').indexOf(p));   // 2+ admins não empilham na mesma cadeira
+    const k = Math.max(0, equipe.filter(q => q.papel === 'admin' && online.has(q.id)).sort((m, n) => (/^lucas/i.test(n.nome) ? 1 : 0) - (/^lucas/i.test(m.nome) ? 1 : 0)).indexOf(p));   // só online contam; Lucas fica com a cadeira do chefe
     mesaDe[p.id] = DESKS.length - 1;
     const [x, y] = DESKS[DESKS.length - 1]; return [x - .25 + k * .7, y - .5];
   }
