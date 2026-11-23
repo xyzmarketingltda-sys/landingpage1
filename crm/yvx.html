@@ -191,8 +191,11 @@ function analisar(L, cols) {
   else if (margem != null && margem < 0) novo.negativa = true;
   // aumento de margem de janeiro (projeção pelo reajuste do piso e do INPC)
   const vb = num(g(l, 'valor_beneficio')), P = projQ(); let aum = null;
-  if (vb != null && vb > 0) { const noPiso = vb <= PISO_AT + 0.5, nb = noPiso ? P.piso : Math.min(TETO_AT * (1 + P.inpc / 100), Math.max(vb * (1 + P.inpc / 100), P.piso));
-    aum = { vb, nb, dif: nb - vb, m35: (nb - vb) * 0.35, m45: (nb - vb) * 0.45, noPiso, inval, P };
+  if (vb != null && vb > 0) { const noPiso = Math.abs(vb - PISO_AT) <= 0.5; let cota = 0;
+    if (vb < PISO_AT - 0.5) for (let n = 2; n <= 8; n++) if (Math.abs(vb - PISO_AT / n) <= 0.6) cota = n;   // cota de um benefício no piso dividido (ex.: pensão entre dependentes)
+    // no piso: vai ao novo mínimo · cota do piso: sobe na mesma proporção · abaixo do piso sem ser cota: só INPC · acima: INPC, nunca abaixo do novo piso, até o teto
+    const nb = noPiso ? P.piso : cota ? P.piso / cota : vb < PISO_AT ? vb * (1 + P.inpc / 100) : Math.min(TETO_AT * (1 + P.inpc / 100), Math.max(vb * (1 + P.inpc / 100), P.piso));
+    aum = { vb, nb, dif: nb - vb, m35: (nb - vb) * 0.35, m45: (nb - vb) * 0.45, noPiso, cota, inval, P };
     const dib = paraData(g(l, 'dib')); if (!noPiso && dib && dib.getFullYear() >= 2026) aum.prop = true;
     if (livre && !inval && prazoNovo > 0 && aum.m35 >= 20) { aum.prazo = prazoNovo; aum.valor = Math.min(150000, aum.m35 * fatorPV(i, prazoNovo)); } }
   // contratos
@@ -231,7 +234,7 @@ function aumentoHTML(A) { const a = A.aum; if (!a) return '';
   return `<div style="margin-top:14px;padding:12px 14px;border-radius:14px;border:1px solid rgba(34,197,94,.45);background:rgba(34,197,94,.07)"><b style="color:#86efac">📈 Aumento de margem em janeiro (projeção, sem divulgação oficial)</b>
     <div class="dest" style="margin-top:10px"><div><span>Benefício hoje</span><b>${brl(a.vb)}</b></div><div><span>Benefício projetado</span><b>${brl(a.nb)}</b></div><div><span>Aumento da margem (35%)</span><b>${brl(a.m35)}</b></div></div>
     <div class="sub" style="margin-top:8px;color:var(--texto)">${obs}</div>${a.prop ? '<div class="sub" style="margin-top:4px;color:#fde68a">Benefício iniciado em 2026: o reajuste acima do piso é proporcional ao mês de início, então o aumento real será menor.</div>' : ''}
-    <div class="sub" style="margin-top:8px">${a.noPiso ? 'Recebe o piso: vai para o novo salário mínimo.' : 'Acima do piso: corrigido só pelo INPC, limitado ao teto.'} Piso projetado: R$ <input id="q-piso" inputmode="decimal" value="${String(a.P.piso).replace('.', ',')}"> · INPC projetado: <input id="q-inpc" inputmode="decimal" value="${String(a.P.inpc).replace('.', ',')}"> %. Referência: em 2026 o piso subiu 6,79% e os demais 3,90%; o INPC foi 4,77% em 2025 e 3,71% em 2024.</div></div>`; }
+    <div class="sub" style="margin-top:8px">${a.noPiso ? 'Recebe o piso: vai para o novo salário mínimo.' : a.cota ? 'Recebe 1/' + a.cota + ' do piso (benefício dividido): sobe na mesma proporção do salário mínimo.' : a.vb < PISO_AT ? 'Abaixo do piso: corrigido só pelo INPC.' : 'Acima do piso: corrigido só pelo INPC, limitado ao teto.'} Piso projetado: R$ <input id="q-piso" inputmode="decimal" value="${String(a.P.piso).replace('.', ',')}"> · INPC projetado: <input id="q-inpc" inputmode="decimal" value="${String(a.P.inpc).replace('.', ',')}"> %. Referência: em 2026 o piso subiu 6,79% e os demais 3,90%; o INPC foi 4,77% em 2025 e 3,71% em 2024.</div></div>`; }
 const ICO = { ok: '✅', nao: '⛔', ver: '⚠️', na: '➖' };
 function vereditoHTML(c) { const est = c.troco != null && c.st !== 'nao' ? `Troco estimado: <b style="display:inline;color:#fde68a">${brl(c.troco)}</b> em ${c.prazo}x (mínimo ${brl(c.trocoMin)}${c.pct ? ', ' + c.pct + '% do endividamento' : ''}).` : '';
   return `<div class="vd ${c.st}"><b>${ICO[c.st]} ${esc(c.tit)}</b>${c.txt.map(esc).join('<br>')}${est ? (c.txt.length ? '<br>' : '') + est : ''}</div>`; }
