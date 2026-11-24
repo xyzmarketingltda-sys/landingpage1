@@ -86,6 +86,7 @@ td.n{text-align:right}tr.exc td{color:#8ba0bf}
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--suave)"><input type="checkbox" id="lote-so" checked> mostrar só os que têm seguro/pacote</label>
     </div>
     <div id="lote-prog" class="sub" style="margin-top:10px"></div>
+    <div id="lote-soma" hidden style="margin-top:12px;padding:12px 14px;border:1px solid rgba(34,197,94,.45);border-radius:12px;background:rgba(34,197,94,.06)"></div>
     <div class="tab" id="lote-tab" hidden><table><thead><tr><th>Arquivo</th><th>Cliente</th><th>CPF</th><th>Banco</th><th style="text-align:right">Seguro</th><th style="text-align:right">Pacote</th><th>Onde achou</th></tr></thead><tbody id="lote-lista"></tbody></table></div>
   </section>
   <div id="saida"></div>
@@ -240,7 +241,21 @@ async function guardarSemSeguro() {
   }
   aviso(`📦 ${ok} contrato(s) sem seguro guardado(s) para análise${sem.length - novos.length ? ` (${sem.length - novos.length} já estavam)` : ''}. Não precisa salvar esses: pode apagar da sua pasta.`);
 }
+/* soma do lote: total de seguro e de pacote, e o mesmo por banco (só contratos em que achou valor) */
+function somaLote() {
+  const com = LOTE.filter(r => r.tem), B = {};
+  com.forEach(r => { const k = (r.banco || 'Banco não identificado').trim().toUpperCase(), o = B[k] = B[k] || { n: 0, s: 0, p: 0 }; o.n++; o.s += Number(r.totalSeguro) || 0; o.p += Number(r.totalPacote) || 0; });
+  const ts = com.reduce((a, r) => a + (Number(r.totalSeguro) || 0), 0), tp = com.reduce((a, r) => a + (Number(r.totalPacote) || 0), 0);
+  return { n: com.length, ts, tp, bancos: Object.entries(B).sort((a, b) => (b[1].s + b[1].p) - (a[1].s + a[1].p)) };
+}
+function desenharSoma() {
+  const box = $('#lote-soma'), S = somaLote(); box.hidden = !S.n; if (!S.n) return;
+  box.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:baseline"><span>Seguro total: <b style="font-size:20px;color:#86efac">${brl(S.ts)}</b></span>${S.tp ? `<span>Pacote total: <b style="font-size:16px">${brl(S.tp)}</b></span><span>Seguro + pacote: <b style="font-size:16px">${brl(S.ts + S.tp)}</b></span>` : ''}<span class="sub">${S.n} contrato(s) com valor</span></div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:10px"><thead><tr style="color:var(--suave);text-align:left"><th style="padding:4px 6px">Banco</th><th style="padding:4px 6px;text-align:right">Contratos</th><th style="padding:4px 6px;text-align:right">Seguro</th><th style="padding:4px 6px;text-align:right">Pacote</th><th style="padding:4px 6px;text-align:right">Total</th></tr></thead><tbody>${S.bancos.map(([b, o]) =>
+      `<tr style="border-top:1px solid rgba(148,163,184,.18)"><td style="padding:5px 6px">${esc(b)}</td><td style="padding:5px 6px;text-align:right">${o.n}</td><td style="padding:5px 6px;text-align:right">${o.s ? brl(o.s) : '–'}</td><td style="padding:5px 6px;text-align:right">${o.p ? brl(o.p) : '–'}</td><td style="padding:5px 6px;text-align:right"><b>${brl(o.s + o.p)}</b></td></tr>`).join('')}</tbody></table>`;
+}
 function desenharLote() {
+  desenharSoma();
   const lista = LOTE.filter(r => !$('#lote-so').checked || r.tem || r.imagem || r.erro).sort(natural);
   $('#lote-tab').hidden = !LOTE.length; $('#lote-csv').hidden = $('#lote-copiar').hidden = !LOTE.length;
   $('#lote-lista').innerHTML = lista.map(r => `<tr${r.tem ? '' : ' class="exc"'}><td>${esc(r.arquivo)}${r.pasta ? `<br><small style="color:var(--suave)">${esc(r.pasta)}</small>` : ''}</td>
@@ -258,7 +273,8 @@ $('#lote-csv').onclick = () => {
 };
 $('#lote-copiar').onclick = async e => {
   const t = [...LOTE].filter(r => r.tem).sort(natural).map(r => `${r.arquivo} — ${r.banco || ''}${r.totalSeguro ? ' · seguro ' + brl(r.totalSeguro) : ''}${r.totalPacote ? ' · pacote ' + brl(r.totalPacote) : ''}`).join('\n');
-  await navigator.clipboard.writeText(t || 'Nenhum com seguro/pacote'); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar lista dos que têm', 2000);
+  const S = somaLote(), res = S.n ? '\n\nSEGURO TOTAL: ' + brl(S.ts) + (S.tp ? ' · PACOTE TOTAL: ' + brl(S.tp) + ' · SOMA: ' + brl(S.ts + S.tp) : '') + '\nPOR BANCO:\n' + S.bancos.map(([b, o]) => `${b} — ${o.n} contrato(s) — ${brl(o.s + o.p)}`).join('\n') : '';
+  await navigator.clipboard.writeText(t ? t + res : 'Nenhum com seguro/pacote'); e.target.textContent = '✓ Copiado!'; setTimeout(() => e.target.textContent = '📋 Copiar lista dos que têm', 2000);
 };
 
 function ligar(R) {
