@@ -396,6 +396,13 @@
     if (r.banco && /\bSEGUE\b|QUALI|QI SOCIEDADE/.test(r.banco)) r.banco = 'QI Sociedade de Crédito';   // Segue / Quali / QI = mesma instituição: QI Sociedade de Crédito
     const vistos = new Set(), uniq = a => a.filter(x => { const k = x.v.toFixed(2); if (vistos.has(k)) return false; vistos.add(k); return true; });
     r.seguro = uniq(acharValores(T, ROT_SEGURO));
+    // Campo do seguro em branco (24/11/2026): o leitor pegava o número seguinte, que era o valor do empréstimo.
+    // Vale só para a leitura comum por rótulo: os quadros próprios (Paraná Banco, tabela QI/VCTEX) vêm depois e não passam por aqui.
+    // Trava: valor de "seguro" igual ao valor do empréstimo / liberado / financiado / total do próprio contrato não é seguro.
+    { const base = new Set(), RB = /(?:valor\s+(?:(?:do|de|da)\s+)?(?:empr[ée]stimo|cr[ée]dito|m[úu]tuo|principal|solicitado|contratado|contrato|liberado|financiado|total|l[íi]quido)|total\s+financiado|montante|valor\s+total\s+(?:do\s+)?(?:empr[ée]stimo|financiado))[^\d]{0,25}(\d{1,3}(?:\.\d{3})*,\d{2})/gi;
+      let mb; while ((mb = RB.exec(T))) base.add(Number(mb[1].replace(/\./g, '').replace(',', '.')).toFixed(2));
+      const antes = r.seguro.length; r.seguro = r.seguro.filter(x => !base.has(x.v.toFixed(2)));
+      if (antes && !r.seguro.length) r.seguroDescartado = true; }
     // quadro "Seguro Prestamista ( )SIM (X)NÃO" (Paraná Banco e parecidos): o seguro NÃO foi contratado e o número que vem
     // depois de "Valor do Seguro R$" é o valor da parcela, que fica na mesma linha do quadro
     const semSeguro = /SeguroPrestamista\*?\(\)SIM\(X\)N[ÃA]O/i.test(T.replace(/\s+/g, ''));
@@ -425,12 +432,6 @@
       const v = mc ? Number(mc[1].replace(/\./g, '').replace(',', '.')) : 0;
       if (v > 0 && !naoMarcado) r.seguro.push({ v, trecho: 'Seguro ' + mc[1] + ' (texto quebrado no PDF — conferir)' });
     }
-    // Campo do seguro em branco (24/11/2026): o leitor pegava o número seguinte, que era o valor do empréstimo.
-    // Trava: valor de "seguro" igual ao valor do empréstimo / liberado / financiado / total do próprio contrato não é seguro.
-    { const base = new Set(), RB = /(?:valor\s+(?:(?:do|de|da)\s+)?(?:empr[ée]stimo|cr[ée]dito|m[úu]tuo|principal|solicitado|contratado|contrato|liberado|financiado|total|l[íi]quido)|total\s+financiado|montante|valor\s+total\s+(?:do\s+)?(?:empr[ée]stimo|financiado))[^\d]{0,25}(\d{1,3}(?:\.\d{3})*,\d{2})/gi;
-      let mb; while ((mb = RB.exec(T))) base.add(Number(mb[1].replace(/\./g, '').replace(',', '.')).toFixed(2));
-      const antes = r.seguro.length; r.seguro = r.seguro.filter(x => !base.has(x.v.toFixed(2)));
-      if (antes && !r.seguro.length) r.seguroDescartado = true; }
     r.totalSeguro = r.seguro.reduce((a, x) => a + x.v, 0); r.totalPacote = r.pacote.reduce((a, x) => a + x.v, 0);
     r.tem = r.totalSeguro > 0 || r.totalPacote > 0;
     return r;
