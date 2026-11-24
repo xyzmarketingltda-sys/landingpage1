@@ -36,7 +36,11 @@ label{display:block;font-size:12px;color:var(--suave);margin:0 0 5px;font-weight
 /* PC fraco: sem desfoque de vidro (é o efeito mais caro da tela) e sem sombras grandes; o fundo dos painéis fica mais fechado para manter a leitura */
 .leve *,.leve *::before,.leve *::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .leve .vidro{background:rgba(6,16,38,.96)}.leve header{background:rgba(2,6,15,.96)}
-.leve #modal{background:rgba(0,0,0,.86)}.leve #modal .cartao{box-shadow:none}
+.leve #modal{background:#02060f}.leve #modal .cartao{box-shadow:none}
+.leve .ouro,.leve .premio.livre,.leve .premio.livre::after,.leve #card-esc .sub i.on,.leve #flut-card,.leve #flut-card::before,.leve #flut-bola,.leve .coroa,.leve .neon,.leve #quest.nova .hex,.leve #quest.nova b{animation:none!important}
+.leve .ouro,.leve .neon{filter:none!important}.leve .neon{text-shadow:0 0 6px #22d3ee}
+.leve input,.leve select,.leve textarea{transition:none}.leve input:focus,.leve select:focus,.leve textarea:focus{box-shadow:none}
+.leve .vinheta{display:none}
 
 /* LOGIN */
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -709,7 +713,10 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
   const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W, H, DPR, pts = [], mx = 0, my = 0, rx = 0, ry = 0, t = 0;
   // PC fraco (até 4 núcleos ou até 4 GB): menos pontos e menos quadros por segundo
-  const LEVE = (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 8) <= 4;
+  // Modo leve é o padrão para todos (24/11/2026): fundo parado e sem efeitos, para digitar sem atraso nos PCs do escritório.
+  // Quem quiser o fundo animado de volta: abrir o CRM com ?fundo=vivo (e ?fundo=leve para voltar).
+  try { const q = new URLSearchParams(location.search).get('fundo'); if (q === 'vivo') localStorage.setItem('fundo-vivo', '1'); if (q === 'leve') localStorage.removeItem('fundo-vivo'); } catch (e) {}
+  const LEVE = (() => { try { return localStorage.getItem('fundo-vivo') !== '1'; } catch (e) { return true; } })();
   const N = innerWidth < 700 ? 140 : LEVE ? 150 : 240;
   let ultMexeu = performance.now(), ultQuadro = 0;
   ['pointermove', 'wheel', 'pointerdown'].forEach(ev => addEventListener(ev, () => { ultMexeu = performance.now(); }, { passive: true }));   // digitar não acorda a animação
@@ -778,6 +785,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
     agora = agora || performance.now();
     // limita os quadros: 24/s (12/s em PC fraco) e só 2/s quando ninguém mexe há 20 s; aba escondida não desenha
     const parado = agora - ultMexeu > 20000, passo = parado ? (LEVE ? 2000 : 500) : LEVE ? 250 : 41;
+    if (LEVE && ultQuadro) return;
     if (ultQuadro && ocupado()) { setTimeout(() => requestAnimationFrame(quadro), 600); return; }
     if (document.hidden || agora - ultQuadro < passo) { if (LEVE) setTimeout(() => requestAnimationFrame(quadro), 120); else requestAnimationFrame(quadro); return; }
     const fator = ultQuadro ? Math.min(40, (agora - ultQuadro) / 16.7) : 1; ultQuadro = agora;
@@ -815,9 +823,10 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
       if (a.p.c && r > 1.2) { ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},.08)`; ctx.beginPath(); ctx.arc(a.x, a.y, r * 4, 0, 6.283); ctx.fill(); }
     }
     ctx.globalAlpha = .82; ctx.drawImage(cidade, -60 - mx * 40, my * 10, W + 120, H); ctx.globalAlpha = 1;
-    requestAnimationFrame(quadro);
+    if (!LEVE) requestAnimationFrame(quadro);          // no modo leve desenha uma vez e para
   }
   quadro();
+  if (LEVE) { let tr; addEventListener('resize', () => { clearTimeout(tr); tr = setTimeout(() => { ultQuadro = 0; quadro(); }, 400); }); }
 })();
 
 /* ================= CRM ================= */
@@ -1718,11 +1727,12 @@ let docsNovos = [];
 function desenharDocs(existentes) {
   const ex = (existentes || []).map(d => `<span class="${d.drive_em ? 'ok' : ''}" title="${d.drive_em ? 'Já está no Drive' : 'Aguardando o robô levar para o Drive (até 10 min)'}">${d.drive_em ? '✅' : '⏳'} ${esc(d.nome)}</span>`).join('');
   const nv = docsNovos.map((f, i) => `<span>📄 ${esc(f.name)} <button type="button" data-tira="${i}" title="Tirar">✕</button></span>`).join('');
-  $('#c-docs-lista').innerHTML = ex + nv;
+  const esp = (existentes || []).some(d => !d.drive_em) ? '<div style="flex-basis:100%;font-size:12px;color:var(--suave)">⏳ = já está salvo no CRM; o robô leva para o Drive em até 10 minutos e aí fica ✅ verde. Não precisa anexar de novo.</div>' : '';
+  $('#c-docs-lista').innerHTML = ex + nv + esp;
   $$('#c-docs-lista [data-tira]').forEach(b => b.onclick = () => { docsNovos.splice(+b.dataset.tira, 1); desenharDocs(existentes); aplicarSeguroPorBanco(false); });
   $('#c-docs-lista').dataset.ex = JSON.stringify(existentes || []);
 }
-function addDocs(lista) { const novos = []; for (const f of lista) if (f.size <= 25 * 1024 * 1024) { docsNovos.push(f); novos.push(f); } else toast(f.name + ' passa de 25 MB.', true); desenharDocs(JSON.parse($('#c-docs-lista').dataset.ex || '[]')); lerValorDosContratos(novos); }
+function addDocs(lista) { const novos = [], ja = JSON.parse($('#c-docs-lista').dataset.ex || '[]').map(d => d.nome); let rep = 0; for (const f of lista) if (ja.includes(f.name) || docsNovos.some(x => x.name === f.name && x.size === f.size)) rep++; else if (f.size <= 25 * 1024 * 1024) { docsNovos.push(f); novos.push(f); } else toast(f.name + ' passa de 25 MB.', true); desenharDocs(JSON.parse($('#c-docs-lista').dataset.ex || '[]')); lerValorDosContratos(novos); if (rep) toast(`${rep} arquivo(s) já estavam salvos neste cliente: não precisa anexar de novo. ⏳ = salvo, indo para o Drive.`); }
 // lê o contrato na hora (mesmo leitor do site) e preenche o valor do seguro se estiver vazio
 let leitorPdf = null;
 async function carregarLeitor() {
