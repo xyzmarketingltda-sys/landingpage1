@@ -214,32 +214,34 @@ async function lote(arqs) {
   desenharLote();
   guardarSemSeguro().catch(e => console.warn('triagem', e));
 }
-// Os contratos SEM seguro não precisam mais ser guardados à mão: o sistema guarda uma cópia e o robô leva para a pasta
-// "TRIAGEM - contratos sem seguro" do Drive, já com a leitura de irregularidades. (Os que TÊM seguro a atendente lança normalmente.)
+// Os contratos lidos não precisam mais ser guardados à mão: o sistema guarda uma cópia e o robô leva para o Drive.
+// SEM seguro: pasta "TRIAGEM - contratos sem seguro", já com a leitura de irregularidades.
+// COM seguro (desde 24/11/2026): também ficam guardados, com o valor por banco. Quando a atendente lança o cliente, o CRM já traz
+// banco e valor preenchidos, e o robô leva esses contratos para a pasta do cliente.
 async function guardarSemSeguro() {
-  const sb = window.__sb, sem = LOTE.filter(r => !r.tem && !r.imagem && !r.erro && r._f && r._f.size < 20 * 1024 * 1024);
+  const sb = window.__sb, sem = LOTE.filter(r => !r.imagem && !r.erro && r._f && r._f.size < 20 * 1024 * 1024);
   if (!sb || !sem.length) return;
   const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
   for (const r of sem) r._h = hex(await crypto.subtle.digest('SHA-256', await r._f.arrayBuffer()));
   const { data: ja } = await sb.rpc('triagem_ja_tem', { p_hashes: sem.map(r => r._h) });
   const tem = new Set(ja || []), novos = sem.filter(r => !tem.has(r._h));
   const aviso = t => { let d = document.getElementById('lote-triagem'); if (!d) { d = document.createElement('div'); d.id = 'lote-triagem'; d.className = 'sub'; d.style.marginTop = '6px'; $('#lote-prog').after(d); } d.textContent = t; };
-  if (!novos.length) return aviso(`📦 Os ${sem.length} sem seguro já estavam guardados para análise. Pode apagar da sua pasta.`);
+  if (!novos.length) return aviso(`📦 Os ${sem.length} contratos já estavam guardados. Pode apagar da sua pasta.`);
   let ok = 0; const mes = new Date().toISOString().slice(0, 7);
   for (const r of novos) {
-    aviso(`📦 Guardando os sem seguro para análise: ${ok + 1} de ${novos.length}…`);
+    aviso(`📦 Guardando os contratos: ${ok + 1} de ${novos.length}…`);
     try {
       const a = window.XYZContrato && r._txt ? XYZContrato.analisar(r._txt, r.arquivo) : null;
-      if (a && a.tipo !== 'contrato') continue;                     // não é contrato de empréstimo (procuração, RG…): não guarda
+      if (a && a.tipo !== 'contrato' && !r.tem) continue;           // não é contrato de empréstimo (procuração, RG…): não guarda
       const caminho = `triagem/${mes}/${r._h.slice(0, 24)}.pdf`;
       const up = await sb.storage.from('docs').upload(caminho, r._f, { contentType: 'application/pdf', upsert: true });
       if (up.error) throw up.error;
       const { alertas, arquivo, tipo, banco, data, nivel, ...dados } = a || {};
-      const { error } = await sb.rpc('triagem_registrar', { p: { hash: r._h, arquivo: r.arquivo, cpf: r.cpf || '', nome: r.nome || '', banco: r.banco || banco || '', tamanho: r._f.size, caminho, nivel: nivel || null, alertas: alertas || [], dados: Object.assign({ data: data || null }, dados) } });
+      const { error } = await sb.rpc('triagem_registrar', { p: { hash: r._h, arquivo: r.arquivo, cpf: r.cpf || '', nome: r.nome || '', banco: r.banco || banco || '', tamanho: r._f.size, caminho, nivel: nivel || null, alertas: alertas || [], dados: Object.assign({ data: data || null }, dados, r.tem ? { com_seguro: true, seguro_lido: r.totalSeguro || 0, pacote_lido: r.totalPacote || 0 } : {}) } });
       if (error) throw error; ok++;
     } catch (e) { console.warn('triagem', r.arquivo, e); }
   }
-  aviso(`📦 ${ok} contrato(s) sem seguro guardado(s) para análise${sem.length - novos.length ? ` (${sem.length - novos.length} já estavam)` : ''}. Não precisa salvar esses: pode apagar da sua pasta.`);
+  aviso(`📦 ${ok} contrato(s) guardado(s)${sem.length - novos.length ? ` (${sem.length - novos.length} já estavam)` : ''}. Os com seguro já aparecem com banco e valor quando você lançar o cliente no CRM; os sem seguro ficam para análise. Pode apagar da sua pasta.`);
 }
 /* soma do lote: total de seguro e de pacote, e o mesmo por banco (só contratos em que achou valor) */
 function somaLote() {

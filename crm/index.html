@@ -666,7 +666,7 @@ select{color-scheme:dark}select option,select optgroup{background:#061230;color:
       <div><label>Advogado (escritório) *</label><input id="c-adv" list="lista-adv" placeholder="Ex.: IGOR" required autocomplete="off"><datalist id="lista-adv"></datalist></div>
       <div class="inteiro" id="c-multi" hidden>
         <div id="c-multi-lista"></div>
-        <button type="button" class="btn sec peq" id="c-multi-add">+ Adicionar outro banco deste cliente</button>
+        <button type="button" class="btn sec peq" id="c-multi-add">+ Adicionar banco deste cliente</button>
         <small style="color:var(--suave);font-size:11px;margin-left:8px">Mesmo cliente com seguro em mais de um banco: cadastre tudo de uma vez (1 lançamento por banco).</small>
       </div>
       <div id="c-at-box" hidden><label>Atendente</label><select id="c-at"></select></div>
@@ -1740,25 +1740,39 @@ const SEG = new Map();   // arquivo -> { banco, v }
 const chBanco = b => { const t = String(b || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ');
   if (/\bQI\b|QUALI|SEGUE/.test(t)) return 'QI'; if (/BANCO DO BRASIL|^\s*BB\s*$/.test(t)) return 'BB';
   return t.split(/\s+/).filter(w => w && !['BANCO', 'SA', 'S', 'A', 'FINANCEIRA', 'DO', 'DE', 'DA', 'CREDITO', 'FINANCIAMENTO', 'INVESTIMENTO', 'SOCIEDADE'].includes(w))[0] || ''; };
+let TRI = [];            // seguro por banco já lido na verificação de seguros (busca em lote) para este CPF/nome
 function aplicarSeguroPorBanco(avisar) {
   if (produtoSel !== 'seguro') return;
   const lidos = docsNovos.map(f => SEG.get(f)).filter(x => x && x.v > 0), nota = (() => { let n = $('#c-seg-nota'); if (!n) { n = document.createElement('div'); n.id = 'c-seg-nota'; n.style.cssText = 'font-size:12px;margin-top:6px;line-height:1.6'; $('#c-docs-lista').after(n); } return n; })();
-  if (!lidos.length) { nota.innerHTML = ''; return; }
-  const G = {}; lidos.forEach(x => { const k = chBanco(x.banco), o = G[k] = G[k] || { nome: x.banco || 'banco não identificado', total: 0, n: 0 }; o.total += x.v; o.n++; });
-  const ident = Object.keys(G).filter(k => k);
-  const campos = [{ b: $('#c-banco'), v: $('#c-valor') }].concat($$('#c-multi-lista .c-multi-linha').map(d => ({ b: d.querySelector('.cm-banco'), v: d.querySelector('.cm-valor') })));
+  const G = {}; lidos.forEach(x => { const k = chBanco(x.banco), o = G[k] = G[k] || { nome: x.banco || 'banco não identificado', total: 0, n: 0, de: 'contratos anexados' }; o.total += x.v; o.n++; });
+  // o que veio da verificação de seguros entra para os bancos que não têm contrato anexado agora (não soma duas vezes o mesmo banco)
+  TRI.forEach(x => { const k = chBanco(x.banco); if (!G[k]) G[k] = { nome: x.banco, total: Number(x.total) || 0, n: x.contratos || 1, de: 'verificação de seguros' }; });
+  if (!Object.keys(G).length) { nota.innerHTML = ''; return; }
+  const ident = Object.keys(G).filter(k => k), novoCli = !$('#c-multi').hidden;
+  const linhasForm = () => [{ b: $('#c-banco'), v: $('#c-valor') }].concat($$('#c-multi-lista .c-multi-linha').map(d => ({ b: d.querySelector('.cm-banco'), v: d.querySelector('.cm-valor') })));
   const por = (c, o) => { if (!lerValor(c.v.value) || c.v.dataset.auto === '1') { c.v.value = (Math.round(o.total * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); c.v.dataset.auto = '1'; } };
-  // banco principal em branco e contratos de um banco só: preenche o banco também
-  if (!campos[0].b.value.trim() && ident.length === 1 && !G['']) campos[0].b.value = G[ident[0]].nome;
   const usados = {};
-  campos.forEach((c, i) => { const k = chBanco(c.b.value); if (!c.b.value.trim()) return;
-    const o = G[k] || (i === 0 && !ident.length ? G[''] : null);     // contrato sem banco identificado só entra no banco principal quando não há outro banco lido
+  linhasForm().forEach((c, i) => { const k = chBanco(c.b.value); if (!c.b.value.trim()) return;
+    const o = G[k] || (i === 0 && !ident.length ? G[''] : null);     // contrato sem banco identificado só entra quando não há outro banco lido
     if (o) { por(c, o); usados[G[k] ? k : ''] = 1; } else if (c.v.dataset.auto === '1') { c.v.value = ''; c.v.dataset.auto = ''; } });
-  const linhas = Object.entries(G).map(([k, o]) => `${usados[k] ? '<span style="color:#86efac">✔</span>' : '<span style="color:#fbbf24">●</span>'} <b>${esc(o.nome)}</b>: ${brl(o.total)} em ${o.n} contrato(s)${usados[k] ? '' : ' — <span style="color:#fbbf24">não está neste lançamento</span>'}`);
-  const fora = Object.keys(G).filter(k => !usados[k]).length;
-  nota.innerHTML = '💰 Seguro lido nos contratos, por banco:<br>' + linhas.join('<br>') + (fora ? `<br><span style="color:var(--suave)">O valor de cada lançamento é só o do banco dele. Para lançar os outros, use “+ Adicionar outro banco deste cliente”.</span>` : '');
-  if (avisar) toast(fora ? '💰 Achei seguro em mais de um banco: cada lançamento ficou só com o valor do banco dele.' : '💰 Seguro prestamista lido no contrato e preenchido por banco.');
+  // cada banco com seguro vira uma linha banco x valor: completa a primeira linha se estiver vazia e cria as outras sozinho
+  ident.filter(k => !usados[k]).forEach(k => { const o = G[k]; let c = linhasForm().find(x => !x.b.value.trim());
+    if (!c && novoCli) { linhaBancoExtra(true); c = linhasForm().pop(); }
+    if (c) { c.b.value = o.nome; c.v.value = ''; c.v.dataset.auto = '1'; por(c, o); usados[k] = 1; } });
+  const linhas = Object.entries(G).map(([k, o]) => `${usados[k] ? '<span style="color:#86efac">✔</span>' : '<span style="color:#fbbf24">●</span>'} <b>${esc(o.nome)}</b>: ${brl(o.total)} em ${o.n} contrato(s) <span style="color:var(--suave)">· ${o.de}</span>${usados[k] ? '' : ' — <span style="color:#fbbf24">não está neste lançamento</span>'}`);
+  nota.innerHTML = '💰 Seguro por banco (cada banco é um lançamento com o valor só dele):<br>' + linhas.join('<br>') + '<br><span style="color:var(--suave)">Confira os valores antes de salvar; tire com ✕ o banco que não for lançar.</span>';
+  if (avisar) toast(Object.keys(G).length > 1 ? '💰 Seguro em mais de um banco: preenchi banco e valor de cada um.' : '💰 Seguro prestamista preenchido pelo contrato.');
 }
+// ao digitar o CPF (ou o nome, se ainda não há CPF) de um cliente novo: traz o que a verificação de seguros já leu para ele
+let triT = null, triChave = '';
+function buscarTriagem() {
+  if ($('#c-multi').hidden || produtoSel !== 'seguro') return;
+  const cpf = $('#c-cpf').value.replace(/\D/g, ''), nome = $('#c-nome').value.trim(), ch = cpf.length === 11 ? cpf : nome.length >= 10 ? nome.toUpperCase() : '';
+  if (!ch || ch === triChave) return; triChave = ch;
+  clearTimeout(triT); triT = setTimeout(async () => { try { const { data } = await sb.rpc('triagem_seguros', { p_cpf: cpf.length === 11 ? cpf : '', p_nome: nome }); if (ch !== triChave) return; TRI = data || []; if (TRI.length) aplicarSeguroPorBanco(true); } catch (e) { console.warn('triagem', e); } }, 500);
+}
+document.addEventListener('input', e => { if (e.target && e.target.id === 'c-cpf') buscarTriagem(); });
+document.addEventListener('change', e => { if (e.target && e.target.id === 'c-nome') buscarTriagem(); });
 async function lerValorDosContratos(arqs) {
   const pdfs = arqs.filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)); if (!pdfs.length || produtoSel !== 'seguro') return;
   try {
@@ -1780,7 +1794,7 @@ const dz = $('#c-docs-drop');
 ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('sobre'); }));
 dz.addEventListener('drop', e => addDocs(e.dataTransfer.files));
 async function carregarDocsCliente(id) {
-  docsNovos = []; SEG.clear(); { const n = $('#c-seg-nota'); if (n) n.innerHTML = ''; const v = $('#c-valor'); if (v) v.dataset.auto = ''; } desenharDocs([]);
+  docsNovos = []; SEG.clear(); TRI = []; triChave = ''; { const n = $('#c-seg-nota'); if (n) n.innerHTML = ''; const v = $('#c-valor'); if (v) v.dataset.auto = ''; } desenharDocs([]);
   if (!id) return;
   const { data } = await sb.from('cliente_docs').select('nome, drive_em').eq('cliente_id', id).order('id');
   desenharDocs(data || []);
@@ -1825,14 +1839,14 @@ async function prepararProduto(c) {
 }
 
 /* vários bancos do mesmo cliente num cadastro só (cada banco vira um lançamento) */
-function linhaBancoExtra() {
+function linhaBancoExtra(semFoco) {
   const d = document.createElement('div'); d.className = 'c-multi-linha'; d.style.cssText = 'display:flex;gap:8px;align-items:flex-end;margin-bottom:8px';
-  d.innerHTML = '<div style="flex:2"><label>Outro banco</label><input class="cm-banco" placeholder="Ex.: Paraná, QI…"></div><div style="flex:1"><label>Valor (R$)</label><input class="cm-valor" inputmode="decimal" placeholder="0,00"></div><button type="button" class="btn sec peq" title="Tirar este banco" style="margin-bottom:4px">✕</button>';
+  d.innerHTML = '<div style="flex:2"><label>Banco</label><input class="cm-banco" placeholder="Ex.: Paraná, QI…"></div><div style="flex:1"><label>Valor (R$)</label><input class="cm-valor" inputmode="decimal" placeholder="0,00"></div><button type="button" class="btn sec peq" title="Tirar este banco" style="margin-bottom:4px">✕</button>';
   d.querySelector('button').onclick = () => d.remove();
-  $('#c-multi-lista').appendChild(d); d.querySelector('.cm-banco').focus();
+  $('#c-multi-lista').appendChild(d); if (semFoco !== true) d.querySelector('.cm-banco').focus();
 }
 function bancosExtras() { return $$('#c-multi-lista .c-multi-linha').map(d => ({ banco: d.querySelector('.cm-banco').value.trim(), valor: lerValor(d.querySelector('.cm-valor').value) })).filter(x => x.banco); }
-document.addEventListener('DOMContentLoaded', () => { const b = document.getElementById('c-multi-add'); if (b) b.onclick = linhaBancoExtra; });
+document.addEventListener('DOMContentLoaded', () => { const b = document.getElementById('c-multi-add'); if (b) b.onclick = () => linhaBancoExtra(); });
 // horário em que o cliente assinou no ZapSign (RPC só responde para o admin)
 async function assinaturasHtml(cid) {
   const { data, error } = await sb.rpc('assinaturas_do_cliente', { cid });
