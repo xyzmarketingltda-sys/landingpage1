@@ -314,9 +314,9 @@ function payloadProposta(D, c) { const { v, e, d, cpf } = D, iso = x => { const 
   return { borrower: { name: v(/cliente_nome|^nome$|^nome/), identity: cpf, benefit: so(v(/^beneficio$|^nb$|numero_beneficio/)), benefitState: uf, benefitStartDate: iso(v(/^dib$/)), benefitPaymentMethod: 2,
       benefitType: parseInt(v(/especie_codigo|especie/), 10) || null, birthDate: iso(v(/nasc/)), motherName: v(/mae/) || e.NOME_MAE || null, maritalStatus: c.ec, sex: sx === 'M' ? 'Masculino' : 'Feminino',
       income: num(v(/valor_beneficio/)) || 0, phone: so(c.tel), email: d.email || (v(/email/) || e.EMAIL || '').toLowerCase() || null,
-      address: { street: d.rua || [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' '), number: String(d.numero || e.NUMERO || '0'), complement: d.complemento || e.COMPLEMENTO || null, district: d.bairro || e.BAIRRO || '', city: d.cidade || e.CIDADE || v(/endereco_cidade/), state: (d.uf_end || e.UF || uf).toUpperCase(), zipCode: so(d.cep || e.CEP || '') },
-      document: { type: { code: 'RG', name: 'Registro Geral' }, number: so(c.rg), issuingDate: c.emi || null, issuingEntity: String(c.org || '').trim().toUpperCase(), issuingState: String(c.uf || d.uf || uf).toUpperCase() } },
-    creditBankAccount: { bank: cod3(v(/banco_pagamento_codigo/)), branch: so(v(/banco_pagamento_agencia/)).padStart(4, '0'), number: conta.slice(0, -1), digit: conta.slice(-1) } }; }
+      address: c.end ? { street: c.end.rua, number: String(c.end.num || '0'), complement: c.end.cpl || null, district: c.end.bai, city: c.end.cid, state: c.end.uf.toUpperCase(), zipCode: so(c.end.cep) } : { street: d.rua || [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' '), number: String(d.numero || e.NUMERO || '0'), complement: d.complemento || e.COMPLEMENTO || null, district: d.bairro || e.BAIRRO || '', city: d.cidade || e.CIDADE || v(/endereco_cidade/), state: (d.uf_end || e.UF || uf).toUpperCase(), zipCode: so(d.cep || e.CEP || '') },
+      document: { type: c.tipo === 'CNH' ? { code: 'CNH', name: 'Carteira Nacional de Habilitação' } : { code: 'RG', name: 'Registro Geral' }, number: so(c.rg), issuingDate: c.emi || null, issuingEntity: String(c.org || '').trim().toUpperCase(), issuingState: String(c.uf || d.uf || uf).toUpperCase() } },
+    creditBankAccount: c.cta ? { bank: cod3(c.cta.bk), branch: so(c.cta.ag).padStart(4, '0'), number: so(c.cta.ct).slice(0, -1), digit: so(c.cta.ct).slice(-1) } : { bank: cod3(v(/banco_pagamento_codigo/)), branch: so(v(/banco_pagamento_agencia/)).padStart(4, '0'), number: conta.slice(0, -1), digit: conta.slice(-1) } }; }
 function zapLink(tel, nome, lk, tipo) { tel = so(tel); const pn = String(nome || '').trim().split(/\s+/)[0] || '', nomeP = pn.charAt(0).toUpperCase() + pn.slice(1).toLowerCase();
   const msg = tipo === 'port'
     ? `Olá, ${nomeP}! Aqui é da XYZ. Sua proposta de portabilidade com a Quali está pronta para assinatura. Sua parcela continua em ${brl(+lk.parcela)} e o contrato passa para ${lk.prazo || 108}x.` + (+lk.liquido > 0 ? ` A estimativa de valor liberado é de ${brl(+lk.liquido)}; o valor final depende do saldo que o seu banco atual informar.` : '') + ` Para conferir e assinar, acesse: ${lk.link}`
@@ -329,22 +329,42 @@ async function abrirDigitar(cpf, tipo) { const PORTA = tipo === 'port';
   modalDig('<h3><i>✍️</i>Digitar proposta</h3><div class="sub">Buscando os dados do cliente…</div>');
   let D; try { D = await dadosProposta(cpf, tipo); } catch (x) { modalDig(`<h3><i>✍️</i>Digitar proposta</h3><div class="sub" style="color:#fca5a5">${esc(x.message)}</div><div style="margin-top:12px"><button type="button" data-dgx>Fechar</button></div>`); return; }
   DIG = D; const d = D.d, cRg = so(D.v(/cliente_rg|^rg$/)), tel = so(D.x.telefone || ''), par = PORTA ? 0 : Math.floor(D.A.aum.util * 100 + 1e-6) / 100, nome = D.v(/cliente_nome|^nome$|^nome/);
-  const tem = { rg: d.rg || cRg, emi: d.emissao, org: d.orgao, ec: ECS.includes(d.estado_civil) ? d.estado_civil : '', tel: tel.length >= 10 ? tel : '' };
+  // documento: RG completo; sem a emissão do RG, vale a CNH lida da pasta; faltando, a atendente escolhe RG ou CNH e preenche
+  const rgOk = (d.rg || cRg) && d.emissao && d.orgao, cnhOk = !rgOk && d.cnh && d.cnh_emissao && d.cnh_uf, docOk = rgOk || cnhOk, ufB = (D.v(/^uf_beneficio$/) || '').toUpperCase();
+  const doc = cnhOk ? { tipo: 'CNH', rg: d.cnh, emi: d.cnh_emissao, org: 'DETRAN', uf: d.cnh_uf } : { tipo: 'RG', rg: d.rg || cRg || '', emi: d.emissao || '', org: d.orgao || '', uf: d.uf || ufB };
+  const tem = { ec: ECS.includes(d.estado_civil) ? d.estado_civil : '', tel: tel.length >= 10 ? tel : '' };
+  // endereço e conta: só pede quando a base não tem (ou o cliente recebe em cartão magnético)
+  const e = D.e || {}, en = { rua: d.rua || [e.TIPO_ENDERECO, e.LOGRADOURO].filter(Boolean).join(' '), num: d.numero || e.NUMERO || '', cpl: d.complemento || e.COMPLEMENTO || '', bai: d.bairro || e.BAIRRO || '', cid: d.cidade || e.CIDADE || D.v(/endereco_cidade/) || '', uf: (d.uf_end || e.UF || D.v(/endereco_uf/) || '').toUpperCase(), cep: so(d.cep || e.CEP || '') };
+  const endOk = en.rua && en.bai && en.cid && en.uf.length === 2 && en.cep.length === 8;
+  const ctaB = so(D.v(/banco_pagamento_conta/)), magn = /magn/i.test(D.v(/banco_pagamento_tipo_conta/)), ctaOk = ctaB.length >= 3 && !magn;
   const campo = (k, rot, inp) => tem[k] ? '' : `<label class="sub" style="display:block;margin-top:10px">${rot}<br>${inp}</label>`;
-  const falta = ['rg', 'emi', 'org', 'ec', 'tel'].filter(k => !tem[k]);
+  const lab = (rot, inp, w) => `<label class="sub" style="display:block;margin-top:8px;${w ? 'flex:' + w : ''}">${rot}<br>${inp}</label>`, at = v => esc(String(v || '')).replace(/"/g, '&quot;');
+  const falta = [!docOk && 'doc', !tem.ec && 'ec', !tem.tel && 'tel', !endOk && 'end', !ctaOk && 'cta'].filter(Boolean);
   modalDig(`<h3><i>✍️</i>Digitar proposta</h3>
     <div style="font-weight:700">${esc(nome)}</div>${PORTA ? `<div class="sub">CPF ${fmtCPF(cpf)} · portabilidade com refinanciamento em 108x</div><div style="margin-top:8px">${D.P.map((c, n) => `<label class="sub" style="display:flex;gap:8px;align-items:center;margin-top:4px;color:var(--texto)"><input type="checkbox" data-pc="${n}" checked style="width:auto;margin:0"> <span style="flex:1">${esc(c.banco)} · parcela ${brl(c.installmentValue)} · saldo ${brl(c.dueBalanceValue)}</span><b style="color:#fde68a">troco ~${brl(c.troco)}</b></label>`).join('')}</div><div class="sub" style="margin-top:6px">O saldo é estimado pela base; o banco de origem confirma o valor depois.</div>`
       : `<div class="sub">CPF ${fmtCPF(cpf)} · parcela <b style="color:#fde68a">${brl(par)}</b> em 108x · valor estimado ${brl(D.A.aum.valor)}</div>`}
     ${falta.length ? '<div class="sub" style="margin-top:10px;color:#fde68a">Pergunte ao cliente e preencha só o que falta:</div>' : '<div class="sub" style="margin-top:10px;color:#86efac">Já temos todos os dados deste cliente. É só confirmar.</div>'}
-    ${campo('rg', 'Número do RG', '<input id="dgm-rg" inputmode="numeric" style="width:100%" placeholder="só números">')}
-    ${campo('emi', 'Data de emissão do RG', '<input id="dgm-emi" type="date" style="width:100%">')}
-    ${campo('org', 'Órgão expedidor (ex.: SSP)', '<input id="dgm-org" style="width:100%" maxlength="12">')}
+    ${docOk ? '' : `<div style="display:flex;gap:8px">${lab('Documento', `<select id="dgm-tipo" style="width:100%"><option>RG</option><option>CNH</option></select>`, 1)}${lab('Número', `<input id="dgm-rg" inputmode="numeric" style="width:100%" value="${at(doc.rg)}" placeholder="só números">`, 2)}</div>
+      <div style="display:flex;gap:8px">${lab('Data de emissão', `<input id="dgm-emi" type="date" style="width:100%" value="${at(doc.emi)}">`, 2)}${lab('Órgão', `<input id="dgm-org" style="width:100%" maxlength="12" value="${at(doc.org)}" placeholder="SSP">`, 1)}${lab('UF', `<input id="dgm-ufd" style="width:100%" maxlength="2" value="${at(doc.uf)}">`, 1)}</div>
+      <div class="sub" style="margin-top:4px">Na CNH: use o nº de registro e a data de emissão da própria CNH.</div>`}
     ${campo('ec', 'Estado civil', `<select id="dgm-ec" style="width:100%"><option value="">— escolha —</option>${ECS.map(e => `<option>${e}</option>`).join('')}</select>`)}
     ${campo('tel', 'Telefone com DDD', '<input id="dgm-tel" inputmode="numeric" style="width:100%">')}
+    ${endOk ? '' : `<div class="sub" style="margin-top:12px;color:#fde68a">Endereço do cliente (a base não tem completo):</div>
+      <div style="display:flex;gap:8px">${lab('CEP', `<input id="dgm-cep" inputmode="numeric" maxlength="9" style="width:100%" value="${at(en.cep)}">`, 1)}${lab('Rua', `<input id="dgm-rua" style="width:100%" value="${at(en.rua)}">`, 2)}</div>
+      <div style="display:flex;gap:8px">${lab('Número', `<input id="dgm-num" style="width:100%" value="${at(en.num)}">`, 1)}${lab('Bairro', `<input id="dgm-bai" style="width:100%" value="${at(en.bai)}">`, 2)}</div>
+      <div style="display:flex;gap:8px">${lab('Cidade', `<input id="dgm-cid" style="width:100%" value="${at(en.cid)}">`, 3)}${lab('UF', `<input id="dgm-ufe" maxlength="2" style="width:100%" value="${at(en.uf)}">`, 1)}</div>`}
+    ${ctaOk ? '' : `<div class="sub" style="margin-top:12px;color:#fde68a">${magn ? 'Cliente recebe em cartão magnético: informe a conta dele para o crédito.' : 'Conta do cliente para o crédito (a base não tem):'}</div>
+      <div style="display:flex;gap:8px">${lab('Banco (código)', `<input id="dgm-bk" inputmode="numeric" maxlength="3" style="width:100%" placeholder="ex.: 104">`, 1)}${lab('Agência', `<input id="dgm-ag" inputmode="numeric" style="width:100%">`, 1)}${lab('Conta com dígito', `<input id="dgm-ct" inputmode="numeric" style="width:100%">`, 2)}</div>`}
     <div id="dgm-out" class="sub" style="margin-top:10px"></div>
     <div style="display:flex;gap:8px;margin-top:14px"><button type="button" id="dgm-ok" style="flex:1;background:linear-gradient(135deg,#15803d,#22c55e);color:#04130a;border:0;font-weight:800">OK, digitar</button><button type="button" data-dgx>Cancelar</button></div>`);
-  $('#dgm-ok').onclick = async () => { const g = (k, id) => tem[k] || ($(id) ? $(id).value.trim() : ''), c = { rg: g('rg', '#dgm-rg'), emi: g('emi', '#dgm-emi'), org: g('org', '#dgm-org'), ec: g('ec', '#dgm-ec'), tel: g('tel', '#dgm-tel'), uf: d.uf }, o = $('#dgm-out'), b = $('#dgm-ok');
-    const fal = [so(c.rg).length < 5 && 'RG', !c.emi && 'data de emissão', !c.org && 'órgão expedidor', !c.ec && 'estado civil', so(c.tel).length < 10 && 'telefone'].filter(Boolean);
+  const tp = $('#dgm-tipo'); if (tp) tp.onchange = () => { $('#dgm-rg').value = tp.value === 'RG' ? doc.rg : ''; $('#dgm-emi').value = tp.value === 'RG' ? doc.emi : ''; $('#dgm-org').value = tp.value === 'CNH' ? 'DETRAN' : doc.org; };
+  $('#dgm-ok').onclick = async () => { const V = id => ($(id) ? $(id).value.trim() : ''), g = (k, id) => tem[k] || V(id), o = $('#dgm-out'), b = $('#dgm-ok');
+    const c = docOk ? { ...doc } : { tipo: V('#dgm-tipo') || 'RG', rg: V('#dgm-rg'), emi: V('#dgm-emi'), org: V('#dgm-org'), uf: V('#dgm-ufd').toUpperCase() }; c.ec = g('ec', '#dgm-ec'); c.tel = g('tel', '#dgm-tel');
+    if (!endOk) c.end = { rua: V('#dgm-rua'), num: V('#dgm-num'), cpl: en.cpl, bai: V('#dgm-bai'), cid: V('#dgm-cid'), uf: V('#dgm-ufe').toUpperCase(), cep: so(V('#dgm-cep')) };
+    if (!ctaOk) c.cta = { bk: V('#dgm-bk'), ag: V('#dgm-ag'), ct: V('#dgm-ct') };
+    const fal = [so(c.rg).length < 5 && 'número do documento', !c.emi && 'data de emissão', !c.org && 'órgão expedidor', !/^[A-Z]{2}$/.test(c.uf || '') && 'UF do documento', !c.ec && 'estado civil', so(c.tel).length < 10 && 'telefone',
+      c.end && (!c.end.rua || !c.end.bai || !c.end.cid || c.end.uf.length !== 2 || c.end.cep.length !== 8) && 'endereço completo (CEP com 8 números, rua, bairro, cidade e UF)',
+      c.cta && (so(c.cta.bk).length < 1 || so(c.cta.ag).length < 1 || so(c.cta.ct).length < 3) && 'banco, agência e conta'].filter(Boolean);
     if (fal.length) { o.innerHTML = `<b style="color:#fca5a5">Falta: ${fal.join(', ')}.</b>`; return; }
     b.disabled = true; o.textContent = 'Digitando na Quali… pode levar até 1 minuto.';
     const contratos = PORTA ? D.P.filter((q, n) => { const k = document.querySelector(`[data-pc="${n}"]`); return !k || k.checked; }) : null;
