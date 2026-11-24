@@ -366,7 +366,7 @@
     while ((m = rot.exec(T))) {
       const ini = m.index, janela = T.slice(ini, ini + 170);
       // corta a janela no próximo rótulo de outra coisa (IOF, juros, CET, liberado, parcela, total)
-      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|quantidade|financiad|valor\s+(?:base|total)|total\s+(?:financiado|do\s+empr)|tarifa|TAC|l[íi]quido|creditad|quita[çc]|saldo|refinanci|retido|portado|devedor|\d{2}\/\d{2}\/\d{4}|valor\s+(?:da|das|do)\s+(?:opera|parcel|princip))/i);
+      const corte = janela.slice(m[0].length).search(/\b(IOF|CET|juros|taxa|liberad|parcela|quantidade|financiad|valor\s+(?:base|total)|total\s+(?:financiado|do\s+empr)|tarifa|TAC|l[íi]quido|creditad|quita[çc]|saldo|refinanci|retido|portado|devedor|\d{2}\/\d{2}\/\d{4}|valor\s+(?:da|das|do)\s+(?:opera|parcel|princip)|valor\s+(?:(?:do|de|da)\s+)?(?:empr[ée]st|cr[ée]dito|m[úu]tuo|solicitad|contratad|contrato)|montante|principal)/i);
       const trecho = corte >= 0 ? janela.slice(0, m[0].length + corte) : janela;
       if (/\bIOF\s*(?:do|da|de|sobre|s\/)?\s*(?:o\s+)?$/i.test(T.slice(Math.max(0, ini - 25), ini))) continue;
       const depois = T.slice(ini + m[0].length, ini + m[0].length + 60), antes2 = T.slice(Math.max(0, ini - 30), ini);
@@ -425,6 +425,12 @@
       const v = mc ? Number(mc[1].replace(/\./g, '').replace(',', '.')) : 0;
       if (v > 0 && !naoMarcado) r.seguro.push({ v, trecho: 'Seguro ' + mc[1] + ' (texto quebrado no PDF — conferir)' });
     }
+    // Campo do seguro em branco (24/11/2026): o leitor pegava o número seguinte, que era o valor do empréstimo.
+    // Trava: valor de "seguro" igual ao valor do empréstimo / liberado / financiado / total do próprio contrato não é seguro.
+    { const base = new Set(), RB = /(?:valor\s+(?:(?:do|de|da)\s+)?(?:empr[ée]stimo|cr[ée]dito|m[úu]tuo|principal|solicitado|contratado|contrato|liberado|financiado|total|l[íi]quido)|total\s+financiado|montante|valor\s+total\s+(?:do\s+)?(?:empr[ée]stimo|financiado))[^\d]{0,25}(\d{1,3}(?:\.\d{3})*,\d{2})/gi;
+      let mb; while ((mb = RB.exec(T))) base.add(Number(mb[1].replace(/\./g, '').replace(',', '.')).toFixed(2));
+      const antes = r.seguro.length; r.seguro = r.seguro.filter(x => !base.has(x.v.toFixed(2)));
+      if (antes && !r.seguro.length) r.seguroDescartado = true; }
     r.totalSeguro = r.seguro.reduce((a, x) => a + x.v, 0); r.totalPacote = r.pacote.reduce((a, x) => a + x.v, 0);
     r.tem = r.totalSeguro > 0 || r.totalPacote > 0;
     return r;
