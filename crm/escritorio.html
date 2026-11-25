@@ -478,8 +478,7 @@ function montarSalaAdm() {
   for (const x of [porta[1], X1 - .2]) caixa3(.35, h, .35, '#0f172a', x, 0, Z0, quadro);
   caixa3(.35, h, .35, '#0f172a', X0, 0, Z1 - .2, quadro);
   caixa3(X1 - X0, .06, Z1 - Z0, '#3b1d6b', (X0 + X1) / 2, .05, (Z0 + Z1) / 2, { emissive: '#7c3aed', emissiveIntensity: .15 });
-  const placa = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 1.7), new THREE.MeshBasicMaterial({ map: texturaTexto('ANDRESSA', 384, 88, '800 52px Inter, sans-serif', '#f3e8ff', '#a855f7'), transparent: true }));
-  placa.position.set((porta[1] + X1) / 2, h + 1.4, Z0 + .2); scene.add(placa);
+  // placa com o nome em cima da sala retirada a pedido (25/11/2026)
   const [x, z] = MESA_ADM;
   por('v:Table_White_2x2_01', x, z, 180); por('v:PC_01', x - .1, z - .05, 180, { y: 3.85 }); por('laptop', x + .25, z + .05, 200, { y: 3.85 });
   por('lampRoundTable', x - .35, z, 0, { y: 3.85 }); por('v:Chair_Black_01', x - .25, z - .43, 0);
