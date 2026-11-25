@@ -62,8 +62,10 @@ const C = window.CRM_CONFIG, sb = supabase.createClient(C.SUPABASE_URL, C.SUPABA
 const diaSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 let REGRAS = null, MES = [], RK = 'mes';
 const chave = c => so(c.cpf) || (c.nome || '').toUpperCase().trim();
+const ehFin = p => p === 'margem' || p === 'portabilidade';   // produtos da financeira (Quali): não têm advogado nem entram no previsto
+// Mesma conta do CRM (Gestão > Previsto do mês): mês inteiro, produto de cada linha e sem a financeira.
 function ganhoDe(lista) {
-  const porAdv = {}; lista.forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
+  const porAdv = {}; lista.filter(c => !ehFin(c.produto)).forEach(c => { const a = (c.advogado || 'SEM ADVOGADO').toUpperCase().trim(); (porAdv[a] = porAdv[a] || []).push(c); });
   let ganho = 0, semValor = 0; const adv = {};
   Object.entries(porAdv).forEach(([a, l]) => { let g = 0; try { XYZComissao.aplicarRegra(REGRAS[a] && REGRAS[a].regra, l).forEach(i => { g += i.v || 0; if (i.semValor) semValor++; }); } catch (e) {} ganho += g; adv[a] = { n: l.filter(c => !c.fora_comissao).length, cli: new Set(l.map(chave)).size, g }; });
   return { ganho, semValor, adv };
@@ -76,10 +78,10 @@ function ranking() {
 }
 async function carregar() {
   try {
-    const hoje = diaSP(), ini = hoje.slice(0, 8) + '01';
+    const hoje = diaSP(), ini = hoje.slice(0, 8) + '01', fim = (() => { const [a, m] = hoje.split('-').map(Number); return new Date(a, m, 0).toLocaleDateString('en-CA'); })();
     if (!REGRAS) { const { data } = await sb.from('regras_adv').select('*'); REGRAS = {}; (data || []).forEach(r => REGRAS[r.advogado] = r); }
     let todos = [];
-    for (let de = 0; de < 5000; de += 1000) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,data_contato,valor,banco,advogado,fora_comissao,atendente_id,perfis(nome)').gte('data_contato', ini).lte('data_contato', hoje).range(de, de + 999); if (error) throw error; todos = todos.concat(data); if (data.length < 1000) break; }
+    for (let de = 0; de < 5000; de += 1000) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,data_contato,valor,banco,advogado,produto,pasta_url,seguro_det_em,fora_comissao,atendente_id,perfis(nome)').gte('data_contato', ini).lte('data_contato', fim).order('id').range(de, de + 999); if (error) throw error; todos = todos.concat(data); if (data.length < 1000) break; }
     MES = todos; const doDia = MES.filter(c => c.data_contato === hoje), gd = ganhoDe(doDia), gm = ganhoDe(MES);
     $('#h-cli').textContent = new Set(doDia.map(chave)).size; $('#h-sub').textContent = doDia.length + ' processo(s)';
     $('#h-ganho').textContent = brl(gd.ganho); $('#h-gsub').textContent = gd.semValor ? gd.semValor + ' sem valor do seguro' : 'pelas regras dos advogados';

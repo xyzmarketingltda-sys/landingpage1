@@ -1129,7 +1129,7 @@ const fimMes = iso => { const [a, m] = iso.split('-').map(Number); return new Da
 const mesAnt = iso => { const [a, m] = iso.split('-').map(Number); return mesIso(new Date(a, m - 2, 1)); };
 async function clientesDoMes(ini, fim) {
   let tudo = [], de = 0;
-  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,atendente_id,criado_em,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,pasta_lida_em,seguro_det,seguro_det_fonte,seguro_det_em,kit,fora_comissao').gte('data_contato', ini).lte('data_contato', fim).range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
+  for (;;) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,telefone,atendente_id,criado_em,banco,advogado,valor,produto,data_contato,adv_drive,adv_procuracao,pasta_caminho,pasta_url,pasta_lida_em,seguro_det,seguro_det_fonte,seguro_det_em,kit,fora_comissao').gte('data_contato', ini).lte('data_contato', fim).order('id').range(de, de + 999); if (error || !data) break; tudo = tudo.concat(data); if (data.length < 1000) break; de += 1000; }
   return tudo;
 }
 function aplicarRegra(regra, linhas) { return XYZComissao.aplicarRegra(regra, linhas); }
