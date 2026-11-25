@@ -1458,7 +1458,8 @@ setInterval(() => carregarDesafio(false), 20000);
 /* ---------- início ---------- */
 async function carregarEquipe() {
   const { data, error } = await sb.rpc('equipe_escritorio');
-  if (!error && data) { equipe = data; atualizarAtores(); }
+  // usuário só de consulta (papel yvx, ex.: Lindomar) não aparece no escritório nem na lista; o login dele segue ativo. Ele mesmo, se abrir, se vê.
+  if (!error && data) { equipe = data.filter(p => p.papel !== 'yvx' || (eu && p.id === eu.id)); atualizarAtores(); }
 }
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
