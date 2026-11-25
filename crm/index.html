@@ -1230,13 +1230,29 @@ async function carregarCobrancas() {
 function desenharReceber() {
   $('#ga-resumo').innerHTML = `<span>Total a receber em ${mesNome(G.mes)}: <b>${brl(RECEBER.reduce((x, a) => x + a.total, 0))}</b></span>` +
     (DIVERGE.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-div">⚠️ ${DIVERGE.length} cliente(s) com advogado do CRM diferente da procuração/Drive — ver</span>` : '');
-  const DIFV = (window.__cliMes || []).filter(c => Number(c.seguro_det) > 0 && Math.abs(Number(c.valor || 0) - Number(c.seguro_det)) > 1);
-  const mapeados = (window.__cliMes || []).filter(c => c.seguro_det_em).length;
-  $('#ga-resumo').insertAdjacentHTML('beforeend', `<span title="pastas do mês em que o robô já leu os contratos">🔎 contratos lidos: <b>${mapeados}/${(window.__cliMes || []).length}</b></span>` + (DIFV.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-difv">💰 ${DIFV.length} com valor lançado diferente do contrato — ver</span>` : ''));
+  // Valor lançado × valor lido pelo robô na pasta. Desde 24/11/2026 o robô NUNCA é motivo para baixar um valor lançado:
+  // ele lê no máximo alguns PDFs da pasta e não lê contrato escaneado, então "robô leu menos" quase sempre é leitura incompleta.
+  // Só há botão quando o robô achou MAIS que o lançado (dinheiro que pode estar ficando para trás), e mesmo assim para conferir.
+  const TODOS = window.__cliMes || [], urlN = {}; TODOS.forEach(c => { if (c.pasta_url) (urlN[c.pasta_url] = urlN[c.pasta_url] || new Set()).add((c.cpf || '').replace(/\D/g, '') || c.nome); });
+  const pastaDeOutro = c => c.pasta_url && urlN[c.pasta_url] && urlN[c.pasta_url].size > 1;
+  const DIFV = TODOS.filter(c => Number(c.seguro_det) > 0 && Math.abs(Number(c.valor || 0) - Number(c.seguro_det)) > 1);
+  const MAIS = DIFV.filter(c => Number(c.seguro_det) > Number(c.valor || 0) && !pastaDeOutro(c)), MENOS = DIFV.filter(c => Number(c.seguro_det) < Number(c.valor || 0) || pastaDeOutro(c));
+  const mapeados = TODOS.filter(c => c.seguro_det_em).length;
+  $('#ga-resumo').insertAdjacentHTML('beforeend', `<span title="pastas do mês em que o robô já leu os contratos">🔎 contratos lidos: <b>${mapeados}/${TODOS.length}</b></span>` + (DIFV.length ? `<span style="border-color:#fbbf24;color:#fde68a;cursor:pointer" id="ga-difv">💰 ${MAIS.length} em que o robô achou mais seguro que o lançado — conferir${MENOS.length ? ` (+${MENOS.length} só informativo)` : ''}</span>` : ''));
   const bv = $('#ga-difv'); if (bv) bv.onclick = () => {
-    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px;color:#fde68a">💰 Valor lançado × valor lido no contrato (seguro, prêmio ou pacote de benefícios — sem IOF)</h4>
-      <div class="g-tab"><table><thead><tr><th>Cliente</th><th>Advogado</th><th>Banco</th><th style="text-align:right">Lançado</th><th style="text-align:right">No contrato</th><th>Onde achou</th><th></th></tr></thead><tbody>${DIFV.map(c => `<tr><td>${esc(c.nome)}</td><td>${esc(c.advogado || '')}</td><td>${esc(c.banco || '')}</td><td class="num">${brl(c.valor)}</td><td class="num"><b>${brl(c.seguro_det)}</b></td><td><small style="color:var(--suave)">${esc(c.seguro_det_fonte || '')}</small></td><td><button class="btn sec peq" data-usar="${c.id}">Usar o do contrato</button></td></tr>`).join('')}</tbody></table></div>`;
-    $$('#ga-det [data-usar]').forEach(b => b.onclick = async () => { const c = DIFV.find(x => x.id == b.dataset.usar); const { error } = await sb.from('clientes').update({ valor: c.seguro_det, valor_fonte: 'contrato (conferido pelo admin)' }).eq('id', c.id); if (error) return alert(traduz(error)); toast('Valor atualizado.'); calcularPrevisoes(); });
+    const nArq = c => ((c.seguro_det_fonte || '').match(/\.pdf/gi) || []).length;
+    const suspeito = c => Number(c.seguro_det) > 3000 && Number(c.seguro_det) > 4 * Number(c.valor || 0) && Number(c.valor || 0) > 0;
+    const lin = (c, botao) => `<tr><td>${esc(c.nome)}</td><td>${esc(c.advogado || '')}</td><td>${esc(c.banco || '')}</td><td class="num"><b>${brl(c.valor)}</b></td><td class="num">${brl(c.seguro_det)}</td><td><small style="color:var(--suave)">${pastaDeOutro(c) ? '<b style="color:#fca5a5">⚠️ a pasta deste cliente é a mesma de outro cliente — leitura não vale.</b> ' : ''}${suspeito(c) ? '<b style="color:#fca5a5">⚠️ valor alto demais: pode ser o valor do empréstimo, abra o contrato.</b> ' : ''}${esc(c.seguro_det_fonte || '')}</small></td><td>${botao ? `<button class="btn sec peq" data-usar="${c.id}">Usar ${brl(c.seguro_det)}</button>` : `<small style="color:var(--suave)">robô leu ${nArq(c) || 1} contrato(s)</small>`}</td></tr>`;
+    const cab = '<thead><tr><th>Cliente</th><th>Advogado</th><th>Banco</th><th style="text-align:right">Lançado</th><th style="text-align:right">Robô leu</th><th>O que o robô leu</th><th></th></tr></thead>';
+    $('#ga-det').innerHTML = `<h4 style="margin:14px 0 6px;color:#fde68a">💰 Robô achou MAIS seguro do que foi lançado (${MAIS.length}) — pode ter dinheiro ficando para trás</h4>
+      <small style="color:var(--suave)">Seguro, prêmio ou pacote de benefícios, sem IOF. Abra o contrato e confira antes de usar: o robô também erra para mais.</small>
+      <div class="g-tab"><table>${cab}<tbody>${MAIS.map(c => lin(c, true)).join('') || '<tr><td colspan="7">Nenhum.</td></tr>'}</tbody></table></div>
+      <h4 style="margin:18px 0 6px;color:var(--suave)">ℹ️ Robô leu MENOS do que foi lançado (${MENOS.length}) — vale o valor LANÇADO, não precisa fazer nada</h4>
+      <small style="color:var(--suave)">O robô lê só alguns PDFs da pasta e não lê contrato escaneado (foto), então aqui a leitura dele é incompleta. O valor lançado pela atendente continua valendo para a cobrança; esta lista é só para consulta e não tem botão de trocar.</small>
+      <div class="g-tab"><table>${cab}<tbody>${MENOS.map(c => lin(c, false)).join('') || '<tr><td colspan="7">Nenhum.</td></tr>'}</tbody></table></div>`;
+    $$('#ga-det [data-usar]').forEach(b => b.onclick = async () => { const c = MAIS.find(x => x.id == b.dataset.usar); if (!c || !(Number(c.seguro_det) > Number(c.valor || 0))) return;
+      if (!confirm(`Trocar o valor de ${c.nome} de ${brl(c.valor)} para ${brl(c.seguro_det)}? Confira o contrato antes.`)) return;
+      const { error } = await sb.from('clientes').update({ valor: c.seguro_det, valor_fonte: 'contrato (conferido pelo admin) — antes ' + brl(c.valor) }).eq('id', c.id); if (error) return alert(traduz(error)); toast('Valor atualizado.'); calcularPrevisoes(); });
     $('#ga-det').scrollIntoView({ behavior: 'smooth' });
   };
   const bd = $('#ga-div'); if (bd) bd.onclick = () => {
