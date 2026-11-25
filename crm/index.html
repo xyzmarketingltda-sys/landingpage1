@@ -1920,10 +1920,11 @@ $('#form-cli').onsubmit = async e => {
   const cpf = so($('#c-cpf').value);
   if (cpf.length !== 11) return toast('CPF precisa ter 11 números.', true);
   if (ehFin(produtoSel) && (!editando || cpf !== so(editando?.cpf) || editando.produto !== produtoSel)) {
-    // produto da financeira: não avisa de advogado/procuração; só trava se já existe proposta assinada ou finalizada na Quali
-    const { data: qs } = await sb.rpc('quali_do_cpf', { p_cpf: cpf });
-    const ops = produtoSel === 'margem' ? [6] : [3, 4], trava = (qs || []).find(q => ops.includes(q.operacao_cod) && (q.fase === 'assinado' || q.fase === 'finalizado'));
-    if (trava) { $('#m-aviso').innerHTML = `🚫 Este CPF já tem proposta de <b>${esc(trava.operacao)}</b> na Quali: <b>${esc(trava.status)}</b>${trava.status_em ? ' (' + new Date(trava.status_em).toLocaleDateString('pt-BR') + ')' : ''}. Não dá para lançar de novo.`; $('#m-aviso').hidden = false; return; }
+    // produto da financeira: não avisa de advogado/procuração. Desde 25/11/2026 a trava é só contra lançar o MESMO cliente duas vezes:
+    // proposta assinada na Quali não impede o primeiro lançamento (é justamente ela que a atendente está registrando).
+    const { data: ja } = await sb.rpc('cliente_fin_lancado', { p_cpf: cpf, p_produto: produtoSel });
+    const dup = (ja || []).find(x => !editando || x.id !== editando.id);
+    if (dup) { $('#m-aviso').innerHTML = `🚫 Este CPF já está lançado no CRM como <b>${produtoSel === 'margem' ? 'aumento de margem' : 'portabilidade'}</b> por <b>${esc(dup.atendente)}</b>${dup.em ? ' em ' + new Date(dup.em + 'T12:00:00').toLocaleDateString('pt-BR') : ''}. Não dá para lançar de novo.`; $('#m-aviso').hidden = false; return; }
   }
   if (!ehFin(produtoSel) && cpf !== so(editando?.cpf) && cpfConfirmado !== cpf) {
     const { data: dono } = await sb.rpc('cpf_dono', { p_cpf: cpf });
