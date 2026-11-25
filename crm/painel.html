@@ -83,9 +83,11 @@ async function carregar() {
     let todos = [];
     for (let de = 0; de < 5000; de += 1000) { const { data, error } = await sb.from('clientes').select('id,nome,cpf,data_contato,valor,banco,advogado,produto,pasta_url,seguro_det_em,fora_comissao,atendente_id,perfis(nome)').gte('data_contato', ini).lte('data_contato', fim).order('id').range(de, de + 999); if (error) throw error; todos = todos.concat(data); if (data.length < 1000) break; }
     MES = todos; const doDia = MES.filter(c => c.data_contato === hoje), gd = ganhoDe(doDia), gm = ganhoDe(MES);
-    $('#h-cli').textContent = new Set(doDia.map(chave)).size; $('#h-sub').textContent = doDia.length + ' processo(s)';
+    // fechados = só clientes de advogado, igual ao CRM; a financeira (aumento de margem / portabilidade) aparece à parte
+    const adv_ = l => l.filter(c => !ehFin(c.produto)), fin_ = l => new Set(l.filter(c => ehFin(c.produto)).map(chave)).size, sub_ = l => adv_(l).length + ' processo(s)' + (fin_(l) ? ' · + ' + fin_(l) + ' da financeira' : '');
+    $('#h-cli').textContent = new Set(adv_(doDia).map(chave)).size; $('#h-sub').textContent = sub_(doDia);
     $('#h-ganho').textContent = brl(gd.ganho); $('#h-gsub').textContent = gd.semValor ? gd.semValor + ' sem valor do seguro' : 'pelas regras dos advogados';
-    $('#m-cli').textContent = new Set(MES.map(chave)).size; $('#m-sub').textContent = MES.length + ' processo(s)';
+    $('#m-cli').textContent = new Set(adv_(MES).map(chave)).size; $('#m-sub').textContent = sub_(MES);
     $('#m-ganho').textContent = brl(gm.ganho); $('#m-gsub').textContent = gm.semValor ? gm.semValor + ' sem valor do seguro' : 'pelas regras dos advogados';
     $('#adv').innerHTML = Object.entries(gm.adv).sort((a, b) => b[1].g - a[1].g).map(([a, x]) => `<div class="lin"><span>${esc(a)}<br><small class="sub">${x.cli} cliente(s) × ${x.n} processo(s)</small></span><b>${brl(x.g)}</b></div>`).join('') || '<div class="sub">Sem lançamentos no mês.</div>';
     ranking();
