@@ -1782,8 +1782,15 @@ function aplicarSeguroPorBanco(avisar) {
     const o = G[k] || (i === 0 && !ident.length ? G[''] : null);     // contrato sem banco identificado só entra quando não há outro banco lido
     if (o) { por(c, o); usados[G[k] ? k : ''] = 1; } else if (c.v.dataset.auto === '1') { c.v.value = ''; c.v.dataset.auto = ''; } });
   // cada banco com seguro vira uma linha banco x valor: completa a primeira linha se estiver vazia e cria as outras sozinho
+  linhasForm().forEach(c => { c.b.dataset.par = ''; });
+  // linhas criadas pelo sistema que ficaram repetindo um banco que a atendente digitou depois: saem
+  { const vistos = {}; linhasForm().forEach((c, i) => { const k = chBanco(c.b.value); if (!k) return; const linha = c.b.closest('.c-multi-linha');
+      if (vistos[k] && linha && linha.dataset.auto === '1') linha.remove(); else if (vistos[k] && vistos[k].linha && vistos[k].linha.dataset.auto === '1' && !(linha && linha.dataset.auto === '1')) { vistos[k].linha.remove(); vistos[k] = { linha }; } else if (!vistos[k]) vistos[k] = { linha }; }); }
   ident.filter(k => !usados[k]).forEach(k => { const o = G[k]; let c = linhasForm().find(x => !x.b.value.trim());
-    if (!c && novoCli) { linhaBancoExtra(true); c = linhasForm().pop(); }
+    // linha da atendente que não bateu com nenhum banco lido (nome digitado diferente, ex.: "Fintech" para a QI, ou ainda digitando): é dela, não cria outra
+    const semPar = linhasForm().find(x => x.b.value.trim() && !G[chBanco(x.b.value)] && x.b.dataset.par !== '1');
+    if (!c && semPar) { semPar.b.dataset.par = '1'; semPar.b.dataset.lido = o.nome; if (!lerValor(semPar.v.value)) por(semPar, o); usados[k] = 1; return; }
+    if (!c && novoCli) { linhaBancoExtra(true); c = linhasForm().pop(); const l = c.b.closest('.c-multi-linha'); if (l) l.dataset.auto = '1'; }
     if (c) { c.b.value = o.nome; c.v.value = ''; c.v.dataset.auto = '1'; por(c, o); usados[k] = 1; } });
   const linhas = Object.entries(G).map(([k, o]) => `${usados[k] ? '<span style="color:#86efac">✔</span>' : '<span style="color:#fbbf24">●</span>'} <b>${esc(o.nome)}</b>: ${brl(o.total)} em ${o.n} contrato(s) <span style="color:var(--suave)">· ${o.de}</span>${usados[k] ? '' : ' — <span style="color:#fbbf24">não está neste lançamento</span>'}`);
   nota.innerHTML = '💰 Seguro por banco (cada banco é um lançamento com o valor só dele):<br>' + linhas.join('<br>') + '<br><span style="color:var(--suave)">Confira os valores antes de salvar; tire com ✕ o banco que não for lançar.</span>';
@@ -1970,9 +1977,10 @@ $('#form-cli').onsubmit = async e => {
     }
     let nExtras = 0;
     if (!editando) {
-      const mesmo = v => String(v || '').trim().toUpperCase();
+      const mesmo = v => chBanco(v) || String(v || '').trim().toUpperCase(), jaFoi = new Set([mesmo(reg.banco)]);
       for (const x of bancosExtras()) {
-        if (mesmo(x.banco) === mesmo(reg.banco)) continue;
+        if (jaFoi.has(mesmo(x.banco))) continue;      // mesmo banco de outra linha (facta = FACTA = Facta Financeira): não lança duas vezes
+        jaFoi.add(mesmo(x.banco));
         const { data: ex, error: e2 } = await sb.from('clientes').insert({ ...reg, banco: x.banco, valor: x.valor }).select('id').single();
         if (e2) throw new Error('O 1º banco foi salvo, mas deu erro no banco ' + x.banco + ': ' + traduz(e2));
         if (inssMexeu && $('#c-inss').value) await sb.rpc('salvar_senha_inss', { p_cliente: ex.id, p_senha: $('#c-inss').value });
