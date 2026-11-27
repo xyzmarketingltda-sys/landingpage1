@@ -330,6 +330,12 @@ async function abrirDigitar(cpf, tipo) { const PORTA = tipo === 'port';
   modalDig('<h3><i>✍️</i>Digitar proposta</h3><div class="sub">Buscando os dados do cliente…</div>');
   let D; try { D = await dadosProposta(cpf, tipo); } catch (x) { modalDig(`<h3><i>✍️</i>Digitar proposta</h3><div class="sub" style="color:#fca5a5">${esc(x.message)}</div><div style="margin-top:12px"><button type="button" data-dgx>Fechar</button></div>`); return; }
   DIG = D; const d = D.d, cRg = so(D.v(/cliente_rg|^rg$/)), tel = so(D.x.telefone || ''), par = PORTA ? 0 : Math.floor(D.A.aum.util * 100 + 1e-6) / 100, nome = D.v(/cliente_nome|^nome$|^nome/);
+  // trava (27/11/2026): o CPF do cadastro tem de ser da mesma pessoa na base do INSS. Se o nome não bate, o CPF foi digitado errado no CRM
+  // e a proposta sairia em nome de outra pessoa: não deixa digitar.
+  { const lim = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !['DOS', 'DAS'].includes(w));
+    const a = lim(nome), b = lim(D.x.nome), iguais = a.filter(w => b.includes(w)).length;
+    if (b.length && a.length && (a[0] !== b[0] || iguais < Math.min(2, a.length, b.length))) {
+      modalDig(`<h3><i>🚫</i>CPF de outra pessoa</h3><div class="sub" style="color:#fca5a5;line-height:1.6">No CRM este CPF (${fmtCPF(cpf)}) está no cadastro de <b>${esc(D.x.nome)}</b>, mas na base do INSS ele pertence a <b>${esc(nome)}</b>.<br>O CPF foi digitado errado no cadastro. Não digite a proposta: confira o CPF no documento do cliente, corrija no CRM e avise o Lucas.</div><div style="margin-top:12px"><button type="button" data-dgx>Fechar</button></div>`); return; } }
   // documento: RG completo; sem a emissão do RG, vale a CNH lida da pasta; faltando, a atendente escolhe RG ou CNH e preenche
   const rgOk = (d.rg || cRg) && d.emissao && d.orgao, cnhOk = !rgOk && d.cnh && d.cnh_emissao && d.cnh_uf, docOk = rgOk || cnhOk, ufB = (D.v(/^uf_beneficio$/) || '').toUpperCase();
   const doc = cnhOk ? { tipo: 'CNH', rg: d.cnh, emi: d.cnh_emissao, org: 'DETRAN', uf: d.cnh_uf } : { tipo: 'RG', rg: d.rg || cRg || '', emi: d.emissao || '', org: d.orgao || '', uf: d.uf || ufB };
