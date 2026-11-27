@@ -266,6 +266,11 @@ async function iniciar() {
   $('#eu-nome').textContent = p.restrito ? p.nome + ' · equipe ' + (p.advogado_chave || '').charAt(0) + (p.advogado_chave || '').slice(1).toLowerCase() : p.papel === 'advogado' ? (['Carina','Cibele','Danyelle','Junny','Rita'].includes(p.nome) ? 'Dra. ' : 'Dr. ') + (p.nome === 'Luiz' ? 'Luís' : p.nome) : p.nome + ' (admin)';
   try { XYZPresenca.entrar(sb, eu, {}); } catch (e) {}
   carregar(); avisoDesafio(); setInterval(avisoDesafio, 120000); avisosPush();
+  // lista sempre atual (27/11/2026): quem deixa a aba aberta o dia todo não via os clientes novos. Atualiza ao voltar para a aba e a cada 5 minutos,
+  // desde que não esteja com um cliente aberto nem digitando na busca.
+  if (!window.__autoAtualiza) { window.__autoAtualiza = true; let ult = Date.now();
+    const atualizar = () => { if (document.hidden || !$('#modal').hidden || document.activeElement === $('#f-busca') || Date.now() - ult < 60000) return; ult = Date.now(); carregar(); };
+    document.addEventListener('visibilitychange', atualizar); setInterval(atualizar, 300000); }
 }
 
 /* Aviso no canto: desafio em andamento para a equipe da XYZ (só título, descrição e horário). */
